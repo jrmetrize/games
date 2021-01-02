@@ -37,12 +37,10 @@ main(int argc, const char **argv)
     return 0;
   }
 
-#ifdef __APPLE__
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
 
   window = glfwCreateWindow(1280, 720, "fp2d", nullptr, nullptr);
   if (window == nullptr)
@@ -61,23 +59,9 @@ main(int argc, const char **argv)
     return 0;
   }
 
-  GraphicsServer *renderer = new GraphicsServer();
-
-  while (!glfwWindowShouldClose(window))
-  {
-    glfwPollEvents();
-
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
-    glClearColor(0, 0, 0, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
-
+  GraphicsServer *renderer = new GraphicsServer(window);
+  while (true)
     renderer->draw();
-
-    glfwSwapBuffers(window);
-  }
-
   delete renderer;
 
   glfwTerminate();

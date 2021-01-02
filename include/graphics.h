@@ -6,6 +6,9 @@
 
 #include "linear_algebra.h"
 
+#include <glad/glad.h>
+#include <glfw/glfw3.h>
+
 class Mesh;
 
 class Shader
@@ -73,14 +76,30 @@ public:
 
 class GraphicsServer
 {
+  GLFWwindow *window;
+
   Shader *color_shader;
   Shader *texture_shader;
 
   Mesh *quad;
+
+  using RenderResult = std::vector<Vec3>;
+
+  RenderResult
+  render_world(Vec2 camera, Vec2 direction);
 public:
-  GraphicsServer();
+  GraphicsServer(GLFWwindow *_window);
 
   ~GraphicsServer();
+
+  Vec2
+  get_framebuffer_size() const;
+
+  Mat3
+  get_pixel_to_screen_transform() const;
+
+  Mat3
+  get_screen_to_pixel_transform() const;
 
   void
   draw();

@@ -193,9 +193,9 @@ Mesh *
 Mesh::primitive_quad()
 {
   VertexVector vertices = {
-    Vertex(Vec2(-1.0, -1.0), Vec2(0.0, 0.0)),
-    Vertex(Vec2(1.0, -1.0), Vec2(1.0, 0.0)),
-    Vertex(Vec2(-1.0, 1.0), Vec2(0.0, 1.0)),
+    Vertex(Vec2(0.0, 0.0), Vec2(0.0, 0.0)),
+    Vertex(Vec2(1.0, 0.0), Vec2(1.0, 0.0)),
+    Vertex(Vec2(0.0, 1.0), Vec2(0.0, 1.0)),
     Vertex(Vec2(1.0, 1.0), Vec2(1.0, 1.0))
   };
 
@@ -207,7 +207,8 @@ Mesh::primitive_quad()
   return new Mesh(vertices, indices);
 }
 
-GraphicsServer::GraphicsServer()
+GraphicsServer::GraphicsServer(GLFWwindow *_window) :
+  window(_window)
 {
   color_shader = new Shader(ColorShaderSources::vertex,
     ColorShaderSources::fragment);
@@ -223,11 +224,67 @@ GraphicsServer::~GraphicsServer()
   delete quad;
 }
 
+Vec2
+GraphicsServer::get_framebuffer_size() const
+{
+  int width;
+  int height;
+  glfwGetFramebufferSize(window, &width, &height);
+
+  return Vec2(float(width), float(height));
+}
+
+Mat3
+GraphicsServer::get_pixel_to_screen_transform() const
+{
+  Vec2 viewport_size = get_framebuffer_size();
+  return Mat3::translate(Vec2(-1.0f, -1.0f)) *
+    Mat3::scale(Vec2(2.0f / viewport_size.x, 2.0f / viewport_size.y));
+}
+
+Mat3
+GraphicsServer::get_screen_to_pixel_transform() const
+{
+  Vec2 viewport_size = get_framebuffer_size();
+  return Mat3::scale(Vec2(viewport_size.x / 2.0f, viewport_size.y / 2.0f)) *
+    Mat3::translate(Vec2(1.0f, 1.0f));
+}
+
+GraphicsServer::RenderResult
+GraphicsServer::render_world(Vec2 camera, Vec2 direction)
+{
+  RenderResult output = RenderResult(224);
+
+  for (unsigned int i = 0; i < 224; ++i)
+  {
+    float x = sin(float(i) / 50);
+    output[i] = Vec3(x, x, x);
+  }
+
+  return output;
+}
+
 void
 GraphicsServer::draw()
 {
-  color_shader->bind_uniform(Mat3::rotate(3.14159 / 3.0) * Mat3::scale(Vec2(0.5, 0.5)), "transform");
-  color_shader->bind_uniform(Vec4(1.0, 1.0, 0.0, 1.0), "color");
-  color_shader->draw(quad);
-  //texture_shader->draw(quad);
+  glfwPollEvents();
+
+  Vec2 viewport_size = get_framebuffer_size();
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  RenderResult result = render_world(Vec2(0, 0), Vec2(1, 0));
+  float row_height = viewport_size.y / float(result.size());
+  for (unsigned int i = 0; i < result.size(); ++i)
+  {
+    Vec3 color = result[i];
+    color_shader->bind_uniform(get_pixel_to_screen_transform()
+      * Mat3::translate(Vec2(0, float(i) * row_height))
+      * Mat3::scale(Vec2(64, row_height)), "transform");
+    color_shader->bind_uniform(Vec4(color.x, color.y, color.z, 1.0), "color");
+    color_shader->draw(quad);
+  }
+
+  glfwSwapBuffers(window);
 }
