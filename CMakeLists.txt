@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(fp2d
   src/glad.c
+  src/graphics.cpp
+  src/linear_algebra.cpp
   src/main.cpp
 
   src/imgui/imgui_impl_glfw.cpp
@@ -26,6 +28,22 @@ target_link_directories(fp2d
   PUBLIC ${GLFW_PATH}/lib
 )
 
+if(WIN32)
 target_link_libraries(fp2d
   glfw3
 )
+endif()
+
+if(APPLE)
+target_include_directories(fp2d
+  PUBLIC /usr/local/include
+)
+
+target_link_directories(fp2d
+  PUBLIC /usr/local/lib
+)
+
+target_link_libraries(fp2d
+  glfw
+)
+endif()

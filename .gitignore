@@ -16,3 +16,5 @@ ZERO_CHECK.vcxproj
 ZERO_CHECK.vcxproj.filters
 *.TMP
 imgui.ini
+fp2d
+Makefile
