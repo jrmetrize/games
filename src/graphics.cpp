@@ -207,6 +207,36 @@ Mesh::primitive_quad()
   return new Mesh(vertices, indices);
 }
 
+Segment::Segment(Vec2 _p1, Vec2 _p2) :
+  p1(_p1),
+  p2(_p2)
+{
+
+}
+
+RayResult
+Segment::test_ray(RayInfo ray_info) const
+{
+  RayResult result = {};
+
+  Vec2 d = ray_info.direction;
+  Vec2 o = ray_info.origin;
+  Vec2 v = p2 - p1;
+
+  float q = v * Vec2(d.y, -d.x);
+
+  float t1 = (v * Vec2(p1.y - o.y, o.x - p1.x)) / q;
+  float t2 = (d * Vec2(p1.y - o.y, o.x - p1.x)) / q;
+
+  if (t1 >= 0 && (t2 >= 0 && t2 <= 1))
+  {
+    result.intersection = true;
+    result.distance = t1;
+  }
+
+  return result;
+}
+
 GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   window(_window)
 {
@@ -254,10 +284,28 @@ GraphicsServer::RenderResult
 GraphicsServer::render_world(Vec2 camera, Vec2 direction)
 {
   RenderResult output = RenderResult(224);
+  Vec2 unit_direction = direction.normalized();
+  Vec2 unit_perp = Vec2(-unit_direction.y, unit_direction.x);
+
+  //
+  Segment s = Segment(Vec2(2, 0.1), Vec2(2, -0.1));
+  //
 
   for (unsigned int i = 0; i < 224; ++i)
   {
-    float x = sin(float(i) / 50);
+    // Find the ray direction going through this pixel
+    Vec2 ray_dir = unit_direction + (((float(i) - 112.0) / 112.0) * 0.5f * unit_perp);
+    ray_dir = ray_dir.normalized();
+
+    RayInfo cast = {};
+    cast.origin = camera;
+    cast.direction = ray_dir;
+
+    RayResult r = s.test_ray(cast);
+
+    float x = 0.0;
+    if (r.intersection)
+      x = 0.5;
     output[i] = Vec3(x, x, x);
   }
 
@@ -274,7 +322,12 @@ GraphicsServer::draw()
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  RenderResult result = render_world(Vec2(0, 0), Vec2(1, 0));
+  static float t = 0;
+  float angle = sin(t);
+  Vec2 dir = Vec2(cos(angle), sin(angle));
+  t += 0.01;
+
+  RenderResult result = render_world(Vec2(0, 0), dir);
   float row_height = viewport_size.y / float(result.size());
   for (unsigned int i = 0; i < result.size(); ++i)
   {

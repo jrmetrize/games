@@ -1,6 +1,8 @@
 #ifndef LINEAR_ALGEBRA_H
 #define LINEAR_ALGEBRA_H
 
+#include <string>
+
 struct Vec2
 {
   float x;
@@ -9,6 +11,15 @@ struct Vec2
   Vec2();
 
   Vec2(float _x, float _y);
+
+  float
+  norm() const;
+
+  Vec2
+  normalized() const;
+
+  std::string
+  string() const;
 
   Vec2
   operator - () const;
@@ -42,6 +53,15 @@ struct Vec3
 
   Vec3(float _x, float _y, float _z);
 
+  float
+  norm() const;
+
+  Vec3
+  normalized() const;
+
+  std::string
+  string() const;
+
   Vec3
   operator - () const;
 
@@ -74,6 +94,15 @@ struct Vec4
   Vec4();
 
   Vec4(float _x, float _y, float _z, float _w);
+
+  float
+  norm() const;
+
+  Vec4
+  normalized() const;
+
+  std::string
+  string() const;
 
   Vec4
   operator - () const;

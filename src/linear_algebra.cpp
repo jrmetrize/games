@@ -16,6 +16,24 @@ Vec2::Vec2(float _x, float _y) :
 
 }
 
+float
+Vec2::norm() const
+{
+  return sqrt((x * x) + (y * y));
+}
+
+Vec2
+Vec2::normalized() const
+{
+  return (1 / norm()) * (*this);
+}
+
+std::string
+Vec2::string() const
+{
+  return "(" + std::to_string(x) + ", " + std::to_string(y) + ")";
+}
+
 Vec2
 Vec2::operator - () const
 {
@@ -78,6 +96,25 @@ Vec3::Vec3(float _x, float _y, float _z) :
   z(_z)
 {
 
+}
+
+float
+Vec3::norm() const
+{
+  return sqrt((x * x) + (y * y) + (z * z));
+}
+
+Vec3
+Vec3::normalized() const
+{
+  return (1 / norm()) * (*this);
+}
+
+std::string
+Vec3::string() const
+{
+  return "(" + std::to_string(x) + ", " + std::to_string(y) + ", "
+    + std::to_string(z) + ")";
 }
 
 Vec3
@@ -148,6 +185,25 @@ Vec4::Vec4(float _x, float _y, float _z, float _w) :
   w(_w)
 {
 
+}
+
+float
+Vec4::norm() const
+{
+  return sqrt((x * x) + (y * y) + (z * z) + (w * w));
+}
+
+Vec4
+Vec4::normalized() const
+{
+  return (1 / norm()) * (*this);
+}
+
+std::string
+Vec4::string() const
+{
+  return "(" + std::to_string(x) + ", " + std::to_string(y) + ", "
+    + std::to_string(z) + ", " + std::to_string(w) + ")";
 }
 
 Vec4

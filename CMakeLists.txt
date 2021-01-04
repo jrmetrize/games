@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(fp2d
   src/glad.c
   src/graphics.cpp
+  src/level.cpp
   src/linear_algebra.cpp
   src/main.cpp
 

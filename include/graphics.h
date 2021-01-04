@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "linear_algebra.h"
 
@@ -72,6 +73,41 @@ public:
 
   static Mesh *
   primitive_quad();
+};
+
+struct RayResult
+{
+  bool intersection;
+  float distance;
+};
+
+struct RayInfo
+{
+  Vec2 origin;
+  Vec2 direction; // must be normalized
+};
+
+class RenderObject
+{
+public:
+  virtual RayResult
+  test_ray(RayInfo ray_info) const = 0;
+};
+
+class Segment : public RenderObject
+{
+  Vec2 p1;
+  Vec2 p2;
+public:
+  Segment(Vec2 _p1, Vec2 _p2);
+
+  RayResult
+  test_ray(RayInfo ray_info) const;
+};
+
+class RenderTree
+{
+  std::vector<RenderObject *> objects;
 };
 
 class GraphicsServer
