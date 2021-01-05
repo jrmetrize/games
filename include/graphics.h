@@ -11,6 +11,22 @@
 #include <glfw/glfw3.h>
 
 class Mesh;
+class Shader;
+
+class Texture
+{
+  friend class Shader;
+
+  unsigned int texture;
+
+  unsigned int width;
+  unsigned int height;
+  unsigned int channels;
+public:
+  Texture(std::string path);
+
+  ~Texture();
+};
 
 class Shader
 {
@@ -41,6 +57,11 @@ public:
 
   void
   bind_uniform(Mat4 x, std::string name) const;
+
+  // TODO: if a shader needs more than one texture at a time, allow binding
+  // multiple texture units
+  void
+  bind_uniform(Texture &x, std::string name) const;
 };
 
 struct Vertex
@@ -110,6 +131,8 @@ class RenderTree
   std::vector<RenderObject *> objects;
 };
 
+class Screen;
+
 class GraphicsServer
 {
   GLFWwindow *window;
@@ -118,6 +141,8 @@ class GraphicsServer
   Shader *texture_shader;
 
   Mesh *quad;
+
+  Screen *current_screen;
 
   using RenderResult = std::vector<Vec3>;
 
@@ -136,6 +161,9 @@ public:
 
   Mat3
   get_screen_to_pixel_transform() const;
+
+  void
+  set_current_screen(Screen *screen);
 
   void
   draw();

@@ -1,5 +1,12 @@
 #include "graphics.h"
+#include "screen.h"
 #include "glad/glad.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 namespace ColorShaderSources
 {
@@ -40,11 +47,17 @@ namespace TextureShaderSources
 
 #version 330 core
 layout (location = 0) in vec2 position;
+layout (location = 1) in vec2 texture_coordinates;
+
+uniform mat3 transform;
+
+out vec2 uv;
 
 void
 main()
 {
-  gl_Position = vec4(position.x, position.y, 0.0, 1.0);
+  gl_Position = vec4(transform * vec3(position, 1.0), 0.0, 1.0);
+  uv = texture_coordinates;
 }
 
   )---";
@@ -54,13 +67,90 @@ main()
 #version 330 core
 out vec4 frag_color;
 
+in vec2 uv;
+
+uniform sampler2D sampler;
+
 void
 main()
 {
-  frag_color = vec4(1.0, 0.0, 1.0, 1.0);
+  frag_color = texture(sampler, uv);
 }
 
   )---";
+}
+
+namespace TextShaderSources
+{
+  const std::string vertex = R"---(
+
+#version 330 core
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec2 texture_coordinates;
+
+uniform mat3 transform;
+
+out vec2 uv;
+
+void
+main()
+{
+  gl_Position = vec4(transform * vec3(position, 1.0), 0.0, 1.0);
+  uv = texture_coordinates;
+}
+
+  )---";
+
+  const std::string fragment = R"---(
+
+#version 330 core
+out vec4 frag_color;
+
+in vec2 uv;
+
+uniform vec4 color;
+uniform sampler2D sampler;
+
+void
+main()
+{
+  frag_color = vec4(color.rgb, texture(sampler, uv).r);
+}
+
+  )---";
+}
+
+Texture::Texture(std::string path)
+{
+  int _width;
+  int _height;
+  int _channels;
+
+  unsigned char *img_data = stbi_load(path.c_str(),
+    &_width, &_height, &_channels, 0);
+
+  // TODO: check that img_data is not nullptr
+
+  width = (unsigned int)_width;
+  height = (unsigned int)_height;
+  channels = (unsigned int)_channels;
+
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
+    /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, img_data);
+  glGenerateMipmap(GL_TEXTURE_2D);
+
+  stbi_image_free(img_data);
+}
+
+Texture::~Texture()
+{
+  glDeleteTextures(1, &texture);
 }
 
 Shader::Shader(const std::string &vertex_shader_source,
@@ -141,13 +231,20 @@ Shader::bind_uniform(Mat4 x, std::string name) const
     1, GL_FALSE, (float *)(&x));
 }
 
+void
+Shader::bind_uniform(Texture &x, std::string name) const
+{
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, x.texture);
+  glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
+}
+
 Vertex::Vertex(const Vec2 &_position, const Vec2 &_texture_coordinates) :
   position(_position),
   texture_coordinates(_texture_coordinates)
 {
 
 }
-
 
 Mesh::Mesh(const VertexVector &_vertices, const IndexVector &_indices) :
   vertices(_vertices),
@@ -238,17 +335,30 @@ Segment::test_ray(RayInfo ray_info) const
 }
 
 GraphicsServer::GraphicsServer(GLFWwindow *_window) :
-  window(_window)
+  window(_window),
+  current_screen(nullptr)
 {
   color_shader = new Shader(ColorShaderSources::vertex,
     ColorShaderSources::fragment);
   texture_shader = new Shader(TextureShaderSources::vertex,
     TextureShaderSources::fragment);
   quad = Mesh::primitive_quad();
+
+  // TODO: only use imgui in dev builds
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  ImGui::StyleColorsDark();
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplOpenGL3_Init("#version 330");
 }
 
 GraphicsServer::~GraphicsServer()
 {
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
   delete color_shader;
   delete texture_shader;
   delete quad;
@@ -278,6 +388,12 @@ GraphicsServer::get_screen_to_pixel_transform() const
   Vec2 viewport_size = get_framebuffer_size();
   return Mat3::scale(Vec2(viewport_size.x / 2.0f, viewport_size.y / 2.0f)) *
     Mat3::translate(Vec2(1.0f, 1.0f));
+}
+
+void
+GraphicsServer::set_current_screen(Screen *screen)
+{
+  current_screen = screen;
 }
 
 GraphicsServer::RenderResult
@@ -338,6 +454,16 @@ GraphicsServer::draw()
     color_shader->bind_uniform(Vec4(color.x, color.y, color.z, 1.0), "color");
     color_shader->draw(quad);
   }
+
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+
+  if (current_screen != nullptr)
+    current_screen->draw_custom(this);
+
+  ImGui::Render();
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   glfwSwapBuffers(window);
 }

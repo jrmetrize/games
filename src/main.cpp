@@ -5,6 +5,7 @@
 #include "graphics.h"
 #include "input.h"
 #include "state.h"
+#include "screens/title_screen.h"
 
 void
 error_dialog(std::string error_message);
@@ -62,7 +63,7 @@ main(int argc, const char **argv)
   }
 
   GraphicsServer *renderer = new GraphicsServer(window);
-  GameState *state = new GameState();
+  GameState *state = new GameState(renderer);
   InputMonitor *input = new InputMonitor(window, state);
 
   while (state->game_open())
