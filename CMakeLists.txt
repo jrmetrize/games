@@ -7,9 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(fp2d
   src/glad.c
   src/graphics.cpp
+  src/input.cpp
   src/level.cpp
   src/linear_algebra.cpp
   src/main.cpp
+  src/state.cpp
 
   src/imgui/imgui_impl_glfw.cpp
   src/imgui/imgui_impl_opengl3.cpp

@@ -3,6 +3,8 @@
 #include <string>
 
 #include "graphics.h"
+#include "input.h"
+#include "state.h"
 
 void
 error_dialog(std::string error_message);
@@ -60,9 +62,15 @@ main(int argc, const char **argv)
   }
 
   GraphicsServer *renderer = new GraphicsServer(window);
-  while (true)
+  GameState *state = new GameState();
+  InputMonitor *input = new InputMonitor(window, state);
+
+  while (state->game_open())
     renderer->draw();
+
   delete renderer;
+  delete state;
+  delete input;
 
   glfwTerminate();
 
