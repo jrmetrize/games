@@ -2,11 +2,14 @@
 #define STATE_H
 
 class GraphicsServer;
+class InputMonitor;
 
 class LevelEditorScreen;
 class LevelScreen;
 class OptionsScreen;
 class TitleScreen;
+
+class Screen;
 
 class GameState
 {
@@ -18,10 +21,15 @@ class GameState
   LevelScreen *level_screen;
   OptionsScreen *options_screen;
   TitleScreen *title_screen;
+
+  Screen *current_screen;
 public:
   GameState(GraphicsServer *_graphics_server);
 
   ~GameState();
+
+  void
+  update(InputMonitor *input, float time_elapsed);
 
   void
   title_screen_to_level_screen();

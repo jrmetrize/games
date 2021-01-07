@@ -14,6 +14,12 @@ OptionsScreen::~OptionsScreen()
 }
 
 void
+OptionsScreen::update(InputMonitor *input, float time_elapsed)
+{
+
+}
+
+void
 OptionsScreen::draw_custom(GraphicsServer *graphics_server)
 {
   ImGui::Begin("Options Menu");

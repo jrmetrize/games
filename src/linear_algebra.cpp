@@ -64,6 +64,13 @@ Vec2::operator + (const Vec2 &b) const
   return Vec2(x + b.x, y + b.y);
 }
 
+Vec2 &
+Vec2::operator += (const Vec2 &b)
+{
+  *this = *this + b;
+  return *this;
+}
+
 Vec2
 Vec2::operator - (const Vec2 &b) const
 {
@@ -149,6 +156,13 @@ Vec3
 Vec3::operator + (const Vec3 &b) const
 {
   return Vec3(x + b.x, y + b.y, z + b.z);
+}
+
+Vec3 &
+Vec3::operator += (const Vec3 &b)
+{
+  *this = *this + b;
+  return *this;
 }
 
 Vec3
@@ -242,6 +256,13 @@ Vec4
 Vec4::operator + (const Vec4 &b) const
 {
   return Vec4(x + b.x, y + b.y, z + b.z, w + b.w);
+}
+
+Vec4 &
+Vec4::operator += (const Vec4 &b)
+{
+  *this = *this + b;
+  return *this;
 }
 
 Vec4

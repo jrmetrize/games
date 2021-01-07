@@ -14,6 +14,12 @@ TitleScreen::~TitleScreen()
 }
 
 void
+TitleScreen::update(InputMonitor *input, float time_elapsed)
+{
+
+}
+
+void
 TitleScreen::draw_custom(GraphicsServer *graphics_server)
 {
   // TODO: actually render the menu through the engine and not imgui

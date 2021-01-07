@@ -14,6 +14,12 @@ LevelScreen::~LevelScreen()
 }
 
 void
+LevelScreen::update(InputMonitor *input, float time_elapsed)
+{
+
+}
+
+void
 LevelScreen::draw_custom(GraphicsServer *graphics_server)
 {
   ImGui::Begin("Level Menu");

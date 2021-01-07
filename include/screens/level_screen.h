@@ -11,6 +11,9 @@ public:
   ~LevelScreen();
 
   void
+  update(InputMonitor *input, float time_elapsed);
+
+  void
   draw_custom(GraphicsServer *graphics_server);
 };
 

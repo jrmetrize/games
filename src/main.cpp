@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include <chrono>
 
 #include "graphics.h"
 #include "input.h"
@@ -66,8 +67,20 @@ main(int argc, const char **argv)
   GameState *state = new GameState(renderer);
   InputMonitor *input = new InputMonitor(window, state);
 
+  std::chrono::time_point<std::chrono::steady_clock> last_frame =
+    std::chrono::steady_clock::now();
+
   while (state->game_open())
+  {
+    std::chrono::time_point<std::chrono::steady_clock> current_frame =
+      std::chrono::steady_clock::now();
+    float duration =
+      float(std::chrono::duration_cast<std::chrono::microseconds>(current_frame
+      - last_frame).count()) / (1000 * 1000);
+    last_frame = current_frame;
+    state->update(input, duration);
     renderer->draw();
+  }
 
   delete renderer;
   delete state;

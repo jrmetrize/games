@@ -43,8 +43,8 @@ InputMonitor::InputMonitor(GLFWwindow *_window, GameState *_state) :
   window(_window),
   state(_state)
 {
-  glfwSetKeyCallback(window, key_callback);
-  glfwSetCharCallback(window, char_callback);
+  //glfwSetKeyCallback(window, key_callback);
+  //glfwSetCharCallback(window, char_callback);
   glfwSetCursorPosCallback(window, mouse_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetScrollCallback(window, scroll_callback);
@@ -139,7 +139,7 @@ InputMonitor::is_key_down(Key key) const
     case KeyLeft: key_code = GLFW_KEY_LEFT; break;
     case KeyRight: key_code = GLFW_KEY_RIGHT; break;
   }
-  return (glfwGetKey(window, key) == GLFW_PRESS) ? true : false;
+  return glfwGetKey(window, key_code) == GLFW_PRESS;
 }
 
 Vec2

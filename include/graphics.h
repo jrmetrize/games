@@ -167,6 +167,9 @@ public:
 
   void
   draw();
+
+  void
+  draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
 };
 
 #endif

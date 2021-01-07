@@ -467,3 +467,13 @@ GraphicsServer::draw()
 
   glfwSwapBuffers(window);
 }
+
+void
+GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
+{
+  color_shader->bind_uniform(get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  color_shader->bind_uniform(color, "color");
+  color_shader->draw(quad);
+}

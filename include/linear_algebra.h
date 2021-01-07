@@ -33,6 +33,9 @@ struct Vec2
   Vec2
   operator + (const Vec2 &b) const;
 
+  Vec2 &
+  operator += (const Vec2 &b);
+
   Vec2
   operator - (const Vec2 &b) const;
 
@@ -73,6 +76,9 @@ struct Vec3
 
   Vec3
   operator + (const Vec3 &b) const;
+
+  Vec3 &
+  operator += (const Vec3 &b);
 
   Vec3
   operator - (const Vec3 &b) const;
@@ -115,6 +121,9 @@ struct Vec4
 
   Vec4
   operator + (const Vec4 &b) const;
+
+  Vec4 &
+  operator += (const Vec4 &b);
 
   Vec4
   operator - (const Vec4 &b) const;
