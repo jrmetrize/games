@@ -33,6 +33,20 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   // Draw the 2D representation of the level
   level_state->draw_editor_view_in_rect(graphics_server,
     Vec2(10, 10), Vec2(512, 512));
+  RenderRequest req = {};
+  req.camera_pos = level_state->get_player_position();
+  req.camera_dir = level_state->get_player_camera_direction();
+  req.tree = level_state->get_render_tree();
+  if (level->get_camera_mode() == Vertical)
+  {
+    req.camera_mode = Vertical;
+    graphics_server->render_to_rect(Vec2(600, 0), Vec2(64, 720), req);
+  }
+  else
+  {
+    req.camera_mode = Horizontal;
+    graphics_server->render_to_rect(Vec2(0, 600), Vec2(720, 64), req);
+  }
 
   char name_tmp[256];
   strcpy(name_tmp, level->get_name().c_str());

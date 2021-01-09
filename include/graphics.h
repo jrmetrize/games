@@ -126,12 +126,26 @@ public:
   test_ray(RayInfo ray_info) const;
 };
 
-class RenderTree
+struct RenderTree
 {
   std::vector<RenderObject *> objects;
 };
 
 class Screen;
+
+enum CameraMode
+{
+  Vertical = 0,
+  Horizontal
+};
+
+struct RenderRequest
+{
+  CameraMode camera_mode;
+  Vec2 camera_pos;
+  Vec2 camera_dir;
+  RenderTree tree;
+};
 
 class GraphicsServer
 {
@@ -144,10 +158,8 @@ class GraphicsServer
 
   Screen *current_screen;
 
-  using RenderResult = std::vector<Vec3>;
-
-  RenderResult
-  render_world(Vec2 camera, Vec2 direction);
+  Vec4
+  render_ray(RenderRequest to_render, RayInfo ray);
 public:
   GraphicsServer(GLFWwindow *_window);
 
@@ -170,6 +182,9 @@ public:
 
   void
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
+
+  void
+  render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render);
 };
 
 #endif

@@ -5,20 +5,70 @@
 #include <vector>
 
 #include "linear_algebra.h"
+#include "graphics.h"
 
-class GraphicsServer;
 class InputMonitor;
 
-enum CameraMode
+struct AABB
 {
-  Vertical = 0,
-  Horizontal
+  Vec2 center;
+  Vec2 size;
+
+  AABB(Vec2 _center, Vec2 _size);
 };
+
+class CollisionShape
+{
+public:
+  virtual AABB
+  get_bounding_aabb() const = 0;
+};
+
+class AABBCollisionShape : public CollisionShape
+{
+  Vec2 center;
+  Vec2 size;
+public:
+  AABBCollisionShape(Vec2 _center, Vec2 _size);
+
+  Vec2
+  get_center() const;
+
+  void
+  set_center(Vec2 _center);
+
+  Vec2
+  get_size() const;
+
+  void
+  set_size(Vec2 _size);
+
+  AABB
+  get_bounding_aabb() const;
+};
+
+struct CollisionResult
+{
+  bool intersection;
+  Vec2 normal; // inward normal on A
+  float depth;
+};
+
+CollisionResult
+test_collision(const AABBCollisionShape &a, const AABBCollisionShape &b);
 
 class LevelGeometryBlock
 {
   Vec2 position;
   Vec2 size;
+
+  Segment top;
+  Segment bottom;
+  Segment left;
+  Segment right;
+
+  void
+  update_render_geometry();
 public:
   LevelGeometryBlock(Vec2 _position, Vec2 _size);
 
@@ -33,6 +83,9 @@ public:
 
   void
   set_size(Vec2 _size);
+
+  void
+  add_geometry_to_tree(RenderTree &tree);
 };
 
 class Level
@@ -75,6 +128,7 @@ class LevelState
 
   Vec2 player_position;
   Vec2 player_velocity;
+  float player_camera_angle;
 public:
   LevelState(Level *_level);
 
@@ -85,6 +139,12 @@ public:
 
   Vec2
   get_player_position() const;
+
+  Vec2
+  get_player_camera_direction() const;
+
+  RenderTree
+  get_render_tree();
 
   void
   set_player_position(Vec2 _position);

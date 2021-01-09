@@ -83,6 +83,12 @@ Vec2::operator * (const Vec2 &b) const
   return (x * b.x) + (y * b.y);
 }
 
+bool
+Vec2::operator == (const Vec2 &b) const
+{
+  return (x == b.x) && (y == b.y);
+}
+
 Vec2
 operator * (const float &a, const Vec2 &b)
 {
@@ -175,6 +181,12 @@ float
 Vec3::operator * (const Vec3 &b) const
 {
   return (x * b.x) + (y * b.y) + (z * b.z);
+}
+
+bool
+Vec3::operator == (const Vec3 &b) const
+{
+  return (x == b.x) && (y == b.y) && (z == b.y);
 }
 
 Vec3
@@ -275,6 +287,12 @@ float
 Vec4::operator * (const Vec4 &b) const
 {
   return (x * b.x) + (y * b.y) + (z * b.z) + (w * b.w);
+}
+
+bool
+Vec4::operator == (const Vec4 &b) const
+{
+  return (x == b.x) && (y == b.y) && (z == b.z) && (w == b.w);
 }
 
 Vec4

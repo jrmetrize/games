@@ -41,6 +41,9 @@ struct Vec2
 
   float
   operator * (const Vec2 &b) const;
+
+  bool
+  operator == (const Vec2 &b) const;
 };
 
 Vec2
@@ -85,6 +88,9 @@ struct Vec3
 
   float
   operator * (const Vec3 &b) const;
+
+  bool
+  operator == (const Vec3 &b) const;
 };
 
 Vec3
@@ -130,6 +136,9 @@ struct Vec4
 
   float
   operator * (const Vec4 &b) const;
+
+  bool
+  operator == (const Vec4 &b) const;
 };
 
 Vec4

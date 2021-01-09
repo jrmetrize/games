@@ -396,36 +396,17 @@ GraphicsServer::set_current_screen(Screen *screen)
   current_screen = screen;
 }
 
-GraphicsServer::RenderResult
-GraphicsServer::render_world(Vec2 camera, Vec2 direction)
+Vec4
+GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
 {
-  RenderResult output = RenderResult(224);
-  Vec2 unit_direction = direction.normalized();
-  Vec2 unit_perp = Vec2(-unit_direction.y, unit_direction.x);
-
-  //
-  Segment s = Segment(Vec2(2, 0.1), Vec2(2, -0.1));
-  //
-
-  for (unsigned int i = 0; i < 224; ++i)
+  float x = 0.1;
+  for (unsigned int i = 0; i < to_render.tree.objects.size(); ++i)
   {
-    // Find the ray direction going through this pixel
-    Vec2 ray_dir = unit_direction + (((float(i) - 112.0) / 112.0) * 0.5f * unit_perp);
-    ray_dir = ray_dir.normalized();
-
-    RayInfo cast = {};
-    cast.origin = camera;
-    cast.direction = ray_dir;
-
-    RayResult r = s.test_ray(cast);
-
-    float x = 0.0;
+    RayResult r = to_render.tree.objects[i]->test_ray(ray);
     if (r.intersection)
       x = 0.5;
-    output[i] = Vec3(x, x, x);
   }
-
-  return output;
+  return Vec4(x, x, x, 1);
 }
 
 void
@@ -437,23 +418,6 @@ GraphicsServer::draw()
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
-
-  static float t = 0;
-  float angle = sin(t);
-  Vec2 dir = Vec2(cos(angle), sin(angle));
-  t += 0.01;
-
-  RenderResult result = render_world(Vec2(0, 0), dir);
-  float row_height = viewport_size.y / float(result.size());
-  for (unsigned int i = 0; i < result.size(); ++i)
-  {
-    Vec3 color = result[i];
-    color_shader->bind_uniform(get_pixel_to_screen_transform()
-      * Mat3::translate(Vec2(0, float(i) * row_height))
-      * Mat3::scale(Vec2(64, row_height)), "transform");
-    color_shader->bind_uniform(Vec4(color.x, color.y, color.z, 1.0), "color");
-    color_shader->draw(quad);
-  }
 
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -476,4 +440,59 @@ GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(color, "color");
   color_shader->draw(quad);
+}
+
+void
+GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
+{
+  if (to_render.camera_mode == Vertical)
+  {
+    Vec2 unit_direction = to_render.camera_dir.normalized();
+    Vec2 unit_perp = Vec2(-unit_direction.y, unit_direction.x);
+
+    float row_height = size.y / 224.0;
+
+    for (unsigned int i = 0; i < 224; ++i)
+    {
+      Vec2 ray_dir = unit_direction + (((float(i) - 112.0) / 112.0) * 0.5f * unit_perp);
+      ray_dir = ray_dir.normalized();
+
+      RayInfo cast = {};
+      cast.origin = to_render.camera_pos;
+      cast.direction = ray_dir;
+
+      Vec4 color = render_ray(to_render, cast);
+
+      color_shader->bind_uniform(get_pixel_to_screen_transform()
+        * Mat3::translate(Vec2(origin.x, origin.y + (float(i) * row_height)))
+        * Mat3::scale(Vec2(size.x, row_height)), "transform");
+      color_shader->bind_uniform(color, "color");
+      color_shader->draw(quad);
+    }
+  }
+  else if (to_render.camera_mode == Horizontal)
+  {
+    Vec2 unit_direction = to_render.camera_dir.normalized();
+    Vec2 unit_perp = Vec2(-unit_direction.y, unit_direction.x);
+
+    float column_width = size.x / 256.0;
+
+    for (unsigned int i = 0; i < 256; ++i)
+    {
+      Vec2 ray_dir = unit_direction + (((float(i) - 128.0) / 128.0) * 0.5f * unit_perp);
+      ray_dir = ray_dir.normalized();
+
+      RayInfo cast = {};
+      cast.origin = to_render.camera_pos;
+      cast.direction = ray_dir;
+
+      Vec4 color = render_ray(to_render, cast);
+
+      color_shader->bind_uniform(get_pixel_to_screen_transform()
+        * Mat3::translate(Vec2(origin.x + (float(i) * column_width), origin.y))
+        * Mat3::scale(Vec2(column_width, size.y)), "transform");
+      color_shader->bind_uniform(color, "color");
+      color_shader->draw(quad);
+    }
+  }
 }
