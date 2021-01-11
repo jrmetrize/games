@@ -92,7 +92,9 @@ class Level
 {
   std::string name;
   float gravity;
+  float player_speed;
   CameraMode camera_mode;
+  float sun_angle;
 
   std::vector<LevelGeometryBlock *> geometry;
 public:
@@ -112,11 +114,23 @@ public:
   void
   set_gravity(float _gravity);
 
+  float
+  get_player_speed() const;
+
+  void
+  set_player_speed(float _player_speed);
+
   CameraMode
   get_camera_mode() const;
 
   void
   set_camera_mode(CameraMode _camera_mode);
+
+  float
+  get_sun_angle() const;
+
+  void
+  set_sun_angle(float _sun_angle);
 
   const std::vector<LevelGeometryBlock *> &
   get_geometry() const;

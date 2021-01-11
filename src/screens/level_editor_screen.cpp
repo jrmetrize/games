@@ -51,6 +51,7 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   char name_tmp[256];
   strcpy(name_tmp, level->get_name().c_str());
   float gravity_tmp = level->get_gravity();
+  float player_speed_tmp = level->get_player_speed();
   int camera_mode_tmp = level->get_camera_mode();
 
   // Draw GUI elements for the level editor
@@ -84,6 +85,7 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   ImGui::Begin("Level Properties");
   ImGui::InputText("Level Name", name_tmp, 256);
   ImGui::InputFloat("Gravity", &gravity_tmp);
+  ImGui::InputFloat("Player Speed", &player_speed_tmp);
   ImGui::RadioButton("Vertical Camera", &camera_mode_tmp, 0);
   ImGui::RadioButton("Horizontal Camera", &camera_mode_tmp, 1);
   ImGui::End();
@@ -99,5 +101,6 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
 
   level->set_name(std::string(name_tmp));
   level->set_gravity(gravity_tmp);
+  level->set_player_speed(player_speed_tmp);
   level->set_camera_mode((CameraMode)camera_mode_tmp);
 }

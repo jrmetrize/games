@@ -100,6 +100,7 @@ struct RayResult
 {
   bool intersection;
   float distance;
+  Vec2 location;
 };
 
 struct RayInfo
@@ -108,27 +109,46 @@ struct RayInfo
   Vec2 direction; // must be normalized
 };
 
+// TODO: make it possible to generalize this interface to shapes other than
+// segments, like circles, isosurfaces, etc.
 class RenderObject
 {
 public:
   virtual RayResult
   test_ray(RayInfo ray_info) const = 0;
+
+  virtual Vec3
+  get_color() const = 0;
+
+  virtual Vec2
+  get_normal() const = 0;
 };
 
 class Segment : public RenderObject
 {
   Vec2 p1;
   Vec2 p2;
+  Vec3 color;
 public:
-  Segment(Vec2 _p1, Vec2 _p2);
+  Segment(Vec2 _p1, Vec2 _p2, Vec3 _color = Vec3(1, 1, 1));
 
   RayResult
   test_ray(RayInfo ray_info) const;
+
+  Vec3
+  get_color() const;
+
+  void
+  set_color(Vec3 _color);
+
+  Vec2
+  get_normal() const;
 };
 
 struct RenderTree
 {
   std::vector<RenderObject *> objects;
+  Vec2 sun_direction;
 };
 
 class Screen;

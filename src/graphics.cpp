@@ -304,11 +304,32 @@ Mesh::primitive_quad()
   return new Mesh(vertices, indices);
 }
 
-Segment::Segment(Vec2 _p1, Vec2 _p2) :
+Segment::Segment(Vec2 _p1, Vec2 _p2, Vec3 _color) :
   p1(_p1),
-  p2(_p2)
+  p2(_p2),
+  color(_color)
 {
 
+}
+
+Vec3
+Segment::get_color() const
+{
+  return color;
+}
+
+void
+Segment::set_color(Vec3 _color)
+{
+  color = _color;
+}
+
+Vec2
+Segment::get_normal() const
+{
+  Vec2 dir = p2 - p1;
+  Vec2 normal = Vec2(-dir.x, dir.y);
+  return normal.normalized();
 }
 
 RayResult
@@ -329,6 +350,7 @@ Segment::test_ray(RayInfo ray_info) const
   {
     result.intersection = true;
     result.distance = t1;
+    result.location = ray_info.origin + (t1 * ray_info.direction);
   }
 
   return result;
@@ -399,14 +421,67 @@ GraphicsServer::set_current_screen(Screen *screen)
 Vec4
 GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
 {
-  float x = 0.1;
+  RayResult nearest;
+  RenderObject *hit = nullptr;
+  Vec4 color = Vec4(0, 0, 0, 1);
   for (unsigned int i = 0; i < to_render.tree.objects.size(); ++i)
   {
     RayResult r = to_render.tree.objects[i]->test_ray(ray);
     if (r.intersection)
-      x = 0.5;
+    {
+      if (nearest.distance < 0 || r.distance < nearest.distance)
+      {
+        nearest = r;
+        hit = to_render.tree.objects[i];
+      }
+    }
   }
-  return Vec4(x, x, x, 1);
+  if (hit != nullptr)
+  {
+    Vec3 obj_color = hit->get_color();
+    color += Vec4(0.2 * obj_color.x, 0.2 * obj_color.y, 0.2 * obj_color.z, 0);
+    // Now do lighting calculations!
+    if (to_render.tree.sun_direction != Vec2())
+    {
+      RayInfo sun_ray = {};
+      sun_ray.origin = nearest.location;
+      sun_ray.direction = -to_render.tree.sun_direction;
+      bool shadowed = false;
+      for (unsigned int i = 0; i < to_render.tree.objects.size(); ++i)
+      {
+        if (to_render.tree.objects[i] == hit)
+          continue;
+        RayResult r = to_render.tree.objects[i]->test_ray(sun_ray);
+        if (r.intersection)
+        {
+          shadowed = true;
+          break;
+        }
+      }
+      if (!shadowed)
+      {
+        // Calculate diffuse (using Blinn-Phong for now)
+        // TODO: PBR for 2D?
+        Vec2 normal = hit->get_normal();
+        Vec2 light_dir = (-to_render.tree.sun_direction).normalized();
+        float diffuse = std::max(normal * light_dir, 0.0f);
+        color += Vec4(diffuse * obj_color.x, diffuse * obj_color.y,
+          diffuse * obj_color.y, 0);
+
+        // Calculate specular
+        Vec2 view_dir = (to_render.camera_pos - nearest.location).normalized();
+        Vec2 halfway = (view_dir + light_dir).normalized();
+        int shininess = 16;
+        float specular = pow(std::max(normal * halfway, 0.0f), shininess);
+        color += Vec4(specular * 1, specular * 1, specular * 1, 0);
+      }
+    }
+    return color;
+  }
+  else
+  {
+    return Vec4(0.1, 0.1, 0.1, 1);
+  }
 }
 
 void

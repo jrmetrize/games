@@ -99,7 +99,10 @@ LevelGeometryBlock::LevelGeometryBlock(Vec2 _position, Vec2 _size) :
   right(position + (0.5 * size), position + (0.5 * Vec2(size.x, -size.y))),
   bottom(position + (0.5 * Vec2(size.x, -size.y)), position - (0.5 * size))
 {
-
+  left.set_color(Vec3(1, 0, 0));
+  right.set_color(Vec3(0, 1, 0));
+  top.set_color(Vec3(0.5, 0.5, 0));
+  bottom.set_color(Vec3(0, 0, 1));
 }
 
 void
@@ -153,11 +156,16 @@ LevelGeometryBlock::add_geometry_to_tree(RenderTree &tree)
 Level::Level() :
   name(""),
   gravity(0),
+  player_speed(1),
   camera_mode(Vertical),
+  sun_angle(1.6 * 3.14159),
   geometry()
 {
-  LevelGeometryBlock *block = new LevelGeometryBlock(Vec2(0, -2), Vec2(1, 1));
+  LevelGeometryBlock *block = new LevelGeometryBlock(Vec2(0, -2), Vec2(5, 1));
   geometry.push_back(block);
+
+  LevelGeometryBlock *block2 = new LevelGeometryBlock(Vec2(8, -2), Vec2(5, 1));
+  geometry.push_back(block2);
 }
 
 Level::~Level()
@@ -190,6 +198,18 @@ Level::set_gravity(float _gravity)
   gravity = _gravity;
 }
 
+float
+Level::get_player_speed() const
+{
+  return player_speed;
+}
+
+void
+Level::set_player_speed(float _player_speed)
+{
+  player_speed = _player_speed;
+}
+
 CameraMode
 Level::get_camera_mode() const
 {
@@ -200,6 +220,18 @@ void
 Level::set_camera_mode(CameraMode _camera_mode)
 {
   camera_mode = _camera_mode;
+}
+
+float
+Level::get_sun_angle() const
+{
+  return sun_angle;
+}
+
+void
+Level::set_sun_angle(float _sun_angle)
+{
+  sun_angle = _sun_angle;
 }
 
 const std::vector<LevelGeometryBlock *> &
@@ -256,9 +288,9 @@ LevelState::update(InputMonitor *input, float time_elapsed)
   }
 
   if (input->is_key_down(KeyW))
-    player_position += time_elapsed * Vec2(1, 0);
+    player_position += time_elapsed * level->get_player_speed() * Vec2(1, 0);
   else if (input->is_key_down(KeyS))
-    player_position += time_elapsed * Vec2(-1, 0);
+    player_position += time_elapsed * level->get_player_speed() * Vec2(-1, 0);
 
   if (input->is_key_down(KeyUp))
     player_camera_angle += time_elapsed * 1;
@@ -285,6 +317,8 @@ LevelState::get_render_tree()
     level->get_geometry();
 
   RenderTree tree = {};
+  tree.sun_direction = Vec2(cos(level->get_sun_angle()),
+    sin(level->get_sun_angle()));
   tree.objects = std::vector<RenderObject *>();
   for (unsigned int i = 0; i < geometry.size(); ++i)
     geometry[i]->add_geometry_to_tree(tree);
