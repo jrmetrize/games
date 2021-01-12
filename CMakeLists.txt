@@ -5,6 +5,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(fp2d
+  src/imgui/imgui_impl_glfw.cpp
+  src/imgui/imgui_impl_opengl3.cpp
+  src/imgui/imgui_draw.cpp
+  src/imgui/imgui_tables.cpp
+  src/imgui/imgui_widgets.cpp
+  src/imgui/imgui.cpp
+
+  src/levels/training_levels.cpp
+
   src/screens/level_editor_screen.cpp
   src/screens/level_screen.cpp
   src/screens/options_screen.cpp
@@ -18,13 +27,6 @@ add_executable(fp2d
   src/main.cpp
   src/screen.cpp
   src/state.cpp
-
-  src/imgui/imgui_impl_glfw.cpp
-  src/imgui/imgui_impl_opengl3.cpp
-  src/imgui/imgui_draw.cpp
-  src/imgui/imgui_tables.cpp
-  src/imgui/imgui_widgets.cpp
-  src/imgui/imgui.cpp
 )
 
 target_include_directories(fp2d

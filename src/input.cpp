@@ -53,6 +53,18 @@ InputMonitor::InputMonitor(GLFWwindow *_window, GameState *_state) :
   glfwSetWindowUserPointer(window, this);
 }
 
+float
+InputMonitor::input_threshold(float input, float threshold) const
+{
+  return (fabs(input) >= threshold) ? input : 0.0f;
+}
+
+float
+InputMonitor::joystick_threshold(float input) const
+{
+  return input_threshold(input, 0.001f);
+}
+
 InputMonitor::~InputMonitor()
 {
   glfwSetWindowUserPointer(window, nullptr);
@@ -181,25 +193,27 @@ InputMonitor::is_gamepad_available() const
 Vec2
 InputMonitor::gamepad_left_stick() const
 {
-  // TODO: if !is_gamepad_available() then throw an exception
+  if (!is_gamepad_available())
+    return Vec2();
   int axis_count;
   const float *joystick_axes =
     glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axis_count);
   // TODO: check that axis_count <= 6
-  return Vec2(joystick_axes[GLFW_GAMEPAD_AXIS_LEFT_X],
-    joystick_axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+  return Vec2(joystick_threshold(joystick_axes[GLFW_GAMEPAD_AXIS_LEFT_X]),
+    joystick_threshold(joystick_axes[GLFW_GAMEPAD_AXIS_LEFT_Y]));
 }
 
 Vec2
 InputMonitor::gamepad_right_stick() const
 {
-  // TODO: if !is_gamepad_available() then throw an exception
+  if (!is_gamepad_available())
+    return Vec2();
   int axis_count;
   const float *joystick_axes =
     glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axis_count);
   // TODO: check that axis_count <= 6
-  return Vec2(joystick_axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
-    joystick_axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+  return Vec2(joystick_threshold(joystick_axes[GLFW_GAMEPAD_AXIS_RIGHT_X]),
+    joystick_threshold(joystick_axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]));
 }
 
 float
@@ -227,7 +241,8 @@ InputMonitor::gamepad_right_trigger() const
 bool
 InputMonitor::is_gamepad_button_down(GamepadButton button) const
 {
-  // TODO: if !is_gamepad_available() then throw an exception
+  if (!is_gamepad_available())
+    return false;
   int button_code;
   switch (button)
   {
@@ -252,4 +267,11 @@ InputMonitor::is_gamepad_button_down(GamepadButton button) const
     glfwGetJoystickButtons(GLFW_JOYSTICK_1, &button_count);
   // TODO: check that button_count is sufficiently large
   return (button_states[button_code] == GLFW_PRESS) ? true : false;
+}
+
+bool
+InputMonitor::get_jump_input() const
+{
+  // TODO: allow these to be customized
+  return is_key_down(KeySpace) || is_gamepad_button_down(ButtonA);
 }

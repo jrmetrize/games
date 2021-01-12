@@ -3,8 +3,13 @@
 
 #include "screen.h"
 
+class Level;
+class LevelState;
+
 class LevelScreen : public Screen
 {
+  Level *level;
+  LevelState *level_state;
 public:
   LevelScreen(GameState *_state);
 

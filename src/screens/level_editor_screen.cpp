@@ -25,8 +25,6 @@ LevelEditorScreen::update(InputMonitor *input, float time_elapsed)
     level_state->update(input, time_elapsed);
 }
 
-int camera_mode = 0;
-
 void
 LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
 {

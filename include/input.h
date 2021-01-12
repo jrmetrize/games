@@ -103,6 +103,12 @@ class InputMonitor
   GLFWwindow *window;
 
   GameState *state;
+
+  float
+  input_threshold(float input, float threshold) const;
+
+  float
+  joystick_threshold(float input) const;
 public:
   InputMonitor(GLFWwindow *_window, GameState *_state);
 
@@ -143,6 +149,9 @@ public:
 
   bool
   is_gamepad_button_down(GamepadButton button) const;
+
+  bool
+  get_jump_input() const;
 };
 
 #endif

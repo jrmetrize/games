@@ -264,10 +264,16 @@ LevelState::update(InputMonitor *input, float time_elapsed)
 
   AABBCollisionShape player_collider = AABBCollisionShape(next_position,
     Vec2(0.5, 0.5));
-  LevelGeometryBlock *block = level->get_geometry()[0];
-  AABBCollisionShape tile_collider = AABBCollisionShape(block->get_position(),
-    block->get_size());
-  CollisionResult collision = test_collision(player_collider, tile_collider);
+  CollisionResult collision;
+  for (unsigned int i = 0; i < level->get_geometry().size(); ++i)
+  {
+    LevelGeometryBlock *block = level->get_geometry()[i];
+    AABBCollisionShape tile_collider = AABBCollisionShape(block->get_position(),
+      block->get_size());
+    collision = test_collision(player_collider, tile_collider);
+    if (collision.intersection)
+      break;
+  }
   if (!collision.intersection)
   {
     player_velocity = next_velocity;
@@ -282,7 +288,7 @@ LevelState::update(InputMonitor *input, float time_elapsed)
   if (collision.intersection && player_velocity.y <= 0)
     on_ground = true;
 
-  if (on_ground && input->is_key_down(KeySpace))
+  if (on_ground && input->get_jump_input())
   {
     player_velocity += Vec2(0, 10);
   }
@@ -291,11 +297,14 @@ LevelState::update(InputMonitor *input, float time_elapsed)
     player_position += time_elapsed * level->get_player_speed() * Vec2(1, 0);
   else if (input->is_key_down(KeyS))
     player_position += time_elapsed * level->get_player_speed() * Vec2(-1, 0);
+  player_position += -input->gamepad_left_stick().y * time_elapsed
+    * level->get_player_speed() * Vec2(1, 0);
 
   if (input->is_key_down(KeyUp))
     player_camera_angle += time_elapsed * 1;
   else if (input->is_key_down(KeyDown))
     player_camera_angle += time_elapsed * -1;
+  player_camera_angle += -input->gamepad_right_stick().y * time_elapsed * 1;
 }
 
 Vec2
