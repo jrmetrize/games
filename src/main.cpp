@@ -8,6 +8,10 @@
 #include "state.h"
 #include "screens/title_screen.h"
 
+//tmp
+#include "resource.h"
+//tmp
+
 void
 error_dialog(std::string error_message);
 
@@ -33,6 +37,11 @@ error_dialog(std::string error_message)
 int
 main(int argc, const char **argv)
 {
+  //tmp
+  ResourceBundle *bundle = new ResourceBundle("C:\\Users\\jonat\\code\\fp2d\\test_bundle.rb");
+  delete bundle;
+  //tmp
+
   GLFWwindow *window;
 
   if (glfwInit() != GLFW_TRUE)

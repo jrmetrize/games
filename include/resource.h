@@ -16,12 +16,49 @@ nbo_to_host(const uint32_t &x);
 class Resource
 {
 public:
+  virtual
+  ~Resource() = 0;
+
   virtual Resource *
   duplicate() const = 0;
 
+  virtual std::string
+  get_type() const = 0;
+
 #ifdef RESOURCE_IMPORTER
-  virtual void
-  append_to(std::ostream &out) = 0;
+  virtual uint32_t // returns size
+  append_to(std::ostream &out) const = 0;
+#endif
+};
+
+class Image : public Resource
+{
+  uint32_t width;
+  uint32_t height;
+  uint32_t channels;
+  unsigned char *data;
+
+  bool stb_allocated;
+public:
+  Image(std::string path);
+
+  Image(uint32_t _width, uint32_t _height, uint32_t _channels,
+    const unsigned char *_data);
+
+  ~Image();
+
+  Resource *
+  duplicate() const;
+
+  std::string
+  get_type() const;
+
+  static Image *
+  from_data(const char *data, uint32_t length);
+
+#ifdef RESOURCE_IMPORTER
+  uint32_t
+  append_to(std::ostream &out) const;
 #endif
 };
 
@@ -34,6 +71,7 @@ class ResourceBundle
     std::string resource_name;
     std::string resource_type;
     uint32_t offset;
+    uint32_t compressed_size;
     uint32_t size;
   };
 

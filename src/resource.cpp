@@ -1,6 +1,14 @@
 #include "resource.h"
 
+#include <sstream>
 #include <bit>
+
+#ifdef RESOURCE_IMPORTER
+#define STB_IMAGE_IMPLEMENTATION
+#endif
+#include "stb_image.h"
+
+#include <zlib.h>
 
 uint32_t
 host_to_nbo(const uint32_t &x)
@@ -34,6 +42,88 @@ nbo_to_host(const uint32_t &x)
   }
 }
 
+Resource::~Resource()
+{
+
+}
+
+Image::Image(std::string path) :
+  stb_allocated(true)
+{
+  {
+    // TODO: handle errors
+    int x;
+    int y;
+    int n;
+    data = stbi_load(path.c_str(), &x, &y, &n, 0);
+    width = uint32_t(x);
+    height = uint32_t(y);
+    channels = uint32_t(n);
+  }
+}
+
+Image::Image(uint32_t _width, uint32_t _height, uint32_t _channels,
+  const unsigned char *_data) :
+  width(_width), height(_height), channels(_channels), stb_allocated(false)
+{
+  data = new unsigned char[width * height * channels];
+  memcpy(data, _data, sizeof(unsigned char) * width * height * channels);
+}
+
+Image::~Image()
+{
+  if (stb_allocated)
+    stbi_image_free(data);
+  else
+    delete[] data;
+}
+
+Resource *
+Image::duplicate() const
+{
+  return new Image(width, height, channels, data);
+}
+
+std::string
+Image::get_type() const
+{
+  return "image";
+}
+
+Image *
+Image::from_data(const char *data, uint32_t length)
+{
+  uint32_t width_nbo = *reinterpret_cast<const uint32_t *>(&data[0]);
+  uint32_t height_nbo = *reinterpret_cast<const uint32_t *>(&data[4]);
+  uint32_t channels_nbo = *reinterpret_cast<const uint32_t *>(&data[8]);
+  const unsigned char *img_data =
+    reinterpret_cast<const unsigned char *>(&data[12]);
+  return new Image(nbo_to_host(width_nbo), nbo_to_host(height_nbo),
+    nbo_to_host(channels_nbo), img_data);
+}
+
+#ifdef RESOURCE_IMPORTER
+uint32_t
+Image::append_to(std::ostream &out) const
+{
+  {
+    uint32_t width_nbo = host_to_nbo(width);
+    out.write(reinterpret_cast<const char *>(&width_nbo), sizeof(width_nbo));
+  }
+  {
+    uint32_t height_nbo = host_to_nbo(height);
+    out.write(reinterpret_cast<const char *>(&height_nbo), sizeof(height_nbo));
+  }
+  {
+    uint32_t channels_nbo = host_to_nbo(channels);
+    out.write(reinterpret_cast<const char *>(&channels_nbo), sizeof(channels_nbo));
+  }
+  out.write(reinterpret_cast<const char *>(data),
+    sizeof(unsigned char) * width * height * channels);
+  return 4 + 4 + 4 + (width * height * channels);
+}
+#endif
+
 ResourceBundle::ResourceBundle() :
   resources()
 {
@@ -43,7 +133,95 @@ ResourceBundle::ResourceBundle() :
 ResourceBundle::ResourceBundle(std::string path) :
   resources()
 {
+  std::ifstream file = std::ifstream(path);
 
+  // First, parse the header
+  uint32_t table_length;
+  Header header = {};
+  {
+    uint32_t magic_number_nbo;
+    file.read(reinterpret_cast<char *>(&magic_number_nbo), sizeof(magic_number_nbo));
+  }
+  {
+    uint32_t version_nbo;
+    file.read(reinterpret_cast<char *>(&version_nbo), sizeof(version_nbo));
+    header.bundle_version = nbo_to_host(version_nbo);
+  }
+  {
+    uint32_t table_length_nbo;
+    file.read(reinterpret_cast<char *>(&table_length_nbo), sizeof(table_length_nbo));
+    table_length = nbo_to_host(table_length_nbo);
+  }
+
+  for (unsigned int i = 0; i < table_length; ++i)
+  {
+    HeaderResourceDescriptor entry = {};
+    {
+      uint32_t name_length_nbo;
+      file.read(reinterpret_cast<char *>(&name_length_nbo), sizeof(name_length_nbo));
+      uint32_t name_length = nbo_to_host(name_length_nbo);
+      char *name_buf = new char[name_length];
+      file.read(name_buf, name_length);
+      entry.resource_name = std::string(name_buf);
+      delete name_buf;
+    }
+    {
+      uint32_t type_length_nbo;
+      file.read(reinterpret_cast<char *>(&type_length_nbo), sizeof(type_length_nbo));
+      uint32_t type_length = nbo_to_host(type_length_nbo);
+      char *type_buf = new char[type_length];
+      file.read(type_buf, type_length);
+      entry.resource_type = std::string(type_buf);
+      delete type_buf;
+    }
+    {
+      uint32_t offset_nbo;
+      file.read(reinterpret_cast<char *>(&offset_nbo), sizeof(offset_nbo));
+      entry.offset = nbo_to_host(offset_nbo);
+    }
+    {
+      uint32_t compressed_size_nbo;
+      file.read(reinterpret_cast<char *>(&compressed_size_nbo), sizeof(compressed_size_nbo));
+      entry.compressed_size = nbo_to_host(compressed_size_nbo);
+    }
+    {
+      uint32_t size_nbo;
+      file.read(reinterpret_cast<char *>(&size_nbo), sizeof(size_nbo));
+      entry.size = nbo_to_host(size_nbo);
+    }
+    header.entries.push_back(entry);
+  }
+
+  // We have all the information necessary to decompress each resource
+  for (unsigned int i = 0; i < header.entries.size(); ++i)
+  {
+    file.seekg(header.entries[i].offset);
+    unsigned char *uncompressed = new unsigned char[header.entries[i].size];
+    unsigned long uncompressed_size = header.entries[i].size;
+
+    char *compressed = new char[header.entries[i].compressed_size];
+    unsigned long compressed_size = header.entries[i].compressed_size;
+
+    file.read(compressed, header.entries[i].compressed_size);
+
+    int err = uncompress2(uncompressed, &uncompressed_size,
+      reinterpret_cast<unsigned char *>(compressed), &compressed_size);
+
+    if (header.entries[i].resource_type == "image")
+    {
+      resources[header.entries[i].resource_name] =
+        Image::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
+    }
+    else
+    {
+      // TODO: handle unsupported type
+    }
+
+    delete uncompressed;
+    delete compressed;
+  }
+
+  file.close();
 }
 
 ResourceBundle::~ResourceBundle()
@@ -81,22 +259,73 @@ ResourceBundle::write_to(std::string path)
 void
 ResourceBundle::write_to(std::ostream &out)
 {
+  uint32_t header_size = 4 + 4 + 4;
   Header header = {};
   header.bundle_version = 1;
+  for (const std::pair<std::string, Resource *> &x : resources)
+  {
+    HeaderResourceDescriptor entry = {};
+    entry.resource_name = x.first;
+    entry.resource_type = x.second->get_type();
+    entry.offset = 0;
+    entry.compressed_size = 0;
+    entry.size = 0;
 
-  // magic number
+    header.entries.push_back(entry);
+
+    header_size += x.first.length() + 5;
+    header_size += x.second->get_type().length() + 5;
+    header_size += 4 + 4 + 4;
+  }
+
+  // Temporarily zero out the header
+  for (unsigned int i = 0; i < header_size; ++i)
+    out.put(0x00);
+
+  // Compress each resource and write it to the body
+  uint32_t current_offset = header_size;
+  for (unsigned int i = 0; i < header.entries.size(); ++i)
+  {
+    Resource *r = resources[header.entries[i].resource_name];
+    std::stringstream resource_out = std::stringstream();
+
+    uint32_t raw_size = r->append_to(resource_out);
+    unsigned char *raw_data = new unsigned char[raw_size];
+    memcpy(raw_data, resource_out.str().data(), raw_size);
+
+    unsigned long compressed_size = compressBound((unsigned long)raw_size);
+    unsigned char *compressed = new unsigned char[compressed_size];
+    compress2(compressed, &compressed_size, raw_data, (unsigned long)raw_size, 9);
+
+    delete[] raw_data;
+
+    out.write(reinterpret_cast<const char *>(compressed), compressed_size);
+
+    delete[] compressed;
+
+    header.entries[i].offset = current_offset;
+    header.entries[i].compressed_size = uint32_t(compressed_size);
+    header.entries[i].size = raw_size;
+
+    current_offset += compressed_size;
+  }
+
+  // Now that we have the data, go back and fill in the header with sizes
+  out.seekp(0);
+
+  // Magic number
   out.put(0x46);
   out.put(0x50);
   out.put(0x32);
   out.put(0x44);
 
-  // version
+  // Version
   {
     uint32_t version_nbo = host_to_nbo(header.bundle_version);
     out.write(reinterpret_cast<const char *>(&version_nbo), sizeof(version_nbo));
   }
 
-  // table describing resources
+  // Table describing resources
   {
     uint32_t table_length_nbo = host_to_nbo(header.entries.size());
     out.write(reinterpret_cast<const char *>(&table_length_nbo),
@@ -105,8 +334,18 @@ ResourceBundle::write_to(std::ostream &out)
 
   for (unsigned int i = 0; i < header.entries.size(); ++i)
   {
+    {
+      uint32_t name_length_nbo = host_to_nbo(header.entries[i].resource_name.length() + 1);
+      out.write(reinterpret_cast<const char *>(&name_length_nbo),
+        sizeof(name_length_nbo));
+    }
     out.write(reinterpret_cast<const char *>(header.entries[i].resource_name.c_str()),
       header.entries[i].resource_name.length() + 1);
+    {
+      uint32_t type_length_nbo = host_to_nbo(header.entries[i].resource_type.length() + 1);
+      out.write(reinterpret_cast<const char *>(&type_length_nbo),
+        sizeof(type_length_nbo));
+    }
     out.write(reinterpret_cast<const char *>(header.entries[i].resource_type.c_str()),
       header.entries[i].resource_type.length() + 1);
     {
@@ -115,14 +354,15 @@ ResourceBundle::write_to(std::ostream &out)
         sizeof(offset_nbo));
     }
     {
+      uint32_t compressized_size_nbo = host_to_nbo(header.entries[i].compressed_size);
+      out.write(reinterpret_cast<const char *>(&compressized_size_nbo),
+        sizeof(compressized_size_nbo));
+    }
+    {
       uint32_t size_nbo = host_to_nbo(header.entries[i].size);
       out.write(reinterpret_cast<const char *>(&size_nbo),
         sizeof(size_nbo));
     }
   }
-
-  // body
-  for (unsigned int i = 0; i < header.entries.size(); ++i)
-    resources[header.entries[i].resource_name]->append_to(out);
 }
 #endif

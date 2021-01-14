@@ -30,35 +30,22 @@ add_executable(fp2d
   src/state.cpp
 )
 
-add_executable(resource_importer
-  src/resource_importer.cpp
-  src/resource.cpp
-)
-
-
-target_compile_definitions(resource_importer
-  PUBLIC RESOURCE_IMPORTER
-)
-
-
 target_include_directories(fp2d
   PUBLIC include
   PUBLIC include/imgui
   PUBLIC ${GLFW_PATH}/include
+  PUBLIC ${ZLIB_PATH}/include
 )
-
-target_include_directories(resource_importer
-  PUBLIC include
-)
-
 
 target_link_directories(fp2d
   PUBLIC ${GLFW_PATH}/lib
+  PUBLIC ${ZLIB_PATH}/lib
 )
 
 if(WIN32)
 target_link_libraries(fp2d
   glfw3
+  zlibstaticd
 )
 endif()
 
@@ -75,3 +62,26 @@ target_link_libraries(fp2d
   glfw
 )
 endif()
+
+
+add_executable(resource_importer
+  src/resource_importer.cpp
+  src/resource.cpp
+)
+
+target_compile_definitions(resource_importer
+  PUBLIC RESOURCE_IMPORTER
+)
+
+target_include_directories(resource_importer
+  PUBLIC include
+  PUBLIC ${ZLIB_PATH}/include
+)
+
+target_link_directories(resource_importer
+  PUBLIC ${ZLIB_PATH}/lib
+)
+
+target_link_libraries(resource_importer
+  zlibstaticd
+)
