@@ -76,12 +76,16 @@ target_compile_definitions(resource_importer
 target_include_directories(resource_importer
   PUBLIC include
   PUBLIC ${ZLIB_PATH}/include
+  PUBLIC ${FT_PATH}/include
+  PUBLIC ${FT_PATH}/include/freetype2
 )
 
 target_link_directories(resource_importer
   PUBLIC ${ZLIB_PATH}/lib
+  PUBLIC ${FT_PATH}/lib
 )
 
 target_link_libraries(resource_importer
   zlibstaticd
+  freetyped
 )

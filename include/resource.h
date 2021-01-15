@@ -40,7 +40,9 @@ class Image : public Resource
 
   bool stb_allocated;
 public:
+#ifdef RESOURCE_IMPORTER
   Image(std::string path);
+#endif
 
   Image(uint32_t _width, uint32_t _height, uint32_t _channels,
     const unsigned char *_data);
@@ -54,6 +56,59 @@ public:
   get_type() const;
 
   static Image *
+  from_data(const char *data, uint32_t length);
+
+#ifdef RESOURCE_IMPORTER
+  uint32_t
+  append_to(std::ostream &out) const;
+#endif
+};
+
+struct Glyph
+{
+  uint32_t bitmap_width;
+  uint32_t bitmap_height;
+  unsigned char *bitmap_data;
+
+  int32_t width;
+  int32_t height;
+
+  int32_t horizontal_bearing_x;
+  int32_t horizontal_bearing_y;
+  int32_t horizontal_advance;
+
+  int32_t vertical_bearing_x;
+  int32_t vertical_bearing_y;
+  int32_t vertical_advance;
+};
+
+class FontFace : public Resource
+{
+  const static std::string chars;
+
+  std::map<char, Glyph> glyph_map;
+
+  void
+  add_glyph(const char &c, const Glyph &glyph);
+public:
+#ifdef RESOURCE_IMPORTER
+  FontFace(std::string path);
+#endif
+
+  FontFace();
+
+  ~FontFace();
+
+  const Glyph &
+  get_glyph(char c);
+
+  Resource *
+  duplicate() const;
+
+  std::string
+  get_type() const;
+
+  static FontFace *
   from_data(const char *data, uint32_t length);
 
 #ifdef RESOURCE_IMPORTER

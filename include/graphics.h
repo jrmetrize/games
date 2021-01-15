@@ -25,6 +25,9 @@ class Texture
 public:
   Texture(std::string path);
 
+  Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
+    const unsigned char *data);
+
   ~Texture();
 };
 
@@ -61,7 +64,7 @@ public:
   // TODO: if a shader needs more than one texture at a time, allow binding
   // multiple texture units
   void
-  bind_uniform(Texture &x, std::string name) const;
+  bind_uniform(const Texture &x, std::string name) const;
 };
 
 struct Vertex
@@ -202,6 +205,9 @@ public:
 
   void
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
+
+  void
+  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);
 
   void
   render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render);

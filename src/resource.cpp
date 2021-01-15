@@ -5,6 +5,9 @@
 
 #ifdef RESOURCE_IMPORTER
 #define STB_IMAGE_IMPLEMENTATION
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #endif
 #include "stb_image.h"
 
@@ -47,6 +50,7 @@ Resource::~Resource()
 
 }
 
+#ifdef RESOURCE_IMPORTER
 Image::Image(std::string path) :
   stb_allocated(true)
 {
@@ -61,6 +65,7 @@ Image::Image(std::string path) :
     channels = uint32_t(n);
   }
 }
+#endif
 
 Image::Image(uint32_t _width, uint32_t _height, uint32_t _channels,
   const unsigned char *_data) :
@@ -124,6 +129,185 @@ Image::append_to(std::ostream &out) const
 }
 #endif
 
+const std::string FontFace::chars
+  = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
+#ifdef RESOURCE_IMPORTER
+FontFace::FontFace(std::string path) :
+  glyph_map()
+{
+  // TODO: handle freetype errors
+  FT_Library font_library;
+  int error = FT_Init_FreeType(&font_library);
+
+  FT_Face font_face;
+  error = FT_New_Face(font_library, path.c_str(), 0, &font_face);
+
+  // Render at 128 pixels for SDFs. This should be fine for all scales.
+  error = FT_Set_Pixel_Sizes(font_face, 0, 128);
+
+  for (unsigned int i = 0; i < chars.length(); ++i)
+  {
+    char c = chars[i];
+    unsigned int glyph_index = FT_Get_Char_Index(font_face, c);
+    error = FT_Load_Glyph(font_face, glyph_index, 0);
+    error = FT_Render_Glyph(font_face->glyph, FT_RENDER_MODE_SDF);
+
+    Glyph glyph = {};
+    glyph.bitmap_width = font_face->glyph->bitmap.width;
+    glyph.bitmap_height = font_face->glyph->bitmap.rows;
+    uint32_t bitmap_size = glyph.bitmap_width * glyph.bitmap_height;
+    glyph.bitmap_data = new unsigned char[bitmap_size];
+
+    // If we are rendering SDFs, the FT bitmap has 16 bit gray values, so
+    // we need to convert these to 8 bit gray values
+    for (unsigned int i = 0; i < glyph.bitmap_width; ++i)
+    {
+      for (unsigned int j = 0; j < glyph.bitmap_height; ++j)
+      {
+        int16_t gray_16 = reinterpret_cast<uint16_t *>(font_face->glyph->bitmap.buffer)[i + (glyph.bitmap_width * j)];
+        glyph.bitmap_data[i + (glyph.bitmap_width * j)] = (gray_16 + 32768) >> 8;
+      }
+    }
+    /*
+    memcpy(glyph.bitmap_data, font_face->glyph->bitmap.buffer,
+      bitmap_size);
+    */
+
+    glyph_map[c] = glyph;
+  }
+}
+#endif
+
+FontFace::FontFace()
+{
+
+}
+
+FontFace::~FontFace()
+{
+  for (const std::pair<char, Glyph> &x : glyph_map)
+  {
+    if (x.second.bitmap_data != nullptr)
+      delete[] x.second.bitmap_data;
+  }
+}
+
+const Glyph &
+FontFace::get_glyph(char c)
+{
+  return glyph_map[c];
+}
+
+void
+FontFace::add_glyph(const char &c, const Glyph &glyph)
+{
+  // First, duplicate the bitmap, then add the glyph to the map
+  Glyph g = Glyph(glyph);
+  g.bitmap_data = new unsigned char[g.bitmap_width * g.bitmap_height];
+  memcpy(g.bitmap_data, glyph.bitmap_data,
+    sizeof(unsigned char) * g.bitmap_width * g.bitmap_height);
+  glyph_map[c] = g;
+}
+
+Resource *
+FontFace::duplicate() const
+{
+  FontFace *font = new FontFace();
+  for (const std::pair<char, Glyph> &x : glyph_map)
+    font->add_glyph(x.first, x.second);
+  return font;
+}
+
+std::string
+FontFace::get_type() const
+{
+  return "font_face";
+}
+
+FontFace *
+FontFace::from_data(const char *data, uint32_t length)
+{
+  FontFace *font = new FontFace();
+
+  uint32_t num_chars = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[0]));
+  uint32_t current_offset = 4;
+  for (unsigned int i = 0; i < num_chars; ++i)
+  {
+    Glyph g = {};
+
+    char c = data[current_offset];
+    uint32_t offset = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset + 1]));
+    g.bitmap_width = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset + 5]));
+    g.bitmap_height = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset + 9]));
+
+    uint32_t bitmap_size = g.bitmap_width * g.bitmap_height;
+
+    g.bitmap_data = new unsigned char[bitmap_size];
+    memcpy(g.bitmap_data, &data[offset], bitmap_size);
+
+    font->glyph_map[c] = g;
+
+    current_offset += 1 + (4 * 11);
+  }
+
+  return font;
+}
+
+#ifdef RESOURCE_IMPORTER
+uint32_t
+FontFace::append_to(std::ostream &out) const
+{
+  // We will add a table at the beginning that describes the metrics of each glyph,
+  // but we need to know the various offsets and sizes, so we will just allocate
+  // space now and fill it in at the end.
+  uint32_t header_size = 4 + (glyph_map.size() * (1 + (4 * 11)));
+  uint32_t binary_size = header_size;
+  for (uint32_t i = 0; i < header_size; ++i)
+    out.put(0x00);
+
+  // Now, write the bitmaps
+  uint32_t current_offset = header_size;
+  std::map<char, uint32_t> offsets = std::map<char, uint32_t>();
+  for (const std::pair<char, Glyph> &x : glyph_map)
+  {
+    offsets[x.first] = current_offset;
+    uint32_t bitmap_size = sizeof(unsigned char) * x.second.bitmap_width * x.second.bitmap_height;
+    out.write(reinterpret_cast<char *>(x.second.bitmap_data), bitmap_size);
+    current_offset += bitmap_size;
+    binary_size += bitmap_size;
+  }
+
+  out.seekp(0);
+  {
+    uint32_t chars_nbo = host_to_nbo(chars.length());
+    out.write(reinterpret_cast<char *>(&chars_nbo), sizeof(chars_nbo));
+  }
+  for (const std::pair<char, Glyph> &x : glyph_map)
+  {
+    // Write the character, metrics, bitmap offset, and size
+    out.write(&x.first, sizeof(char));
+    // Offset first, then the order in the declaration of Glyph
+    {
+      uint32_t offset_nbo = host_to_nbo(offsets[x.first]);
+      out.write(reinterpret_cast<char *>(&offset_nbo), sizeof(offset_nbo));
+    }
+    {
+      uint32_t bitmap_width_nbo = host_to_nbo(x.second.bitmap_width);
+      out.write(reinterpret_cast<char *>(&bitmap_width_nbo), sizeof(bitmap_width_nbo));
+    }
+    {
+      uint32_t bitmap_height_nbo = host_to_nbo(x.second.bitmap_height);
+      out.write(reinterpret_cast<char *>(&bitmap_height_nbo), sizeof(bitmap_height_nbo));
+    }
+    // TODO: fill out the rest of the values
+    for (unsigned int i = 0; i < 4 * 8; ++i)
+      out.put(0x00);
+  }
+  return binary_size;
+}
+#endif
+
 ResourceBundle::ResourceBundle() :
   resources()
 {
@@ -133,7 +317,7 @@ ResourceBundle::ResourceBundle() :
 ResourceBundle::ResourceBundle(std::string path) :
   resources()
 {
-  std::ifstream file = std::ifstream(path);
+  std::ifstream file = std::ifstream(path, std::ios::binary);
 
   // First, parse the header
   uint32_t table_length;
@@ -212,9 +396,14 @@ ResourceBundle::ResourceBundle(std::string path) :
       resources[header.entries[i].resource_name] =
         Image::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
     }
+    else if (header.entries[i].resource_type == "font_face")
+    {
+      resources[header.entries[i].resource_name] =
+        FontFace::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
+    }
     else
     {
-      // TODO: handle unsupported type
+      // TODO: handle unsupported types
     }
 
     delete uncompressed;

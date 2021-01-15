@@ -56,7 +56,7 @@ out vec2 uv;
 void
 main()
 {
-  gl_Position = vec4(transform * vec3(position, 1.0), 0.0, 1.0);
+  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
   uv = texture_coordinates;
 }
 
@@ -71,10 +71,16 @@ in vec2 uv;
 
 uniform sampler2D sampler;
 
+#define HALF_SMOOTHING (1.0 / 16.0)
+#define LOWER_STEP (0.5 - (HALF_SMOOTHING))
+#define UPPER_STEP (0.5 + (HALF_SMOOTHING))
+
 void
 main()
 {
-  frag_color = texture(sampler, uv);
+  float distance = texture(sampler, uv).r;
+  float alpha = smoothstep(LOWER_STEP, UPPER_STEP, distance);
+  frag_color = vec4(vec3(1), alpha);
 }
 
   )---";
@@ -141,11 +147,36 @@ Texture::Texture(std::string path)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
     /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, img_data);
   glGenerateMipmap(GL_TEXTURE_2D);
 
   stbi_image_free(img_data);
+}
+
+Texture::Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
+  const unsigned char *data) :
+  width(_width), height(_height), channels(_channels)
+{
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  if (channels == 1)
+  {
+    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RED /**/, width, height, 0,
+      /**/ GL_RED /**/, GL_UNSIGNED_BYTE, data);
+  }
+  else if (channels == 3)
+  {
+    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
+      /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, data);
+  }
+  glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 Texture::~Texture()
@@ -232,7 +263,7 @@ Shader::bind_uniform(Mat4 x, std::string name) const
 }
 
 void
-Shader::bind_uniform(Texture &x, std::string name) const
+Shader::bind_uniform(const Texture &x, std::string name) const
 {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, x.texture);
@@ -290,10 +321,10 @@ Mesh *
 Mesh::primitive_quad()
 {
   VertexVector vertices = {
-    Vertex(Vec2(0.0, 0.0), Vec2(0.0, 0.0)),
-    Vertex(Vec2(1.0, 0.0), Vec2(1.0, 0.0)),
-    Vertex(Vec2(0.0, 1.0), Vec2(0.0, 1.0)),
-    Vertex(Vec2(1.0, 1.0), Vec2(1.0, 1.0))
+    Vertex(Vec2(0.0, 0.0), Vec2(0.0, 1.0)),
+    Vertex(Vec2(1.0, 0.0), Vec2(1.0, 1.0)),
+    Vertex(Vec2(0.0, 1.0), Vec2(0.0, 0.0)),
+    Vertex(Vec2(1.0, 1.0), Vec2(1.0, 0.0))
   };
 
   IndexVector indices = {
@@ -510,11 +541,25 @@ GraphicsServer::draw()
 void
 GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 {
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   color_shader->bind_uniform(get_pixel_to_screen_transform()
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(color, "color");
   color_shader->draw(quad);
+}
+
+void
+GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture)
+{
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  texture_shader->bind_uniform(get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  texture_shader->bind_uniform(texture, "sampler");
+  texture_shader->draw(quad);
 }
 
 void
