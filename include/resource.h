@@ -10,8 +10,14 @@
 uint32_t
 host_to_nbo(const uint32_t &x);
 
+int32_t
+host_to_nbo(const int32_t &x);
+
 uint32_t
 nbo_to_host(const uint32_t &x);
+
+int32_t
+nbo_to_host(const int32_t &x);
 
 class Resource
 {
@@ -82,11 +88,18 @@ struct Glyph
   int32_t vertical_advance;
 };
 
+#ifdef GAME
+class Texture;
+#endif
+
 class FontFace : public Resource
 {
   const static std::string chars;
 
   std::map<char, Glyph> glyph_map;
+  #ifdef GAME
+  std::map<char, Texture *> texture_map;
+  #endif
 
   void
   add_glyph(const char &c, const Glyph &glyph);
@@ -101,6 +114,14 @@ public:
 
   const Glyph &
   get_glyph(char c);
+
+#ifdef GAME
+  void
+  generate_textures();
+
+  const Texture *
+  get_texture(char c);
+#endif
 
   Resource *
   duplicate() const;

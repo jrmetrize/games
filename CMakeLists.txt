@@ -30,6 +30,10 @@ add_executable(fp2d
   src/state.cpp
 )
 
+target_compile_definitions(fp2d
+  PUBLIC GAME
+)
+
 target_include_directories(fp2d
   PUBLIC include
   PUBLIC include/imgui

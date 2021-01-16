@@ -21,19 +21,22 @@ TitleScreen::update(InputMonitor *input, float time_elapsed)
 
 }
 
-Texture *tex = nullptr;
+FontFace *f = nullptr;
 
 void
 TitleScreen::draw_custom(GraphicsServer *graphics_server)
 {
-  if (tex == nullptr)
+  if (f == nullptr)
   {
     ResourceBundle *bundle = new ResourceBundle("C:\\Users\\jonat\\code\\fp2d\\test_bundle.rb");
-    FontFace *font = (FontFace *)bundle->get_resource("sans");
-    Glyph g = font->get_glyph('a');
-    tex = new Texture(g.bitmap_width, g.bitmap_height, 1, g.bitmap_data);
+    f = (FontFace *)bundle->get_resource("sans");
   }
-  graphics_server->draw_texture_rect(Vec2(10, 10), Vec2(16, 16), *tex);
+  struct TextRenderRequest t = {};
+  t.size = 20;
+  t.color = Vec4(1, 0, 0, 1);
+  t.font = f;
+  t.text = "hello, world!";
+  graphics_server->draw_text(t);
 
   // TODO: actually render the menu through the engine and not imgui
   ImGui::Begin("Title Screen Menu");

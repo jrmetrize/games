@@ -1,5 +1,9 @@
 #include "resource.h"
 
+#ifdef GAME
+#include "graphics.h"
+#endif
+
 #include <sstream>
 #include <bit>
 
@@ -29,8 +33,40 @@ host_to_nbo(const uint32_t &x)
   }
 }
 
+int32_t
+host_to_nbo(const int32_t &x)
+{
+  if constexpr (std::endian::native == std::endian::big)
+  {
+    return x;
+  }
+  else if constexpr (std::endian::native == std::endian::little)
+  {
+    const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&x);
+    uint32_t result = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8)
+      | bytes[3];
+    return result;
+  }
+}
+
 uint32_t
 nbo_to_host(const uint32_t &x)
+{
+  if constexpr (std::endian::native == std::endian::big)
+  {
+    return x;
+  }
+  else if constexpr (std::endian::native == std::endian::little)
+  {
+    const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&x);
+    uint32_t result = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8)
+      | bytes[3];
+    return result;
+  }
+}
+
+int32_t
+nbo_to_host(const int32_t &x)
 {
   if constexpr (std::endian::native == std::endian::big)
   {
@@ -134,7 +170,12 @@ const std::string FontFace::chars
 
 #ifdef RESOURCE_IMPORTER
 FontFace::FontFace(std::string path) :
+#ifdef GAME
+  glyph_map(),
+  texture_map()
+#else
   glyph_map()
+#endif
 {
   // TODO: handle freetype errors
   FT_Library font_library;
@@ -143,15 +184,15 @@ FontFace::FontFace(std::string path) :
   FT_Face font_face;
   error = FT_New_Face(font_library, path.c_str(), 0, &font_face);
 
-  // Render at 128 pixels for SDFs. This should be fine for all scales.
-  error = FT_Set_Pixel_Sizes(font_face, 0, 128);
+  // Render at 64 pixels for SDFs. This should be fine for all scales.
+  error = FT_Set_Pixel_Sizes(font_face, 0, 64);
 
   for (unsigned int i = 0; i < chars.length(); ++i)
   {
     char c = chars[i];
     unsigned int glyph_index = FT_Get_Char_Index(font_face, c);
     error = FT_Load_Glyph(font_face, glyph_index, 0);
-    error = FT_Render_Glyph(font_face->glyph, FT_RENDER_MODE_SDF);
+    error = FT_Render_Glyph(font_face->glyph, FT_RENDER_MODE_NORMAL);
 
     Glyph glyph = {};
     glyph.bitmap_width = font_face->glyph->bitmap.width;
@@ -161,25 +202,45 @@ FontFace::FontFace(std::string path) :
 
     // If we are rendering SDFs, the FT bitmap has 16 bit gray values, so
     // we need to convert these to 8 bit gray values
-    for (unsigned int i = 0; i < glyph.bitmap_width; ++i)
+    if (false)
     {
-      for (unsigned int j = 0; j < glyph.bitmap_height; ++j)
+      for (unsigned int i = 0; i < glyph.bitmap_width; ++i)
       {
-        int16_t gray_16 = reinterpret_cast<uint16_t *>(font_face->glyph->bitmap.buffer)[i + (glyph.bitmap_width * j)];
-        glyph.bitmap_data[i + (glyph.bitmap_width * j)] = (gray_16 + 32768) >> 8;
+        for (unsigned int j = 0; j < glyph.bitmap_height; ++j)
+        {
+          int16_t gray_16 = reinterpret_cast<uint16_t *>(font_face->glyph->bitmap.buffer)[i + (glyph.bitmap_width * j)];
+          glyph.bitmap_data[i + (glyph.bitmap_width * j)] = (gray_16 + 32768) >> 8;
+        }
       }
     }
-    /*
-    memcpy(glyph.bitmap_data, font_face->glyph->bitmap.buffer,
-      bitmap_size);
-    */
+    else
+    {
+      memcpy(glyph.bitmap_data, font_face->glyph->bitmap.buffer, bitmap_size);
+    }
+
+    glyph.width = font_face->glyph->metrics.width;
+    glyph.height = font_face->glyph->metrics.height;
+
+    glyph.horizontal_bearing_x = font_face->glyph->metrics.horiBearingX;
+    glyph.horizontal_bearing_y = font_face->glyph->metrics.horiBearingY;
+    glyph.horizontal_advance = font_face->glyph->metrics.horiAdvance;
+
+    glyph.vertical_bearing_x = font_face->glyph->metrics.vertBearingX;
+    glyph.vertical_bearing_y = font_face->glyph->metrics.vertBearingY;
+    glyph.vertical_advance = font_face->glyph->metrics.vertAdvance;
 
     glyph_map[c] = glyph;
   }
 }
 #endif
 
-FontFace::FontFace()
+FontFace::FontFace() :
+#ifdef GAME
+  glyph_map(),
+  texture_map()
+#else
+  glyph_map()
+#endif
 {
 
 }
@@ -191,6 +252,13 @@ FontFace::~FontFace()
     if (x.second.bitmap_data != nullptr)
       delete[] x.second.bitmap_data;
   }
+#ifdef GAME
+  for (const std::pair<char, Texture *> &x : texture_map)
+  {
+    if (x.second != nullptr)
+      delete x.second;
+  }
+#endif
 }
 
 const Glyph &
@@ -198,6 +266,25 @@ FontFace::get_glyph(char c)
 {
   return glyph_map[c];
 }
+
+#ifdef GAME
+void
+FontFace::generate_textures()
+{
+  for (const std::pair<char, Glyph> &x : glyph_map)
+  {
+    if (texture_map.find(x.first) != texture_map.end())
+      continue;
+    texture_map[x.first] = new Texture(x.second.bitmap_width, x.second.bitmap_height, 1, x.second.bitmap_data);
+  }
+}
+
+const Texture *
+FontFace::get_texture(char c)
+{
+  return texture_map[c];
+}
+#endif
 
 void
 FontFace::add_glyph(const char &c, const Glyph &glyph)
@@ -240,6 +327,14 @@ FontFace::from_data(const char *data, uint32_t length)
     uint32_t offset = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset + 1]));
     g.bitmap_width = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset + 5]));
     g.bitmap_height = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset + 9]));
+    g.width = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 13]));
+    g.height = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 17]));
+    g.horizontal_bearing_x = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 21]));
+    g.horizontal_bearing_y = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 25]));
+    g.horizontal_advance = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 29]));
+    g.vertical_bearing_x = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 33]));
+    g.vertical_bearing_y = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 37]));
+    g.vertical_advance = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 41]));
 
     uint32_t bitmap_size = g.bitmap_width * g.bitmap_height;
 
@@ -280,7 +375,7 @@ FontFace::append_to(std::ostream &out) const
 
   out.seekp(0);
   {
-    uint32_t chars_nbo = host_to_nbo(chars.length());
+    uint32_t chars_nbo = host_to_nbo(uint32_t(chars.length()));
     out.write(reinterpret_cast<char *>(&chars_nbo), sizeof(chars_nbo));
   }
   for (const std::pair<char, Glyph> &x : glyph_map)
@@ -300,9 +395,38 @@ FontFace::append_to(std::ostream &out) const
       uint32_t bitmap_height_nbo = host_to_nbo(x.second.bitmap_height);
       out.write(reinterpret_cast<char *>(&bitmap_height_nbo), sizeof(bitmap_height_nbo));
     }
-    // TODO: fill out the rest of the values
-    for (unsigned int i = 0; i < 4 * 8; ++i)
-      out.put(0x00);
+    {
+      int32_t width_nbo = host_to_nbo(x.second.width);
+      out.write(reinterpret_cast<char *>(&width_nbo), sizeof(width_nbo));
+    }
+    {
+      int32_t height_nbo = host_to_nbo(x.second.height);
+      out.write(reinterpret_cast<char *>(&height_nbo), sizeof(height_nbo));
+    }
+    {
+      int32_t horizontal_bearing_x_nbo = host_to_nbo(x.second.horizontal_bearing_x);
+      out.write(reinterpret_cast<char *>(&horizontal_bearing_x_nbo), sizeof(horizontal_bearing_x_nbo));
+    }
+    {
+      int32_t horizontal_bearing_y_nbo = host_to_nbo(x.second.horizontal_bearing_y);
+      out.write(reinterpret_cast<char *>(&horizontal_bearing_y_nbo), sizeof(horizontal_bearing_y_nbo));
+    }
+    {
+      int32_t horizontal_advance_nbo = host_to_nbo(x.second.horizontal_advance);
+      out.write(reinterpret_cast<char *>(&horizontal_advance_nbo), sizeof(horizontal_advance_nbo));
+    }
+    {
+      int32_t vertical_bearing_x_nbo = host_to_nbo(x.second.vertical_bearing_x);
+      out.write(reinterpret_cast<char *>(&vertical_bearing_x_nbo), sizeof(vertical_bearing_x_nbo));
+    }
+    {
+      int32_t vertical_bearing_y_nbo = host_to_nbo(x.second.vertical_bearing_y);
+      out.write(reinterpret_cast<char *>(&vertical_bearing_y_nbo), sizeof(vertical_bearing_y_nbo));
+    }
+    {
+      int32_t vertical_advance_nbo = host_to_nbo(x.second.vertical_advance);
+      out.write(reinterpret_cast<char *>(&vertical_advance_nbo), sizeof(vertical_advance_nbo));
+    }
   }
   return binary_size;
 }
@@ -516,7 +640,7 @@ ResourceBundle::write_to(std::ostream &out)
 
   // Table describing resources
   {
-    uint32_t table_length_nbo = host_to_nbo(header.entries.size());
+    uint32_t table_length_nbo = host_to_nbo(uint32_t(header.entries.size()));
     out.write(reinterpret_cast<const char *>(&table_length_nbo),
       sizeof(table_length_nbo));
   }
@@ -524,14 +648,14 @@ ResourceBundle::write_to(std::ostream &out)
   for (unsigned int i = 0; i < header.entries.size(); ++i)
   {
     {
-      uint32_t name_length_nbo = host_to_nbo(header.entries[i].resource_name.length() + 1);
+      uint32_t name_length_nbo = host_to_nbo(uint32_t(header.entries[i].resource_name.length() + 1));
       out.write(reinterpret_cast<const char *>(&name_length_nbo),
         sizeof(name_length_nbo));
     }
     out.write(reinterpret_cast<const char *>(header.entries[i].resource_name.c_str()),
       header.entries[i].resource_name.length() + 1);
     {
-      uint32_t type_length_nbo = host_to_nbo(header.entries[i].resource_type.length() + 1);
+      uint32_t type_length_nbo = host_to_nbo(uint32_t(header.entries[i].resource_type.length() + 1));
       out.write(reinterpret_cast<const char *>(&type_length_nbo),
         sizeof(type_length_nbo));
     }

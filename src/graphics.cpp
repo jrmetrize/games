@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "screen.h"
+#include "resource.h"
 #include "glad/glad.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -71,16 +72,10 @@ in vec2 uv;
 
 uniform sampler2D sampler;
 
-#define HALF_SMOOTHING (1.0 / 16.0)
-#define LOWER_STEP (0.5 - (HALF_SMOOTHING))
-#define UPPER_STEP (0.5 + (HALF_SMOOTHING))
-
 void
 main()
 {
-  float distance = texture(sampler, uv).r;
-  float alpha = smoothstep(LOWER_STEP, UPPER_STEP, distance);
-  frag_color = vec4(vec3(1), alpha);
+  frag_color = vec4(texture(sampler, uv).rgb, 1);
 }
 
   )---";
@@ -101,7 +96,7 @@ out vec2 uv;
 void
 main()
 {
-  gl_Position = vec4(transform * vec3(position, 1.0), 0.0, 1.0);
+  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
   uv = texture_coordinates;
 }
 
@@ -117,10 +112,16 @@ in vec2 uv;
 uniform vec4 color;
 uniform sampler2D sampler;
 
+#define HALF_SMOOTHING (1.0 / 32.0)
+#define LOWER_STEP (0.5 - (HALF_SMOOTHING))
+#define UPPER_STEP (0.5 + (HALF_SMOOTHING))
+
 void
 main()
 {
-  frag_color = vec4(color.rgb, texture(sampler, uv).r);
+  float distance = texture(sampler, uv).r;
+  float alpha = smoothstep(LOWER_STEP, UPPER_STEP, distance);
+  frag_color = vec4(color.rgb, distance);
 }
 
   )---";
@@ -395,6 +396,8 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
     ColorShaderSources::fragment);
   texture_shader = new Shader(TextureShaderSources::vertex,
     TextureShaderSources::fragment);
+  text_shader = new Shader(TextShaderSources::vertex,
+    TextShaderSources::fragment);
   quad = Mesh::primitive_quad();
 
   // TODO: only use imgui in dev builds
@@ -414,6 +417,7 @@ GraphicsServer::~GraphicsServer()
 
   delete color_shader;
   delete texture_shader;
+  delete text_shader;
   delete quad;
 }
 
@@ -560,6 +564,39 @@ GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture
     * Mat3::scale(size), "transform");
   texture_shader->bind_uniform(texture, "sampler");
   texture_shader->draw(quad);
+}
+
+void
+GraphicsServer::draw_text(const TextRenderRequest &text_request)
+{
+  // TODO: this should be calculated by the font face object
+  float scale_factor = text_request.size / (64.0f * 64.0f);
+
+  text_shader->bind_uniform(text_request.color, "color");
+
+  text_request.font->generate_textures();
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  Vec2 current_pos = Vec2(50, 50);
+  for (unsigned int i = 0; i < text_request.text.length(); ++i)
+  {
+    char c = text_request.text[i];
+    const Glyph &glyph = text_request.font->get_glyph(c);
+    const Texture *tex = text_request.font->get_texture(c);
+
+    Vec2 glyph_size = scale_factor * Vec2(glyph.width,
+      glyph.height);
+    Vec2 adjustment = scale_factor * Vec2(glyph.horizontal_bearing_x,
+      -glyph.height + glyph.horizontal_bearing_y);
+
+    text_shader->bind_uniform(get_pixel_to_screen_transform()
+      * Mat3::translate(current_pos + adjustment)
+      * Mat3::scale(glyph_size), "transform");
+    text_shader->bind_uniform(*tex, "sampler");
+    text_shader->draw(quad);
+
+    current_pos += scale_factor * Vec2(glyph.horizontal_advance, 0);
+  }
 }
 
 void

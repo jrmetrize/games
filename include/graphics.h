@@ -12,6 +12,7 @@
 
 class Mesh;
 class Shader;
+class FontFace;
 
 class Texture
 {
@@ -170,12 +171,26 @@ struct RenderRequest
   RenderTree tree;
 };
 
+struct TextRenderRequest
+{
+  Vec2 bounding_box_origin;
+  Vec2 bounding_box_size;
+
+  std::string text;
+  float size;
+  Vec4 color;
+  FontFace *font;
+
+  bool center;
+};
+
 class GraphicsServer
 {
   GLFWwindow *window;
 
   Shader *color_shader;
   Shader *texture_shader;
+  Shader *text_shader;
 
   Mesh *quad;
 
@@ -208,6 +223,9 @@ public:
 
   void
   draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);
+
+  void
+  draw_text(const TextRenderRequest &text_request);
 
   void
   render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render);
