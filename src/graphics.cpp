@@ -457,6 +457,7 @@ Vec4
 GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
 {
   RayResult nearest;
+  nearest.distance = -1;
   RenderObject *hit = nullptr;
   Vec4 color = Vec4(0, 0, 0, 1);
   for (unsigned int i = 0; i < to_render.tree.objects.size(); ++i)

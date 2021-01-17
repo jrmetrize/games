@@ -88,6 +88,10 @@ main(int argc, const char **argv)
       {
         r = new FontFace(resource_path);
       }
+      else if (resource_type == "text")
+      {
+        r = new Text(resource_path);
+      }
       else
       {
         error_at("Unsupported resource type.", line_number);

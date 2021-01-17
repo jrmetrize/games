@@ -64,10 +64,12 @@ target_link_directories(fp2d
 
 target_link_libraries(fp2d
   glfw
+  z
 )
 endif()
 
 
+if(BUILD_RESOURCE_IMPORTER)
 add_executable(resource_importer
   src/resource_importer.cpp
   src/resource.cpp
@@ -94,3 +96,15 @@ target_link_libraries(resource_importer
   zlibstaticd
   freetyped
 )
+
+if(APPLE)
+target_include_directories(resource_importer
+  PUBLIC /usr/local/include
+  PUBLIC /usr/local/include/freetype2
+)
+
+target_link_directories(resource_importer
+  PUBLIC /usr/local/lib
+)
+endif()
+endif()

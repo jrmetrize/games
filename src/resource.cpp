@@ -500,6 +500,62 @@ FontFace::append_to(std::ostream &out) const
 }
 #endif
 
+Text::Text(std::string path)
+{
+  std::ifstream file = std::ifstream(path);
+  std::stringstream buffer = std::stringstream();
+  buffer << file.rdbuf();
+  text = buffer.str();
+  file.close();
+}
+
+Text::Text() :
+  text()
+{
+
+}
+
+Text::~Text()
+{
+
+}
+
+const std::string &
+Text::get_text() const
+{
+  return text;
+}
+
+Resource *
+Text::duplicate() const
+{
+  return new Text(text);
+}
+
+std::string
+Text::get_type() const
+{
+  return "text";
+}
+
+Text *
+Text::from_data(const char *data, uint32_t length)
+{
+  uint32_t text_length = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[0]));
+  return new Text(std::string(&data[4], text_length));
+}
+
+#ifdef RESOURCE_IMPORTER
+uint32_t
+Text::append_to(std::ostream &out) const
+{
+  uint32_t length_nbo = host_to_nbo(uint32_t(text.length());
+
+  out.write(reinterpret_cast<char *>(&length_nbo), sizeof(length_nbo));
+  out.write(text.data(), text.length());
+}
+#endif
+
 ResourceBundle::ResourceBundle() :
   resources()
 {
@@ -539,7 +595,7 @@ ResourceBundle::ResourceBundle(std::string path) :
       char *name_buf = new char[name_length];
       file.read(name_buf, name_length);
       entry.resource_name = std::string(name_buf);
-      delete name_buf;
+      delete[] name_buf;
     }
     {
       uint32_t type_length_nbo;
@@ -548,7 +604,7 @@ ResourceBundle::ResourceBundle(std::string path) :
       char *type_buf = new char[type_length];
       file.read(type_buf, type_length);
       entry.resource_type = std::string(type_buf);
-      delete type_buf;
+      delete[] type_buf;
     }
     {
       uint32_t offset_nbo;
@@ -598,8 +654,8 @@ ResourceBundle::ResourceBundle(std::string path) :
       // TODO: handle unsupported types
     }
 
-    delete uncompressed;
-    delete compressed;
+    delete[] uncompressed;
+    delete[] compressed;
   }
 
   file.close();

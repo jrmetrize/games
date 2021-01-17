@@ -149,6 +149,34 @@ public:
 #endif
 };
 
+class Text : public Resource
+{
+  std::string text;
+public:
+  Text(std::string path);
+
+  Text();
+
+  ~Text();
+
+  const std::string &
+  get_text() const;
+
+  Resource *
+  duplicate() const;
+
+  std::string
+  get_type() const;
+
+  static Text *
+  from_data(const char *data, uint32_t length);
+
+#ifdef RESOURCE_IMPORTER
+  uint32_t
+  append_to(std::ostream &out) const;
+#endif
+};
+
 class ResourceBundle
 {
   std::map<std::string, Resource *> resources;
