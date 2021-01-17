@@ -32,7 +32,7 @@ TitleScreen::draw_custom(GraphicsServer *graphics_server)
     f = (FontFace *)bundle->get_resource("sans");
   }
   struct TextRenderRequest t = {};
-  t.size = 20;
+  t.size = 64;
   t.color = Vec4(1, 0, 0, 1);
   t.font = f;
   t.text = "hello, world!";

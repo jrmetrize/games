@@ -172,9 +172,11 @@ const std::string FontFace::chars
 FontFace::FontFace(std::string path) :
 #ifdef GAME
   glyph_map(),
+  kerning_table(),
   texture_map()
 #else
-  glyph_map()
+  glyph_map(),
+  kerning_table()
 #endif
 {
   // TODO: handle freetype errors
@@ -192,7 +194,7 @@ FontFace::FontFace(std::string path) :
     char c = chars[i];
     unsigned int glyph_index = FT_Get_Char_Index(font_face, c);
     error = FT_Load_Glyph(font_face, glyph_index, 0);
-    error = FT_Render_Glyph(font_face->glyph, FT_RENDER_MODE_NORMAL);
+    error = FT_Render_Glyph(font_face->glyph, FT_RENDER_MODE_SDF);
 
     Glyph glyph = {};
     glyph.bitmap_width = font_face->glyph->bitmap.width;
@@ -202,7 +204,7 @@ FontFace::FontFace(std::string path) :
 
     // If we are rendering SDFs, the FT bitmap has 16 bit gray values, so
     // we need to convert these to 8 bit gray values
-    if (false)
+    if (true)
     {
       for (unsigned int i = 0; i < glyph.bitmap_width; ++i)
       {
@@ -230,6 +232,22 @@ FontFace::FontFace(std::string path) :
     glyph.vertical_advance = font_face->glyph->metrics.vertAdvance;
 
     glyph_map[c] = glyph;
+
+    // Loop through all the characters again to get kerning values
+    for (unsigned int j = 0; j < chars.length(); ++j)
+    {
+      char c2 = chars[j];
+      FT_Vector v = {};
+      unsigned int glyph2_index = FT_Get_Char_Index(font_face, c2);
+
+      FT_Get_Kerning(font_face, glyph_index, glyph2_index, FT_KERNING_UNFITTED, &v);
+
+      Kerning entry = {};
+      entry.x = v.x;
+      entry.y = v.y;
+
+      kerning_table[std::pair<char, char>(c, c2)] = entry;
+    }
   }
 }
 #endif
@@ -237,9 +255,11 @@ FontFace::FontFace(std::string path) :
 FontFace::FontFace() :
 #ifdef GAME
   glyph_map(),
+  kerning_table(),
   texture_map()
 #else
-  glyph_map()
+  glyph_map(),
+  kerning_table()
 #endif
 {
 
@@ -265,6 +285,12 @@ const Glyph &
 FontFace::get_glyph(char c)
 {
   return glyph_map[c];
+}
+
+const FontFace::Kerning &
+FontFace::get_kerning(char a, char b)
+{
+  return kerning_table[std::pair<char, char>(a, b)];
 }
 
 #ifdef GAME
@@ -346,6 +372,24 @@ FontFace::from_data(const char *data, uint32_t length)
     current_offset += 1 + (4 * 11);
   }
 
+  // Extract kerning table data
+  uint32_t kerning_table_length = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[current_offset]));
+  current_offset += 4;
+  for (unsigned int i = 0; i < kerning_table_length; ++i)
+  {
+    char c1 = data[current_offset];
+    char c2 = data[current_offset + 1];
+    int32_t x = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 2]));
+    int32_t y = nbo_to_host(*reinterpret_cast<const int32_t *>(&data[current_offset + 6]));
+
+    Kerning k = {};
+    k.x = x;
+    k.y = y;
+    font->kerning_table[std::pair<char, char>(c1, c2)] = k;
+
+    current_offset += 10;
+  }
+
   return font;
 }
 
@@ -361,8 +405,29 @@ FontFace::append_to(std::ostream &out) const
   for (uint32_t i = 0; i < header_size; ++i)
     out.put(0x00);
 
+  // After the header, write the kerning table (10 bytes per pair)
+  uint32_t current_offset = header_size + 4 + (10 * kerning_table.size());
+  binary_size += 4 + (10 * kerning_table.size());
+  {
+    uint32_t kerning_table_length_nbo = host_to_nbo(uint32_t(kerning_table.size()));
+    out.write(reinterpret_cast<char *>(&kerning_table_length_nbo), sizeof(kerning_table_length_nbo));
+  }
+  for (const std::pair<std::pair<char, char>, Kerning> &x : kerning_table)
+  {
+    // Put the two characters
+    out.write(&x.first.first, sizeof(char));
+    out.write(&x.first.second, sizeof(char));
+    {
+      int32_t x_nbo = host_to_nbo(x.second.x);
+      out.write(reinterpret_cast<char *>(&x_nbo), sizeof(x_nbo));
+    }
+    {
+      int32_t y_nbo = host_to_nbo(x.second.y);
+      out.write(reinterpret_cast<char *>(&y_nbo), sizeof(y_nbo));
+    }
+  }
+
   // Now, write the bitmaps
-  uint32_t current_offset = header_size;
   std::map<char, uint32_t> offsets = std::map<char, uint32_t>();
   for (const std::pair<char, Glyph> &x : glyph_map)
   {

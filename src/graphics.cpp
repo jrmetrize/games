@@ -121,7 +121,7 @@ main()
 {
   float distance = texture(sampler, uv).r;
   float alpha = smoothstep(LOWER_STEP, UPPER_STEP, distance);
-  frag_color = vec4(color.rgb, distance);
+  frag_color = vec4(color.rgb, alpha);
 }
 
   )---";
@@ -571,6 +571,7 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
 {
   // TODO: this should be calculated by the font face object
   float scale_factor = text_request.size / (64.0f * 64.0f);
+  float texture_padding = 8; // 'spread' value in SDF generation
 
   text_shader->bind_uniform(text_request.color, "color");
 
@@ -584,10 +585,21 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
     const Glyph &glyph = text_request.font->get_glyph(c);
     const Texture *tex = text_request.font->get_texture(c);
 
-    Vec2 glyph_size = scale_factor * Vec2(glyph.width,
-      glyph.height);
-    Vec2 adjustment = scale_factor * Vec2(glyph.horizontal_bearing_x,
-      -glyph.height + glyph.horizontal_bearing_y);
+    // We are scaling (glyph.bitmap_height - (2 * texture_padding)) bitmap pixels
+    // to be scale_factor * glyph.height visible pixels tall
+    float size_scale = (scale_factor * glyph.height) /
+      (float(glyph.bitmap_height) - (2 * texture_padding));
+    Vec2 glyph_size = size_scale * Vec2(glyph.bitmap_width,
+      glyph.bitmap_height);
+
+    // We also have to displace the origin of the quad by (-8, -8) bitmap pixels
+    FontFace::Kerning kern = {};
+    if (i > 0)
+      kern = text_request.font->get_kerning(text_request.text[i - 1], c);
+    Vec2 adjustment = scale_factor * Vec2(glyph.horizontal_bearing_x + kern.x,
+      -glyph.height + glyph.horizontal_bearing_y + kern.y);
+    adjustment += -scale_factor * Vec2(texture_padding * (float(glyph.width) / float(glyph.bitmap_width)),
+      texture_padding * (float(glyph.height) / float(glyph.bitmap_height)));
 
     text_shader->bind_uniform(get_pixel_to_screen_transform()
       * Mat3::translate(current_pos + adjustment)

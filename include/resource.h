@@ -94,9 +94,17 @@ class Texture;
 
 class FontFace : public Resource
 {
+public:
+  struct Kerning
+  {
+    int32_t x;
+    int32_t y;
+  };
+private:
   const static std::string chars;
 
   std::map<char, Glyph> glyph_map;
+  std::map<std::pair<char, char>, Kerning> kerning_table;
   #ifdef GAME
   std::map<char, Texture *> texture_map;
   #endif
@@ -114,6 +122,9 @@ public:
 
   const Glyph &
   get_glyph(char c);
+
+  const Kerning &
+  get_kerning(char a, char b);
 
 #ifdef GAME
   void
