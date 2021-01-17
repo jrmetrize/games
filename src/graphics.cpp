@@ -578,7 +578,8 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
   text_request.font->generate_textures();
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  Vec2 current_pos = Vec2(50, 50);
+  Vec2 current_pos = text_request.bounding_box_origin
+    + Vec2(0, text_request.bounding_box_size.y - text_request.size);
   for (unsigned int i = 0; i < text_request.text.length(); ++i)
   {
     char c = text_request.text[i];

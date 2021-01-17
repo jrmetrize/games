@@ -249,6 +249,9 @@ FontFace::FontFace(std::string path) :
       kerning_table[std::pair<char, char>(c, c2)] = entry;
     }
   }
+
+  FT_Done_Face(font_face);
+  FT_Done_FreeType(font_library);
 }
 #endif
 

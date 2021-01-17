@@ -75,6 +75,7 @@ add_executable(resource_importer
 
 target_compile_definitions(resource_importer
   PUBLIC RESOURCE_IMPORTER
+  PUBLIC RESOURCE_IMPORT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/"
 )
 
 target_include_directories(resource_importer

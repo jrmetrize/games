@@ -1,0 +1,3 @@
+[fonts]
+(font) sans < NotoSans-Regular.ttf
+(font) serif < NotoSerif-Regular.ttf
