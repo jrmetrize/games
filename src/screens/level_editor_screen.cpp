@@ -3,50 +3,42 @@
 #include "level.h"
 #include "graphics.h"
 #include "imgui/imgui.h"
+#include "levels/training_levels.h"
 
 LevelEditorScreen::LevelEditorScreen(GameState *_state) :
   Screen(_state),
   paused(false)
 {
-  level = new Level();
-  level_state = new LevelState(level);
+  level = new TrainingLevelController();
 }
 
 LevelEditorScreen::~LevelEditorScreen()
 {
   delete level;
-  delete level_state;
 }
 
 void
 LevelEditorScreen::update(InputMonitor *input, float time_elapsed)
 {
   if (!paused)
-    level_state->update(input, time_elapsed);
+    level->get_level_state()->update(input, time_elapsed);
 }
 
 void
 LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
 {
   // Draw the 2D representation of the level
+  LevelState *level_state = level->get_level_state();
   level_state->draw_editor_view_in_rect(graphics_server,
     Vec2(10, 10), Vec2(512, 512));
   RenderRequest req = {};
   req.camera_pos = level_state->get_player_position();
   req.camera_dir = level_state->get_player_camera_direction();
   req.tree = level_state->get_render_tree();
-  if (level->get_camera_mode() == Vertical)
-  {
-    req.camera_mode = Vertical;
-    graphics_server->render_to_rect(Vec2(600, 0), Vec2(64, 720), req);
-  }
-  else
-  {
-    req.camera_mode = Horizontal;
-    graphics_server->render_to_rect(Vec2(0, 600), Vec2(720, 64), req);
-  }
+  req.camera_mode = Vertical;
+  graphics_server->render_to_rect(Vec2(600, 0), Vec2(64, 720), req);
 
-  char name_tmp[256];
+  /*char name_tmp[256];
   strcpy(name_tmp, level->get_name().c_str());
   float gravity_tmp = level->get_gravity();
   float player_speed_tmp = level->get_player_speed();
@@ -100,5 +92,5 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   level->set_name(std::string(name_tmp));
   level->set_gravity(gravity_tmp);
   level->set_player_speed(player_speed_tmp);
-  level->set_camera_mode((CameraMode)camera_mode_tmp);
+  level->set_camera_mode((CameraMode)camera_mode_tmp);*/
 }

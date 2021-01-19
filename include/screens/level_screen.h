@@ -3,13 +3,11 @@
 
 #include "screen.h"
 
-class Level;
-class LevelState;
+class TrainingLevelController;
 
 class LevelScreen : public Screen
 {
-  Level *level;
-  LevelState *level_state;
+  TrainingLevelController *level;
 public:
   LevelScreen(GameState *_state);
 

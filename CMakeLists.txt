@@ -28,6 +28,14 @@ add_executable(fp2d
   src/resource.cpp
   src/screen.cpp
   src/state.cpp
+  src/util.cpp
+)
+
+add_custom_command(TARGET fp2d POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:fp2d>/resources/"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "resources/processed"
+    "$<TARGET_FILE_DIR:fp2d>/resources"
 )
 
 target_compile_definitions(fp2d

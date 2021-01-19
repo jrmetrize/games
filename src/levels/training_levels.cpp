@@ -1,29 +1,48 @@
 #include "levels/training_levels.h"
+#include "util.h"
+#include "resource.h"
+#include "input.h"
+#include "level.h"
 
-/*
-TrainingLevelIntro::TrainingLevelIntro()
+#include "json.hpp"
+using json = nlohmann::json;
+
+TrainingLevelController::TrainingLevelController() :
+  colors()
 {
-  add_tiles({
-    Vec2(0, 0),
-    Vec2(1, 0),
-    Vec2(2, 0),
-    Vec2(3, 0),
-    Vec2(4, 0),
-    Vec2(5, 0),
+  ResourceBundle *bundle =
+    new ResourceBundle(local_to_absolute_path("resources/training_levels.rbz"));
 
-    Vec2(8, 0),
-    Vec2(9, 0),
-    Vec2(10, 0),
-    Vec2(11, 0),
+  json j = json::parse(((Text *)bundle->get_resource("data"))->get_text());
+  for (const auto &c : j["colors"].items())
+  {
+    Vec4 color = Vec4(c.value()["r"], c.value()["g"], c.value()["b"], 1);
+    colors[c.key()] = color;
+  }
 
-    Vec2(14, 1),
-    Vec2(14, 2),
+  map = new Tilemap(-2, -10, 32, 32);
+  for (const auto &c : j["tilemaps"]["level0"].items())
+  {
+    Tile t = {};
+    t.tile = c.value()["tile"];
+    map->set_tile(c.value()["x"], c.value()["y"] + 8, t);
+  }
 
-    Vec2(16, -2),
-    Vec2(17, -2),
-    Vec2(18, -1),
-    Vec2(18, 0),
-    Vec2(19, 0)
-  });
+  level = new Level(map);
+  state = new LevelState(level);
+
+  delete bundle;
 }
-*/
+
+TrainingLevelController::~TrainingLevelController()
+{
+  delete map;
+  delete level;
+  delete state;
+}
+
+LevelState *
+TrainingLevelController::get_level_state()
+{
+  return state;
+}

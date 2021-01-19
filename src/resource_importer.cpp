@@ -61,6 +61,7 @@ main(int argc, const char **argv)
         delete bundle;
       }
       bundle = new ResourceBundle();
+      std::cout << "Adding to bundle " + bundle_name + "." << std::endl;
     }
     else if (tokens.size() > 0)
     {
@@ -80,6 +81,8 @@ main(int argc, const char **argv)
 
       Resource *r;
 
+      std::cout << "Adding resource " + resource_name + " (" + resource_type + ")." << std::endl;
+
       if (resource_type == "image")
       {
         r = new Image(resource_path);
@@ -95,6 +98,7 @@ main(int argc, const char **argv)
       else
       {
         error_at("Unsupported resource type.", line_number);
+        break;
       }
 
       bundle->add_resource(resource_name, r);

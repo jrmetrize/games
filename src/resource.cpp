@@ -529,7 +529,9 @@ Text::get_text() const
 Resource *
 Text::duplicate() const
 {
-  return new Text(text);
+  Text *t = new Text();
+  t->text = text;
+  return t;
 }
 
 std::string
@@ -542,17 +544,21 @@ Text *
 Text::from_data(const char *data, uint32_t length)
 {
   uint32_t text_length = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[0]));
-  return new Text(std::string(&data[4], text_length));
+  Text *t = new Text();
+  t->text = std::string(&data[4], text_length);
+  return t;
 }
 
 #ifdef RESOURCE_IMPORTER
 uint32_t
 Text::append_to(std::ostream &out) const
 {
-  uint32_t length_nbo = host_to_nbo(uint32_t(text.length());
+  uint32_t length_nbo = host_to_nbo(uint32_t(text.length()));
 
   out.write(reinterpret_cast<char *>(&length_nbo), sizeof(length_nbo));
   out.write(text.data(), text.length());
+
+  return 4 + text.length();
 }
 #endif
 
@@ -648,6 +654,11 @@ ResourceBundle::ResourceBundle(std::string path) :
     {
       resources[header.entries[i].resource_name] =
         FontFace::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
+    }
+    else if (header.entries[i].resource_type == "text")
+    {
+      resources[header.entries[i].resource_name] =
+        Text::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
     }
     else
     {

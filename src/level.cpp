@@ -153,19 +153,68 @@ LevelGeometryBlock::add_geometry_to_tree(RenderTree &tree)
   tree.objects.push_back(&right);
 }
 
+Tilemap::Tilemap(int _origin_x, int _origin_y,
+  unsigned int _width, unsigned int _height) :
+  origin_x(_origin_x), origin_y(_origin_y),
+  width(_width), height(_height),
+  tiles(width * height)
+{
+
+}
+
+Tilemap::~Tilemap()
+{
+
+}
+
+void
+Tilemap::set_tile(unsigned int x, unsigned int y, const Tile &tile)
+{
+  // TODO: check that (x, y) is in [0, width - 1] x [0, height - 1]
+  tiles[(y * width) + x] = tile;
+}
+
+void
+Tilemap::add_geometry(std::vector<LevelGeometryBlock *> &out)
+{
+  for (unsigned int i = 0; i < width; ++i)
+  {
+    for (unsigned int j = 0; j < height; ++j)
+    {
+      int idx = (j * width) + i;
+      const Tile &t = tiles[idx];
+      if (t.tile != "")
+      {
+        LevelGeometryBlock *block =
+          new LevelGeometryBlock(Vec2(origin_x + int(i), origin_y + int(j)), Vec2(1, 1));
+        out.push_back(block);
+      }
+    }
+  }
+}
+
 Level::Level() :
   name(""),
   gravity(0),
   player_speed(1),
   camera_mode(Vertical),
   sun_angle(1.6 * 3.14159),
+  tilemap(nullptr),
   geometry()
 {
-  LevelGeometryBlock *block = new LevelGeometryBlock(Vec2(0, -2), Vec2(5, 1));
-  geometry.push_back(block);
 
-  LevelGeometryBlock *block2 = new LevelGeometryBlock(Vec2(8, -2), Vec2(5, 1));
-  geometry.push_back(block2);
+}
+
+Level::Level(Tilemap *_tilemap) :
+  name(""),
+  gravity(0),
+  player_speed(1),
+  camera_mode(Vertical),
+  sun_angle(1.6 * 3.14159),
+  tilemap(_tilemap),
+  geometry()
+{
+
 }
 
 Level::~Level()
@@ -235,8 +284,10 @@ Level::set_sun_angle(float _sun_angle)
 }
 
 const std::vector<LevelGeometryBlock *> &
-Level::get_geometry() const
+Level::get_geometry()
 {
+  if (geometry.size() == 0)
+    tilemap->add_geometry(geometry);
   return geometry;
 }
 

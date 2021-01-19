@@ -113,6 +113,30 @@ struct RayInfo
   Vec2 direction; // must be normalized
 };
 
+class ComputedTexture
+{
+public:
+  virtual Vec4
+  value_at(Vec2 x) = 0;
+};
+
+class WhiteNoiseTexture : public ComputedTexture
+{
+  uint32_t seed;
+public:
+  WhiteNoiseTexture(uint32_t _seed);
+
+  Vec4
+  value_at(Vec2 x);
+};
+
+class Material
+{
+public:
+  virtual Vec2
+  normal_at(Vec2 x, Vec2 geometric_normal) = 0;
+};
+
 // TODO: make it possible to generalize this interface to shapes other than
 // segments, like circles, isosurfaces, etc.
 class RenderObject

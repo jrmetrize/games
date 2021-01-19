@@ -1,6 +1,8 @@
 #ifndef INPUT_H
 #define INPUT_H
 
+// Include glad first to avoid errors with glfw's OpenGL declarations
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "linear_algebra.h"

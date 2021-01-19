@@ -88,6 +88,33 @@ public:
   add_geometry_to_tree(RenderTree &tree);
 };
 
+struct Tile
+{
+  std::string tile;
+};
+
+class Tilemap
+{
+  int origin_x;
+  int origin_y;
+
+  unsigned int width;
+  unsigned int height;
+
+  std::vector<Tile> tiles;
+public:
+  Tilemap(int _origin_x, int _origin_y,
+    unsigned int _width, unsigned int _height);
+
+  ~Tilemap();
+
+  void
+  set_tile(unsigned int x, unsigned int y, const Tile &tile);
+
+  void
+  add_geometry(std::vector<LevelGeometryBlock *> &out);
+};
+
 class Level
 {
   std::string name;
@@ -96,9 +123,13 @@ class Level
   CameraMode camera_mode;
   float sun_angle;
 
+  Tilemap *tilemap;
+
   std::vector<LevelGeometryBlock *> geometry;
 public:
   Level();
+
+  Level(Tilemap *_tilemap);
 
   ~Level();
 
@@ -133,7 +164,7 @@ public:
   set_sun_angle(float _sun_angle);
 
   const std::vector<LevelGeometryBlock *> &
-  get_geometry() const;
+  get_geometry();
 };
 
 class LevelState
