@@ -5,6 +5,8 @@
 #include "screens/options_screen.h"
 #include "screens/title_screen.h"
 
+GameState * GameState::instance = nullptr;
+
 GameState::GameState(GraphicsServer *_graphics_server) :
   should_close(false),
   graphics_server(_graphics_server),
@@ -25,6 +27,18 @@ GameState::~GameState()
   delete level_screen;
   delete options_screen;
   delete title_screen;
+}
+
+void
+GameState::set_instance(GameState *_instance)
+{
+  instance = _instance;
+}
+
+GameState *
+GameState::get()
+{
+  return instance;
 }
 
 void

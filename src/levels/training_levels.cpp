@@ -7,6 +7,32 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+ElectricMaterial::ElectricMaterial(const Vec4 &_color) :
+  color(_color)
+{
+  texture = new NoiseTexture(1234, 2);
+}
+
+ElectricMaterial::~ElectricMaterial()
+{
+  delete texture;
+}
+
+void
+ElectricMaterial::set_color(const Vec4 &_color)
+{
+  color = _color;
+}
+
+Vec4
+ElectricMaterial::light(Vec2 ray_dir, Vec2 hit_location, RenderObject *obj)
+{
+  float x = (0.5 * texture->value_at(hit_location).x) + 1;
+  Vec4 value = x * color;
+  value.w = 1;
+  return value;
+}
+
 TrainingLevelController::TrainingLevelController() :
   colors()
 {
@@ -27,6 +53,7 @@ TrainingLevelController::TrainingLevelController() :
     t.tile = c.value()["tile"];
     map->set_tile(c.value()["x"], c.value()["y"] + 8, t);
   }
+  map->set_material("purple_electric_block", new ElectricMaterial(colors["vw_purple"]));
 
   level = new Level(map);
   level->set_gravity(9.81);

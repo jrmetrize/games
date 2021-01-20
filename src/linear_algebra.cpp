@@ -16,6 +16,12 @@ Vec2::Vec2(float _x, float _y) :
 
 }
 
+Vec2::Vec2(float _x) :
+  x(_x), y(_x)
+{
+
+}
+
 float
 Vec2::norm() const
 {
@@ -107,6 +113,12 @@ Vec3::Vec3(float _x, float _y, float _z) :
   x(_x),
   y(_y),
   z(_z)
+{
+
+}
+
+Vec3::Vec3(float _x) :
+  x(_x), y(_x), z(_x)
 {
 
 }
@@ -209,6 +221,12 @@ Vec4::Vec4(float _x, float _y, float _z, float _w) :
   y(_y),
   z(_z),
   w(_w)
+{
+
+}
+
+Vec4::Vec4(float _x) :
+  x(_x), y(_x), z(_x), w(_x)
 {
 
 }

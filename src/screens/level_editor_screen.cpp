@@ -29,7 +29,7 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
 {
   // Draw the 2D representation of the level
   LevelState *level_state = level->get_level_state();
-  level_state->draw_editor_view_in_rect(graphics_server,
+  level_state->draw_side_view_in_rect(graphics_server,
     Vec2(10, 10), Vec2(512, 512));
   RenderRequest req = {};
   req.camera_pos = level_state->get_player_position();
@@ -42,7 +42,7 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   strcpy(name_tmp, level->get_name().c_str());
   float gravity_tmp = level->get_gravity();
   float player_speed_tmp = level->get_player_speed();
-  int camera_mode_tmp = level->get_camera_mode();
+  int camera_mode_tmp = level->get_camera_mode();*/
 
   // Draw GUI elements for the level editor
   ImGui::Begin("Level Editor Menu");
@@ -66,13 +66,13 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   ImGui::SameLine();
   if (ImGui::Button("Reset"))
   {
-    delete level_state;
-    level_state = new LevelState(level);
+    /*delete level_state;
+    level_state = new LevelState(level);*/
   }
 
   ImGui::End();
 
-  ImGui::Begin("Level Properties");
+  /*ImGui::Begin("Level Properties");
   ImGui::InputText("Level Name", name_tmp, 256);
   ImGui::InputFloat("Gravity", &gravity_tmp);
   ImGui::InputFloat("Player Speed", &player_speed_tmp);

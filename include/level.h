@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "linear_algebra.h"
 #include "graphics.h"
@@ -70,7 +71,7 @@ class LevelGeometryBlock
   void
   update_render_geometry();
 public:
-  LevelGeometryBlock(Vec2 _position, Vec2 _size);
+  LevelGeometryBlock(Vec2 _position, Vec2 _size, Material *material);
 
   Vec2
   get_position() const;
@@ -102,6 +103,8 @@ class Tilemap
   unsigned int height;
 
   std::vector<Tile> tiles;
+
+  std::map<std::string, Material *> material_library;
 public:
   Tilemap(int _origin_x, int _origin_y,
     unsigned int _width, unsigned int _height);
@@ -110,6 +113,9 @@ public:
 
   void
   set_tile(unsigned int x, unsigned int y, const Tile &tile);
+
+  void
+  set_material(std::string name, Material *material);
 
   void
   add_geometry(std::vector<LevelGeometryBlock *> &out);
@@ -195,7 +201,7 @@ public:
   set_player_position(Vec2 _position);
 
   void
-  draw_editor_view_in_rect(GraphicsServer *graphics_server,
+  draw_side_view_in_rect(GraphicsServer *graphics_server,
     Vec2 origin, Vec2 size);
 };
 

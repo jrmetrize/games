@@ -64,8 +64,13 @@ main(int argc, const char **argv)
   }
 
   GraphicsServer *renderer = new GraphicsServer(window);
+  GraphicsServer::set_instance(renderer);
+
   GameState *state = new GameState(renderer);
+  GameState::set_instance(state);
+
   InputMonitor *input = new InputMonitor(window, state);
+  InputMonitor::set_instance(input);
 
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();

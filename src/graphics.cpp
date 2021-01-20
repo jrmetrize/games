@@ -336,24 +336,37 @@ Mesh::primitive_quad()
   return new Mesh(vertices, indices);
 }
 
-Segment::Segment(Vec2 _p1, Vec2 _p2, Vec3 _color) :
-  p1(_p1),
-  p2(_p2),
-  color(_color)
+NoiseTexture::NoiseTexture(uint32_t _seed, float _frequency) :
+  seed(_seed), noise(seed), frequency(_frequency)
 {
-
+  noise.SetFrequency(frequency);
 }
 
-Vec3
-Segment::get_color() const
+Vec4
+NoiseTexture::value_at(Vec2 x)
 {
-  return color;
+  return Vec4(noise.GetNoise(x.x, x.y));
 }
 
 void
-Segment::set_color(Vec3 _color)
+NoiseTexture::set_frequency(float _frequency)
 {
-  color = _color;
+  frequency = _frequency;
+  noise.SetFrequency(frequency);
+}
+
+Segment::Segment(Vec2 _p1, Vec2 _p2, Material *_material) :
+  p1(_p1),
+  p2(_p2),
+  material(_material)
+{
+
+}
+
+Material *
+Segment::get_material() const
+{
+  return material;
 }
 
 Vec2
@@ -388,6 +401,8 @@ Segment::test_ray(RayInfo ray_info) const
   return result;
 }
 
+GraphicsServer * GraphicsServer::instance = nullptr;
+
 GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   window(_window),
   current_screen(nullptr)
@@ -419,6 +434,18 @@ GraphicsServer::~GraphicsServer()
   delete texture_shader;
   delete text_shader;
   delete quad;
+}
+
+void
+GraphicsServer::set_instance(GraphicsServer *_instance)
+{
+  instance = _instance;
+}
+
+GraphicsServer *
+GraphicsServer::get()
+{
+  return instance;
 }
 
 Vec2
@@ -474,6 +501,7 @@ GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
   }
   if (hit != nullptr)
   {
+    /*
     Vec3 obj_color = hit->get_color();
     color += Vec4(0.2 * obj_color.x, 0.2 * obj_color.y, 0.2 * obj_color.z, 0);
     // Now do lighting calculations!
@@ -512,7 +540,12 @@ GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
         color += Vec4(specular * 1, specular * 1, specular * 1, 0);
       }
     }
-    return color;
+    */
+    Vec2 hit_location = nearest.location;
+    if (hit->get_material() != nullptr)
+      return hit->get_material()->light(ray.direction, hit_location, hit);
+    else
+      return Vec4(1);
   }
   else
   {
@@ -611,6 +644,43 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
 
     current_pos += scale_factor * Vec2(glyph.horizontal_advance, 0);
   }
+}
+
+void
+GraphicsServer::clear_stencil_buffer()
+{
+  glClear(GL_STENCIL_BUFFER_BIT);
+}
+
+void
+GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
+{
+  glStencilMask(0xFF);
+  glStencilFunc(GL_ALWAYS, 1, 0xFF);
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  color_shader->bind_uniform(get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  color_shader->bind_uniform(Vec4(0), "color");
+  color_shader->draw(quad);
+
+  glStencilMask(0x00);
+  glStencilFunc(GL_EQUAL, 1, 0xFF);
+}
+
+void
+GraphicsServer::enable_stencil()
+{
+  glEnable(GL_STENCIL_TEST);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+}
+
+void
+GraphicsServer::disable_stencil()
+{
+  glDisable(GL_STENCIL_TEST);
 }
 
 void

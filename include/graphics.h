@@ -6,6 +6,7 @@
 #include <functional>
 
 #include "linear_algebra.h"
+#include "FastNoiseLite.h"
 
 #include <glad/glad.h>
 #include <glfw/glfw3.h>
@@ -120,21 +121,28 @@ public:
   value_at(Vec2 x) = 0;
 };
 
-class WhiteNoiseTexture : public ComputedTexture
+class NoiseTexture : public ComputedTexture
 {
+  FastNoiseLite noise;
   uint32_t seed;
+  float frequency;
 public:
-  WhiteNoiseTexture(uint32_t _seed);
+  NoiseTexture(uint32_t _seed = 0, float _frequency = 1);
 
   Vec4
   value_at(Vec2 x);
+
+  void
+  set_frequency(float _frequency);
 };
+
+class RenderObject;
 
 class Material
 {
 public:
-  virtual Vec2
-  normal_at(Vec2 x, Vec2 geometric_normal) = 0;
+  virtual Vec4
+  light(Vec2 ray_dir, Vec2 hit_location, RenderObject *obj) = 0;
 };
 
 // TODO: make it possible to generalize this interface to shapes other than
@@ -145,8 +153,8 @@ public:
   virtual RayResult
   test_ray(RayInfo ray_info) const = 0;
 
-  virtual Vec3
-  get_color() const = 0;
+  virtual Material *
+  get_material() const = 0;
 
   virtual Vec2
   get_normal() const = 0;
@@ -156,18 +164,16 @@ class Segment : public RenderObject
 {
   Vec2 p1;
   Vec2 p2;
-  Vec3 color;
+
+  Material *material;
 public:
-  Segment(Vec2 _p1, Vec2 _p2, Vec3 _color = Vec3(1, 1, 1));
+  Segment(Vec2 _p1, Vec2 _p2, Material *_material = nullptr);
 
   RayResult
   test_ray(RayInfo ray_info) const;
 
-  Vec3
-  get_color() const;
-
-  void
-  set_color(Vec3 _color);
+  Material *
+  get_material() const;
 
   Vec2
   get_normal() const;
@@ -210,6 +216,8 @@ struct TextRenderRequest
 
 class GraphicsServer
 {
+  static GraphicsServer *instance;
+
   GLFWwindow *window;
 
   Shader *color_shader;
@@ -226,6 +234,12 @@ public:
   GraphicsServer(GLFWwindow *_window);
 
   ~GraphicsServer();
+
+  static void
+  set_instance(GraphicsServer *_instance);
+
+  static GraphicsServer *
+  get();
 
   Vec2
   get_framebuffer_size() const;
@@ -250,6 +264,18 @@ public:
 
   void
   draw_text(const TextRenderRequest &text_request);
+
+  void
+  clear_stencil_buffer();
+
+  void
+  draw_stencil_rect(Vec2 origin, Vec2 size);
+
+  void
+  enable_stencil();
+
+  void
+  disable_stencil();
 
   void
   render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render);

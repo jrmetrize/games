@@ -39,6 +39,8 @@ window_close_callback(GLFWwindow *window)
   input->close_window_pressed();
 }
 
+InputMonitor * InputMonitor::instance = nullptr;
+
 InputMonitor::InputMonitor(GLFWwindow *_window, GameState *_state) :
   window(_window),
   state(_state)
@@ -68,6 +70,18 @@ InputMonitor::joystick_threshold(float input) const
 InputMonitor::~InputMonitor()
 {
   glfwSetWindowUserPointer(window, nullptr);
+}
+
+void
+InputMonitor::set_instance(InputMonitor *_instance)
+{
+  instance = _instance;
+}
+
+InputMonitor *
+InputMonitor::get()
+{
+  return instance;
 }
 
 void

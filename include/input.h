@@ -102,6 +102,8 @@ class GameState;
 
 class InputMonitor
 {
+  static InputMonitor *instance;
+
   GLFWwindow *window;
 
   GameState *state;
@@ -115,6 +117,12 @@ public:
   InputMonitor(GLFWwindow *_window, GameState *_state);
 
   ~InputMonitor();
+
+  static void
+  set_instance(InputMonitor *_instance);
+
+  static InputMonitor *
+  get();
 
   void
   close_window_pressed();

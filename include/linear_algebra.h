@@ -12,6 +12,8 @@ struct Vec2
 
   Vec2(float _x, float _y);
 
+  Vec2(float _x);
+
   float
   norm() const;
 
@@ -58,6 +60,8 @@ struct Vec3
   Vec3();
 
   Vec3(float _x, float _y, float _z);
+
+  Vec3(float _x);
 
   float
   norm() const;
@@ -106,6 +110,8 @@ struct Vec4
   Vec4();
 
   Vec4(float _x, float _y, float _z, float _w);
+
+  Vec4(float _x);
 
   float
   norm() const;

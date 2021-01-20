@@ -13,6 +13,8 @@ class Screen;
 
 class GameState
 {
+  static GameState *instance;
+
   bool should_close;
 
   GraphicsServer *graphics_server;
@@ -27,6 +29,12 @@ public:
   GameState(GraphicsServer *_graphics_server);
 
   ~GameState();
+
+  static void
+  set_instance(GameState *_instance);
+
+  static GameState *
+  get();
 
   void
   update(InputMonitor *input, float time_elapsed);

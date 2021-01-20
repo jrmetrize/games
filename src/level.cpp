@@ -91,18 +91,15 @@ test_collision(AABBCollisionShape &a, AABBCollisionShape &b)
   return r;
 }
 
-LevelGeometryBlock::LevelGeometryBlock(Vec2 _position, Vec2 _size) :
+LevelGeometryBlock::LevelGeometryBlock(Vec2 _position, Vec2 _size, Material *material) :
   position(_position),
   size(_size),
-  left(position - (0.5 * size), position + (0.5 * Vec2(-size.x, size.y))),
-  top(position + (0.5 * Vec2(-size.x, size.y)), position + (0.5 * size)),
-  right(position + (0.5 * size), position + (0.5 * Vec2(size.x, -size.y))),
-  bottom(position + (0.5 * Vec2(size.x, -size.y)), position - (0.5 * size))
+  left(position - (0.5 * size), position + (0.5 * Vec2(-size.x, size.y)), material),
+  top(position + (0.5 * Vec2(-size.x, size.y)), position + (0.5 * size), material),
+  right(position + (0.5 * size), position + (0.5 * Vec2(size.x, -size.y)), material),
+  bottom(position + (0.5 * Vec2(size.x, -size.y)), position - (0.5 * size), material)
 {
-  left.set_color(Vec3(1, 0, 0));
-  right.set_color(Vec3(0, 1, 0));
-  top.set_color(Vec3(0.5, 0.5, 0));
-  bottom.set_color(Vec3(0, 0, 1));
+
 }
 
 void
@@ -175,6 +172,12 @@ Tilemap::set_tile(unsigned int x, unsigned int y, const Tile &tile)
 }
 
 void
+Tilemap::set_material(std::string name, Material *material)
+{
+  material_library[name] = material;
+}
+
+void
 Tilemap::add_geometry(std::vector<LevelGeometryBlock *> &out)
 {
   for (unsigned int i = 0; i < width; ++i)
@@ -185,8 +188,9 @@ Tilemap::add_geometry(std::vector<LevelGeometryBlock *> &out)
       const Tile &t = tiles[idx];
       if (t.tile != "")
       {
+        Material *m = material_library[t.tile];
         LevelGeometryBlock *block =
-          new LevelGeometryBlock(Vec2(origin_x + int(i), origin_y + int(j)), Vec2(1, 1));
+          new LevelGeometryBlock(Vec2(origin_x + int(i), origin_y + int(j)), Vec2(1, 1), m);
         out.push_back(block);
       }
     }
@@ -393,7 +397,7 @@ LevelState::set_player_position(Vec2 _position)
 }
 
 void
-LevelState::draw_editor_view_in_rect(GraphicsServer *graphics_server,
+LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
   Vec2 origin, Vec2 size)
 {
   // Border and background
@@ -413,6 +417,11 @@ LevelState::draw_editor_view_in_rect(GraphicsServer *graphics_server,
     level->get_geometry();
   Mat3 world_to_screen_transform = Mat3::translate(origin + ((1.0 / 2.0) * size))
     * Mat3::scale(Vec2(16, 16)) * Mat3::translate(-player_position);
+
+  // Clip the geometry to the viewing window by applying a stencil
+  graphics_server->enable_stencil();
+  graphics_server->draw_stencil_rect(origin, size);
+
   for (unsigned int i = 0; i < geometry.size(); ++i)
   {
     Vec2 block_origin = geometry[i]->get_position()
@@ -423,4 +432,7 @@ LevelState::draw_editor_view_in_rect(GraphicsServer *graphics_server,
     graphics_server->draw_color_rect(Vec2(screen_origin.x, screen_origin.y),
       16.0 * block_size, Vec4(0, 1, 0, 1));
   }
+
+  graphics_server->clear_stencil_buffer();
+  graphics_server->disable_stencil();
 }
