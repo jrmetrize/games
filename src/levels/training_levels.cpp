@@ -29,6 +29,9 @@ TrainingLevelController::TrainingLevelController() :
   }
 
   level = new Level(map);
+  level->set_gravity(9.81);
+  level->set_player_speed(5.0);
+
   state = new LevelState(level);
 
   delete bundle;
