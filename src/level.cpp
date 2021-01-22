@@ -462,8 +462,10 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
     req.bounding_box_origin = origin + Vec2(margin);
     req.bounding_box_size = size - Vec2(margin);
     req.text = current_dialogue->get_current_point().get_text();
+    req.color = Vec4(1, 0, 0, 1);
     req.size = 20;
     req.font = GameState::get()->get_sans();
+    req.center = false;
     graphics_server->draw_text(req);
   }
 }

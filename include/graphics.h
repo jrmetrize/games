@@ -270,6 +270,9 @@ public:
   draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);
 
   void
+  draw_text_line(const TextRenderRequest &text_request);
+
+  void
   draw_text(const TextRenderRequest &text_request);
 
   void
