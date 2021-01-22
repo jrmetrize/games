@@ -63,14 +63,18 @@ main(int argc, const char **argv)
     return 0;
   }
 
-  GraphicsServer *renderer = new GraphicsServer(window);
-  GraphicsServer::set_instance(renderer);
+  // TODO: we need to be much more careful about dependencies here. Ideally,
+  // none of the singletons depend on each other in constructors, and
+  // proper initialization with dependencies will happend after all singletons
+  // have been created.
+  InputMonitor *input = new InputMonitor(window);
+  InputMonitor::set_instance(input);
 
-  GameState *state = new GameState(renderer);
+  GameState *state = new GameState();
   GameState::set_instance(state);
 
-  InputMonitor *input = new InputMonitor(window, state);
-  InputMonitor::set_instance(input);
+  GraphicsServer *renderer = new GraphicsServer(window);
+  GraphicsServer::set_instance(renderer);
 
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();
@@ -83,7 +87,7 @@ main(int argc, const char **argv)
       float(std::chrono::duration_cast<std::chrono::microseconds>(current_frame
       - last_frame).count()) / (1000 * 1000);
     last_frame = current_frame;
-    state->update(input, duration);
+    state->update(duration);
     renderer->draw();
   }
 

@@ -303,12 +303,27 @@ LevelState::LevelState(Level *_level) :
   player_camera_angle(),
   current_dialogue(nullptr)
 {
-
+  for (unsigned int i = 0; i < 6; ++i)
+  {
+    dialogue_choices[i] = new Button(Vec2(0), Vec2(0),
+      std::bind(&LevelState::dialogue_choice_callback, this, std::placeholders::_1),
+      reinterpret_cast<void *>(i));
+    dialogue_choices[i]->set_enabled(false);
+  }
 }
 
 LevelState::~LevelState()
 {
+  for (unsigned int i = 0; i < 6; ++i)
+    delete dialogue_choices[i];
+}
 
+void
+LevelState::dialogue_choice_callback(void *userdata)
+{
+  unsigned int i = reinterpret_cast<unsigned int>(userdata);
+  current_dialogue->set_current(
+    current_dialogue->get_current_point().get_choices()[i].next);
 }
 
 void
@@ -451,6 +466,7 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
 {
   // Border and background
   const float margin = 10;
+  const float option_height = 40;
   graphics_server->draw_color_rect(origin - Vec2(margin, margin),
     size + (2 * Vec2(margin, margin)), Vec4(1, 1, 1, 1));
   graphics_server->draw_color_rect(origin,
@@ -462,10 +478,44 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
     req.bounding_box_origin = origin + Vec2(margin);
     req.bounding_box_size = size - Vec2(margin);
     req.text = current_dialogue->get_current_point().get_text();
-    req.color = Vec4(1, 0, 0, 1);
+    req.color = Vec4(1);
     req.size = 20;
     req.font = GameState::get()->get_sans();
     req.center = false;
     graphics_server->draw_text(req);
+
+    const std::vector<DialogueChoice> &choices =
+      current_dialogue->get_current_point().get_choices();
+    for (unsigned int i = 0; i < choices.size(); ++i)
+    {
+      Vec2 origin2 = Vec2(margin, (margin * (i + 1)) + (option_height * i));
+      Vec2 size2 = Vec2(size.x - (2 * margin), option_height);
+      bool cursor_in = InputMonitor::get()->get_mouse_position().inside_rect(origin + origin2,
+        size2);
+      bool selected = cursor_in && InputMonitor::get()->is_left_mouse_down();
+      if (selected)
+      {
+        graphics_server->draw_color_rect(origin + origin2,
+          size2, Vec4(0.4, 0.2, 0.9, 1));
+      }
+      else if (cursor_in)
+      {
+        graphics_server->draw_color_rect(origin + origin2,
+          size2, Vec4(0.4, 0.2, 0.6, 1));
+      }
+      else
+      {
+        graphics_server->draw_color_rect(origin + origin2,
+          size2, Vec4(0.4, 0.4, 0.4, 1));
+      }
+      req.bounding_box_origin = origin + origin2 + Vec2(margin);
+      req.bounding_box_size = size2 - Vec2(margin);
+      req.text = choices[i].text;
+      graphics_server->draw_text(req);
+
+      dialogue_choices[i]->set_origin(origin + origin2);
+      dialogue_choices[i]->set_size(size2);
+      dialogue_choices[i]->set_enabled(true);
+    }
   }
 }

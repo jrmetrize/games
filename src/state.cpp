@@ -1,5 +1,6 @@
 #include "state.h"
 #include "graphics.h"
+#include "input.h"
 #include "resource.h"
 #include "util.h"
 #include "screens/level_editor_screen.h"
@@ -30,6 +31,12 @@ DialoguePoint::get_text() const
   return text;
 }
 
+const std::vector<DialogueChoice> &
+DialoguePoint::get_choices() const
+{
+  return choices;
+}
+
 DialogueTree::DialogueTree() :
   points(), current_point()
 {
@@ -54,11 +61,16 @@ DialogueTree::get_current_point()
   return points[current_point];
 }
 
+void
+DialogueTree::choice_made(unsigned int index)
+{
+  current_point = points[current_point].get_choices()[index].next;
+}
+
 GameState * GameState::instance = nullptr;
 
-GameState::GameState(GraphicsServer *_graphics_server) :
+GameState::GameState() :
   should_close(false),
-  graphics_server(_graphics_server),
   current_screen(nullptr),
   ref(std::chrono::steady_clock::now()),
   last_update(ref)
@@ -70,7 +82,6 @@ GameState::GameState(GraphicsServer *_graphics_server) :
 
   font_bundle = new ResourceBundle(local_to_absolute_path("resources/fonts.rbz"));
 
-  graphics_server->set_current_screen(title_screen);
   current_screen = title_screen;
 }
 
@@ -97,10 +108,11 @@ GameState::get()
 }
 
 void
-GameState::update(InputMonitor *input, float time_elapsed)
+GameState::update(float time_elapsed)
 {
   last_update = std::chrono::steady_clock::now();
-  current_screen->update(input, time_elapsed);
+  GraphicsServer::get()->set_current_screen(current_screen);
+  current_screen->update(InputMonitor::get(), time_elapsed);
 }
 
 float
@@ -127,42 +139,42 @@ GameState::get_serif()
 void
 GameState::title_screen_to_level_screen()
 {
-  graphics_server->set_current_screen(level_screen);
+  GraphicsServer::get()->set_current_screen(level_screen);
   current_screen = level_screen;
 }
 
 void
 GameState::level_screen_to_title_screen()
 {
-  graphics_server->set_current_screen(title_screen);
+  GraphicsServer::get()->set_current_screen(title_screen);
   current_screen = title_screen;
 }
 
 void
 GameState::title_screen_to_level_editor_screen()
 {
-  graphics_server->set_current_screen(level_editor_screen);
+  GraphicsServer::get()->set_current_screen(level_editor_screen);
   current_screen = level_editor_screen;
 }
 
 void
 GameState::level_editor_screen_to_title_screen()
 {
-  graphics_server->set_current_screen(title_screen);
+  GraphicsServer::get()->set_current_screen(title_screen);
   current_screen = title_screen;
 }
 
 void
 GameState::title_screen_to_options_screen()
 {
-  graphics_server->set_current_screen(options_screen);
+  GraphicsServer::get()->set_current_screen(options_screen);
   current_screen = options_screen;
 }
 
 void
 GameState::options_screen_to_title_screen()
 {
-  graphics_server->set_current_screen(title_screen);
+  GraphicsServer::get()->set_current_screen(title_screen);
   current_screen = title_screen;
 }
 

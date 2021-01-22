@@ -9,6 +9,7 @@
 #include "graphics.h"
 
 class InputMonitor;
+class Button;
 class DialogueTree;
 
 struct AABB
@@ -183,6 +184,10 @@ class LevelState
   float player_camera_angle;
 
   DialogueTree *current_dialogue;
+  Button *dialogue_choices[6];
+
+  void
+  dialogue_choice_callback(void *userdata);
 public:
   LevelState(Level *_level);
 

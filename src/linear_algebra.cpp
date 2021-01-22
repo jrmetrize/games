@@ -34,6 +34,13 @@ Vec2::normalized() const
   return (1 / norm()) * (*this);
 }
 
+bool
+Vec2::inside_rect(const Vec2 &origin, const Vec2 &size) const
+{
+  return (origin.x <= x) && (x <= origin.x + size.x)
+    && (origin.y <= y) && (y <= origin.y + size.y);
+}
+
 std::string
 Vec2::string() const
 {

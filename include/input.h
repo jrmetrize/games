@@ -4,8 +4,18 @@
 // Include glad first to avoid errors with glfw's OpenGL declarations
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <functional>
+#include <optional>
+#include <vector>
 
 #include "linear_algebra.h"
+
+enum MouseButton
+{
+  MouseButtonLeft,
+  MouseButtonMiddle,
+  MouseButtonRight
+};
 
 enum Key
 {
@@ -98,7 +108,12 @@ enum GamepadButton
   ButtonMenu
 };
 
-class GameState;
+struct Listener
+{
+  std::optional<std::function<void(MouseButton, bool)>> mouse_button_handle;
+  std::optional<std::function<void(Key, bool)>> key_handle;
+  std::optional<std::function<void(GamepadButton, bool)>> gamepad_button_handle;
+};
 
 class InputMonitor
 {
@@ -106,7 +121,7 @@ class InputMonitor
 
   GLFWwindow *window;
 
-  GameState *state;
+  std::vector<Listener *> listeners;
 
   float
   input_threshold(float input, float threshold) const;
@@ -114,7 +129,7 @@ class InputMonitor
   float
   joystick_threshold(float input) const;
 public:
-  InputMonitor(GLFWwindow *_window, GameState *_state);
+  InputMonitor(GLFWwindow *_window);
 
   ~InputMonitor();
 
@@ -123,6 +138,18 @@ public:
 
   static InputMonitor *
   get();
+
+  void
+  install_listener(Listener *listener);
+
+  void
+  remove_listener(Listener *listener);
+
+  void
+  mouse_button_press(MouseButton button, bool press);
+
+  void
+  key_changed(Key key, bool press);
 
   void
   close_window_pressed();
@@ -162,6 +189,37 @@ public:
 
   bool
   get_jump_input() const;
+};
+
+class Button
+{
+  Listener listener;
+
+  Vec2 origin;
+  Vec2 size;
+
+  bool enabled;
+  bool state;
+
+  std::function<void(void *)> callback;
+  void *userdata;
+
+  void
+  mouse_button(MouseButton button, bool pressed);
+public:
+  Button(Vec2 _origin, Vec2 _size,
+    const std::function<void(void *)> _callback, void *_userdata = nullptr);
+
+  void
+  set_origin(Vec2 _origin);
+
+  void
+  set_size(Vec2 _size);
+
+  void
+  set_enabled(bool _enabled);
+
+  ~Button();
 };
 
 #endif

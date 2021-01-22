@@ -20,6 +20,9 @@ struct Vec2
   Vec2
   normalized() const;
 
+  bool
+  inside_rect(const Vec2 &origin, const Vec2 &size) const;
+
   std::string
   string() const;
 

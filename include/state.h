@@ -6,9 +6,6 @@
 #include <map>
 #include <chrono>
 
-class GraphicsServer;
-class InputMonitor;
-
 class LevelEditorScreen;
 class LevelScreen;
 class OptionsScreen;
@@ -40,6 +37,9 @@ public:
 
   std::string
   get_text() const;
+
+  const std::vector<DialogueChoice> &
+  get_choices() const;
 };
 
 class DialogueTree
@@ -57,6 +57,9 @@ public:
 
   const DialoguePoint &
   get_current_point();
+
+  void
+  choice_made(unsigned int index);
 };
 
 class GameState
@@ -68,8 +71,6 @@ class GameState
 
   bool should_close;
 
-  GraphicsServer *graphics_server;
-
   LevelEditorScreen *level_editor_screen;
   LevelScreen *level_screen;
   OptionsScreen *options_screen;
@@ -79,7 +80,7 @@ class GameState
 
   ResourceBundle *font_bundle;
 public:
-  GameState(GraphicsServer *_graphics_server);
+  GameState();
 
   ~GameState();
 
@@ -90,7 +91,7 @@ public:
   get();
 
   void
-  update(InputMonitor *input, float time_elapsed);
+  update(float time_elapsed);
 
   float
   get_time() const;
