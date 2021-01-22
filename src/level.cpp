@@ -1,6 +1,7 @@
 #include "level.h"
 #include "graphics.h"
 #include "input.h"
+#include "state.h"
 
 AABB::AABB(Vec2 _center, Vec2 _size) :
   center(_center),
@@ -299,7 +300,8 @@ LevelState::LevelState(Level *_level) :
   level(_level),
   player_position(),
   player_velocity(),
-  player_camera_angle()
+  player_camera_angle(),
+  current_dialogue(nullptr)
 {
 
 }
@@ -317,8 +319,8 @@ LevelState::update(InputMonitor *input, float time_elapsed)
   Vec2 next_position = player_position
     + (time_elapsed * next_velocity);
 
-  AABBCollisionShape player_collider = AABBCollisionShape(next_position,
-    Vec2(0.5, 0.5));
+  AABBCollisionShape player_collider = AABBCollisionShape(next_position + Vec2(0, -0.9),
+    Vec2(1, 2));
   CollisionResult collision;
   for (unsigned int i = 0; i < level->get_geometry().size(); ++i)
   {
@@ -397,6 +399,12 @@ LevelState::set_player_position(Vec2 _position)
 }
 
 void
+LevelState::set_current_dialogue(DialogueTree *_current_dialogue)
+{
+  current_dialogue = _current_dialogue;
+}
+
+void
 LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
   Vec2 origin, Vec2 size)
 {
@@ -409,8 +417,8 @@ LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
 
   // Use 16 pixels = 1 meter
   // Draw the player
-  graphics_server->draw_color_rect(origin + ((1.0 / 2.0) * size) - Vec2(4, 4),
-    Vec2(8, 8), Vec4(0.8, 0.2, 0.1, 1));
+  graphics_server->draw_color_rect(origin + ((1.0 / 2.0) * size) - Vec2(8, 32),
+    Vec2(16, 32), Vec4(0.8, 0.2, 0.1, 1));
 
   // Draw the level
   const std::vector<LevelGeometryBlock *> &geometry =
@@ -435,4 +443,27 @@ LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
 
   graphics_server->clear_stencil_buffer();
   graphics_server->disable_stencil();
+}
+
+void
+LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
+  Vec2 origin, Vec2 size)
+{
+  // Border and background
+  const float margin = 10;
+  graphics_server->draw_color_rect(origin - Vec2(margin, margin),
+    size + (2 * Vec2(margin, margin)), Vec4(1, 1, 1, 1));
+  graphics_server->draw_color_rect(origin,
+    size, Vec4(0.2, 0.2, 0.2, 1));
+
+  if (current_dialogue != nullptr)
+  {
+    TextRenderRequest req = {};
+    req.bounding_box_origin = origin + Vec2(margin);
+    req.bounding_box_size = size - Vec2(margin);
+    req.text = current_dialogue->get_current_point().get_text();
+    req.size = 20;
+    req.font = GameState::get()->get_sans();
+    graphics_server->draw_text(req);
+  }
 }

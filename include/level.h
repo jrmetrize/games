@@ -9,6 +9,7 @@
 #include "graphics.h"
 
 class InputMonitor;
+class DialogueTree;
 
 struct AABB
 {
@@ -180,6 +181,8 @@ class LevelState
   Vec2 player_position;
   Vec2 player_velocity;
   float player_camera_angle;
+
+  DialogueTree *current_dialogue;
 public:
   LevelState(Level *_level);
 
@@ -201,7 +204,14 @@ public:
   set_player_position(Vec2 _position);
 
   void
+  set_current_dialogue(DialogueTree *_current_dialogue);
+
+  void
   draw_side_view_in_rect(GraphicsServer *graphics_server,
+    Vec2 origin, Vec2 size);
+
+  void
+  draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
     Vec2 origin, Vec2 size);
 };
 

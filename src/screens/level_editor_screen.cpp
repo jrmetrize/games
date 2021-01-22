@@ -31,6 +31,8 @@ LevelEditorScreen::draw_custom(GraphicsServer *graphics_server)
   LevelState *level_state = level->get_level_state();
   level_state->draw_side_view_in_rect(graphics_server,
     Vec2(10, 10), Vec2(512, 512));
+  level_state->draw_dialogue_box_in_rect(graphics_server,
+    Vec2(700, 10), Vec2(512, 512));
   RenderRequest req = {};
   req.camera_pos = level_state->get_player_position();
   req.camera_dir = level_state->get_player_camera_direction();

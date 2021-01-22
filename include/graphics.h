@@ -119,6 +119,9 @@ class ComputedTexture
 public:
   virtual Vec4
   value_at(Vec2 x) = 0;
+
+  virtual Vec4
+  value_at(Vec3 x) = 0;
 };
 
 class NoiseTexture : public ComputedTexture
@@ -131,6 +134,9 @@ public:
 
   Vec4
   value_at(Vec2 x);
+
+  Vec4
+  value_at(Vec3 x);
 
   void
   set_frequency(float _frequency);
@@ -211,6 +217,7 @@ struct TextRenderRequest
   Vec4 color;
   FontFace *font;
 
+  // TODO: do we need more text alignment options besides 'top left' and 'top center'?
   bool center;
 };
 

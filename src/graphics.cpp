@@ -348,6 +348,12 @@ NoiseTexture::value_at(Vec2 x)
   return Vec4(noise.GetNoise(x.x, x.y));
 }
 
+Vec4
+NoiseTexture::value_at(Vec3 x)
+{
+  return Vec4(noise.GetNoise(x.x, x.y, x.z));
+}
+
 void
 NoiseTexture::set_frequency(float _frequency)
 {
@@ -607,6 +613,26 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
   float scale_factor = text_request.size / (64.0f * 64.0f);
   float texture_padding = 8; // 'spread' value in SDF generation
 
+  // In order to arrange the lines, break the string into words (separated
+  // by whitespace) and calculate the width of each word. Then greedily
+  // add words to a line until the length of the bounding box will be exceeded.
+  std::vector<std::string> words;
+  std::string current_token = "";
+  for (const char &c : text_request.text)
+  {
+    if (isspace(c) && current_token.length() > 0)
+    {
+      words.push_back(current_token);
+      current_token = "";
+    }
+    else
+    {
+      current_token.append(1, c);
+    }
+  }
+  if (current_token.length() > 0)
+    words.push_back(current_token);
+
   text_shader->bind_uniform(text_request.color, "color");
 
   text_request.font->generate_textures();
@@ -630,7 +656,14 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
     // We also have to displace the origin of the quad by (-8, -8) bitmap pixels
     FontFace::Kerning kern = {};
     if (i > 0)
+    {
       kern = text_request.font->get_kerning(text_request.text[i - 1], c);
+    }
+    else
+    {
+      kern.x = 0;
+      kern.y = 0;
+    }
     Vec2 adjustment = scale_factor * Vec2(glyph.horizontal_bearing_x + kern.x,
       -glyph.height + glyph.horizontal_bearing_y + kern.y);
     adjustment += -scale_factor * Vec2(texture_padding * (float(glyph.width) / float(glyph.bitmap_width)),

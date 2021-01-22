@@ -1,6 +1,11 @@
 #ifndef STATE_H
 #define STATE_H
 
+#include <string>
+#include <vector>
+#include <map>
+#include <chrono>
+
 class GraphicsServer;
 class InputMonitor;
 
@@ -11,8 +16,54 @@ class TitleScreen;
 
 class Screen;
 
+class ResourceBundle;
+class FontFace;
+
+struct DialogueChoice
+{
+  std::string text;
+  std::string next;
+};
+
+class DialoguePoint
+{
+  std::string text;
+  std::string next;
+  std::vector<DialogueChoice> choices;
+public:
+  DialoguePoint();
+
+  DialoguePoint(std::string _text, std::string _next);
+
+  void
+  add_choice(const DialogueChoice &choice);
+
+  std::string
+  get_text() const;
+};
+
+class DialogueTree
+{
+  std::map<std::string, DialoguePoint> points;
+  std::string current_point;
+public:
+  DialogueTree();
+
+  void
+  add_point(std::string name, const DialoguePoint &point);
+
+  void
+  set_current(std::string current);
+
+  const DialoguePoint &
+  get_current_point();
+};
+
 class GameState
 {
+  std::chrono::time_point<std::chrono::steady_clock> ref;
+  std::chrono::time_point<std::chrono::steady_clock> last_update;
+
   static GameState *instance;
 
   bool should_close;
@@ -25,6 +76,8 @@ class GameState
   TitleScreen *title_screen;
 
   Screen *current_screen;
+
+  ResourceBundle *font_bundle;
 public:
   GameState(GraphicsServer *_graphics_server);
 
@@ -38,6 +91,15 @@ public:
 
   void
   update(InputMonitor *input, float time_elapsed);
+
+  float
+  get_time() const;
+
+  FontFace *
+  get_sans();
+
+  FontFace *
+  get_serif();
 
   void
   title_screen_to_level_screen();

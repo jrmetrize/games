@@ -3,6 +3,7 @@
 #include "resource.h"
 #include "input.h"
 #include "level.h"
+#include "state.h"
 
 #include "json.hpp"
 using json = nlohmann::json;
@@ -27,7 +28,9 @@ ElectricMaterial::set_color(const Vec4 &_color)
 Vec4
 ElectricMaterial::light(Vec2 ray_dir, Vec2 hit_location, RenderObject *obj)
 {
-  float x = (0.5 * texture->value_at(hit_location).x) + 1;
+  Vec3 noise_pos = Vec3(hit_location.x, hit_location.y, GameState::get()->get_time() / 15.0f);
+
+  float x = (0.5 * texture->value_at(noise_pos).x) + 1;
   Vec4 value = x * color;
   value.w = 1;
   return value;
@@ -55,11 +58,35 @@ TrainingLevelController::TrainingLevelController() :
   }
   map->set_material("purple_electric_block", new ElectricMaterial(colors["vw_purple"]));
 
+  DialogueTree *tree = new DialogueTree();
+  for (const auto &c : j["dialogue"]["dia0"].items())
+  {
+    std::string name = c.value()["name"];
+    std::string text = c.value()["text"];
+    std::string next = "";
+    if (c.value().contains("next"))
+      next = c.value()["next"];
+    DialoguePoint p = DialoguePoint(text, next);
+    if (c.value().contains("choices"))
+    {
+      for (const auto &c2 : c.value()["choices"].items())
+      {
+        DialogueChoice choice = {};
+        choice.text = c2.value()["text"];
+        choice.next = c2.value()["next"];
+        p.add_choice(choice);
+      }
+    }
+    tree->add_point(name, p);
+  }
+  tree->set_current("0");
+
   level = new Level(map);
   level->set_gravity(9.81);
   level->set_player_speed(5.0);
 
   state = new LevelState(level);
+  state->set_current_dialogue(tree);
 
   delete bundle;
 }
