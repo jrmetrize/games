@@ -1,13 +1,13 @@
 #include <string>
-#include <vector>
-#include <sstream>
 #include <iostream>
-#include <ios>
-#include <fstream>
-
-#include "picosha2.h"
+#include <map>
+#include <iomanip>
+#include <filesystem>
 #include "resource.h"
+#include "json.hpp"
+#include "picosha2.h"
 
+using json = nlohmann::json;
 using Hash = std::vector<unsigned char>;
 
 Hash
@@ -24,158 +24,269 @@ hash_file(std::string filepath)
 }
 
 std::string
-to_hex(Hash hash)
+hash_to_hex(Hash hash)
 {
   std::stringstream string = std::stringstream();
   for (unsigned int i = 0; i < hash.size(); ++i)
   {
-    string << std::hex << int(hash[i]);
+    string << std::setfill('0') << std::setw(2) << std::hex << int(hash[i]);
   }
   return string.str();
 }
 
-void
-error_at(std::string msg, unsigned int line)
+Hash
+hex_to_hash(std::string hex_str)
 {
-  std::cout << "Error (" + std::to_string(line) + "): " + msg << std::endl;
+  Hash hash = Hash();
+
+  for (unsigned int i = 0; i < hex_str.length(); i += 2)
+  {
+    unsigned char byte = stoul(hex_str.substr(i, 2), nullptr, 16);
+    hash.push_back(byte);
+  }
+
+  return hash;
 }
 
-struct HashCacheEntry
+struct ResourceCacheEntry
 {
-  std::string resource_name;
-  Hash hash;
+  std::string name;
+  Hash file_hash;
+  Hash options_hash;
+  uint64_t timestamp;
+};
+
+struct BundleCacheEntry
+{
+  std::string name;
+  std::map<std::string, ResourceCacheEntry> resources;
+};
+
+struct BundleCache
+{
+  std::map<std::string, BundleCacheEntry> bundles;
 };
 
 int
 main(int argc, const char **argv)
 {
   // Process the resources described in RESOURCE_IMPORT_FILE
-  std::cout << "Creating bundles from "
-    + std::string(RESOURCE_IMPORT_PATH) + "resources.txt" << std::endl;
-  std::ifstream file = std::ifstream(std::string(RESOURCE_IMPORT_PATH) + "resources.txt");
-
-  std::string line;
-  std::string bundle_name = "";
-  ResourceBundle *old_bundle = nullptr;
-  ResourceBundle *bundle = nullptr;
-  unsigned int line_number = 0;
-  std::vector<HashCacheEntry> hashes;
-  while (std::getline(file, line))
+  json resource_import_data = json();
   {
-    // Parse the line into tokens
-    std::string current_tok = "";
-    std::vector<std::string> tokens;
-    for (const char &c : line)
+    std::cout << "Creating bundles from "
+      + std::string(RESOURCE_IMPORT_PATH) + "resources.json" << std::endl;
+    std::ifstream file = std::ifstream(std::string(RESOURCE_IMPORT_PATH) + "resources.json");
+    file >> resource_import_data;
+    file.close();
+  }
+
+  // Load the hash cache and the timestamp cache
+  BundleCache cache = BundleCache();
+  {
+    json hash_cache_data = json();
+    std::ifstream file = std::ifstream(std::string(RESOURCE_IMPORT_PATH) + "hash_cache.json");
+    if (file.is_open())
     {
-      if (isspace(c) && current_tok.length() > 0)
+      file >> hash_cache_data;
+      file.close();
+
+      for (const auto &bundle_data_kv : hash_cache_data["bundles"].items())
       {
-        tokens.push_back(current_tok);
-        current_tok = "";
-      }
-      else
-      {
-        current_tok.append(1, c);
+        json bundle_data = bundle_data_kv.value();
+        std::string bundle_name = bundle_data["name"];
+
+        BundleCacheEntry bundle_cache;
+        bundle_cache.name = bundle_name;
+
+        for (const auto &resource_data_kv : bundle_data["resources"].items())
+        {
+          json resource_data = resource_data_kv.value();
+          std::string resource_name = resource_data["name"];
+          std::string file_hash = resource_data["file_hash"];
+
+          ResourceCacheEntry resource_cache;
+          resource_cache.name = resource_name;
+          resource_cache.file_hash = hex_to_hash(file_hash);
+
+          bundle_cache.resources[resource_name] = resource_cache;
+        }
+
+        cache.bundles[bundle_name] = bundle_cache;
       }
     }
-    if (current_tok.length() > 0)
+  }
+
+  BundleCache new_cache = BundleCache();
+
+  // Iterate through the bundles
+  for (const auto &bundle_data_kv : resource_import_data["bundles"].items())
+  {
+    json bundle_data = bundle_data_kv.value();
+    std::string bundle_name = bundle_data["name"];
+
+    // Iterate through the resources in the bundle and check the hashes
+    bool hashes_match = true;
+    if (cache.bundles.find(bundle_name) == cache.bundles.end())
     {
-      tokens.push_back(current_tok);
-      current_tok = "";
+      hashes_match = false;
+    }
+    else
+    {
+      BundleCacheEntry bundle_cache = cache.bundles[bundle_name];
+      for (const auto &resource_data_kv : bundle_data["resources"].items())
+      {
+        json resource_data = resource_data_kv.value();
+        std::string resource_type = resource_data["type"];
+        std::string resource_name = resource_data["name"];
+        std::string resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/"
+          + std::string(resource_data["path"]);
+
+        if (bundle_cache.resources.find(resource_name) == bundle_cache.resources.end())
+        {
+          hashes_match = false;
+          break;
+        }
+
+        ResourceCacheEntry resource_cache = bundle_cache.resources[resource_name];
+        Hash current_hash = hash_file(resource_path);
+
+        if (current_hash != resource_cache.file_hash)
+        {
+          hashes_match = false;
+          break;
+        }
+      }
     }
 
-    // Now that we have the tokens, decode
-    if (tokens.size() == 1)
+    // If all the hashes expected in the bundle match, so the source files
+    // and options haven't changed since the last build, we can skip if
+    // the compressed resource bundle is present. Make sure to add the cache
+    // entry back.
+    if (hashes_match)
     {
-      if (tokens[0][0] != '[' || tokens[0][tokens[0].length() - 1] != ']')
+      std::cout << "match\n";
+      if (std::filesystem::exists(std::string(RESOURCE_IMPORT_PATH)
+        + "processed/" + bundle_name + ".rbz"))
       {
-        error_at("A bundle must be declared inside of brackets [].", line_number);
-        break;
+        std::cout << "Bundle " + bundle_name + " is up to date. Skipping." << std::endl;
+        new_cache.bundles[bundle_name] = cache.bundles[bundle_name];
+        continue;
       }
-      bundle_name = tokens[0].substr(1, tokens[0].length() - 2);
-      if (bundle != nullptr)
-      {
-        bundle->write_to(std::string(RESOURCE_IMPORT_PATH) + "processed/" + bundle_name + ".rbz");
-        delete bundle;
-      }
-      bundle = new ResourceBundle();
-      std::cout << "Adding to bundle " + bundle_name + "." << std::endl;
     }
-    else if (tokens.size() > 0)
+
+    ResourceBundle *bundle = new ResourceBundle();
+
+    BundleCacheEntry new_bundle_entry = BundleCacheEntry();
+    new_bundle_entry.name = bundle_name;
+
+    // Iterate through the resources listed in the bundle
+    for (const auto &resource_data_kv : bundle_data["resources"].items())
     {
-      if (tokens[2] != "<")
-      {
-        error_at("A resource must be declared with the resource name to the left of an angle bracket <.", line_number);
-        break;
-      }
-      if (tokens.size() != 4)
-      {
-        error_at("A resource must be declared with a resource type, name, and input file ([type]) [name] < [file].", line_number);
-        break;
-      }
-      std::string resource_type = tokens[0].substr(1, tokens[0].length() - 2);
-      std::string resource_name = tokens[1];
-      std::string resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/" + tokens[3];
+      json resource_data = resource_data_kv.value();
+      std::string resource_type = resource_data["type"];
+      std::string resource_name = resource_data["name"];
+      std::string resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/"
+        + std::string(resource_data["path"]);
+      Resource *resource = nullptr;
 
-      // Hash the resource
-      {
-        HashCacheEntry cache = {};
-        cache.resource_name = resource_name;
-        cache.hash = hash_file(resource_path);
-        hashes.push_back(cache);
-      }
-
-      Resource *r;
-
-      std::cout << "Adding resource " + resource_name + " (" + resource_type + ")." << std::endl;
+      ResourceCacheEntry new_resource_entry = ResourceCacheEntry();
+      new_resource_entry.name = resource_name;
 
       if (resource_type == "image")
       {
-        r = new Image(resource_path);
+        resource = new Image(resource_path);
       }
       else if (resource_type == "font")
       {
-        r = new FontFace(resource_path);
+        resource = new FontFace(resource_path);
       }
       else if (resource_type == "text")
       {
-        r = new Text(resource_path);
+        resource = new Text(resource_path);
       }
       else
       {
-        error_at("Unsupported resource type.", line_number);
-        break;
+        std::cout << "Skipping " + resource_name
+          + ": unsupported type" << std::endl;
       }
 
-      bundle->add_resource(resource_name, r);
-      delete r;
+      std::cout << "Adding resource " + resource_name + " (" + resource_type
+        + ")" + " to bundle " + bundle_name << std::endl;
+
+      bundle->add_resource(resource_name, resource);
+      delete resource;
+
+      new_resource_entry.file_hash = hash_file(resource_path);
+      new_bundle_entry.resources[resource_name] = new_resource_entry;
     }
 
-    line_number += 1;
-  }
-
-  // There might be a bundle left over, so write it in case
-  if (bundle != nullptr)
-  {
-    bundle->write_to(std::string(RESOURCE_IMPORT_PATH) + "processed/" + bundle_name + ".rbz");
+    bundle->write_to(std::string(RESOURCE_IMPORT_PATH) + "processed/"
+      + bundle_name + ".rbz");
     delete bundle;
+
+    new_cache.bundles[bundle_name] = new_bundle_entry;
   }
 
-  file.close();
-  std::cout << "Done importing resources." << std::endl;
-
-  std::cout << "Caching hashes in "
-    + std::string(RESOURCE_IMPORT_PATH) + "resource_hash_cache.txt" << std::endl;
+  // Iterate through the new cache entries
+  json hash_cache = json();
+  hash_cache["bundles"] = json::array();
+  for (const std::pair<std::string, BundleCacheEntry> &bundle_entry
+    : new_cache.bundles)
   {
-    std::ofstream cache_file = std::ofstream(std::string(RESOURCE_IMPORT_PATH)
-      + "resource_hash_cache.txt");
-    for (unsigned int i = 0; i < hashes.size(); ++i)
+    json bundle_data = json();
+    bundle_data["name"] = bundle_entry.second.name;
+    bundle_data["resources"] = json::array();
+
+    for (const std::pair<std::string, ResourceCacheEntry> &resource_entry
+      : bundle_entry.second.resources)
     {
-      std::string line = hashes[i].resource_name + " "
-        + to_hex(hashes[i].hash) + "\n";
-      cache_file << line;
+      json resource_data = json();
+      resource_data["name"] = resource_entry.second.name;
+      resource_data["file_hash"] = hash_to_hex(resource_entry.second.file_hash);
+      resource_data["options_hash"] =
+        hash_to_hex(resource_entry.second.options_hash);
+
+      bundle_data["resources"].push_back(resource_data);
     }
-    cache_file.close();
+
+    hash_cache["bundles"].push_back(bundle_data);
   }
-  std::cout << "Done caching hashes." << std::endl;
+
+  json timestamp_cache = json();
+  timestamp_cache["bundles"] = json::array();
+  for (const std::pair<std::string, BundleCacheEntry> &bundle_entry
+    : new_cache.bundles)
+  {
+    json bundle_data = json();
+    bundle_data["name"] = bundle_entry.second.name;
+    bundle_data["resources"] = json::array();
+
+    for (const std::pair<std::string, ResourceCacheEntry> &resource_entry
+      : bundle_entry.second.resources)
+    {
+      json resource_data = json();
+      resource_data["name"] = resource_entry.second.name;
+      resource_data["timestamp"] = resource_entry.second.timestamp;
+
+      bundle_data["resources"].push_back(resource_data);
+    }
+
+    timestamp_cache["bundles"].push_back(bundle_data);
+  }
+
+  {
+    std::ofstream file = std::ofstream(std::string(RESOURCE_IMPORT_PATH)
+      + "hash_cache.json");
+    file << hash_cache;
+    file.close();
+  }
+
+  {
+    std::ofstream file = std::ofstream(std::string(RESOURCE_IMPORT_PATH)
+      + "timestamp_cache.json");
+    file << timestamp_cache;
+    file.close();
+  }
+
   return 0;
 }

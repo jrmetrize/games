@@ -1,6 +1,0 @@
-[fonts]
-(font) sans < NotoSans-Regular.ttf
-(font) serif < NotoSerif-Regular.ttf
-
-[training_levels]
-(text) data < training_levels.json

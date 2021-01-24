@@ -1,0 +1,29 @@
+{
+  "bundles" : [
+    {
+      "name" : "fonts",
+      "resources" : [
+        {
+          "type" : "font",
+          "name" : "sans",
+          "path" : "NotoSans-Regular.ttf"
+        },
+        {
+          "type" : "font",
+          "name" : "serif",
+          "path" : "NotoSerif-Regular.ttf"
+        }
+      ]
+    },
+    {
+      "name" : "training_levels",
+      "resources" : [
+        {
+          "type" : "text",
+          "name" : "data",
+          "path" : "training_levels.json"
+        }
+      ]
+    }
+  ]
+}
