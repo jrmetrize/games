@@ -395,7 +395,7 @@ Vec2
 Segment::get_normal() const
 {
   Vec2 dir = p2 - p1;
-  Vec2 normal = Vec2(-dir.x, dir.y);
+  Vec2 normal = Vec2(-dir.y, dir.x);
   return normal.normalized();
 }
 

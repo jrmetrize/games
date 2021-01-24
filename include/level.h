@@ -212,6 +212,14 @@ public:
   set_current_dialogue(DialogueTree *_current_dialogue);
 
   void
+  draw_background_in_rect(GraphicsServer *graphics_server,
+    Vec2 origin, Vec2 size);
+
+  void
+  draw_stats_in_rect(GraphicsServer *graphics_server,
+    Vec2 origin, Vec2 size);
+
+  void
   draw_side_view_in_rect(GraphicsServer *graphics_server,
     Vec2 origin, Vec2 size);
 

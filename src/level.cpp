@@ -420,30 +420,46 @@ LevelState::set_current_dialogue(DialogueTree *_current_dialogue)
 }
 
 void
+LevelState::draw_background_in_rect(GraphicsServer *graphics_server,
+  Vec2 origin, Vec2 size)
+{
+  float x = sin(GameState::get()->get_time());
+  x = x * x;
+  Vec4 color = Vec4(x, x, x, 1);
+  graphics_server->draw_color_rect(origin, size, color);
+}
+
+void
+LevelState::draw_stats_in_rect(GraphicsServer *graphics_server,
+  Vec2 origin, Vec2 size)
+{
+  draw_side_view_in_rect(graphics_server, origin, Vec2(size.x, size.x));
+}
+
+void
 LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
   Vec2 origin, Vec2 size)
 {
   // Border and background
-  const float margin = 10;
-  graphics_server->draw_color_rect(origin - Vec2(margin, margin),
-    size + (2 * Vec2(margin, margin)), Vec4(1, 1, 1, 1));
-  graphics_server->draw_color_rect(origin,
-    size, Vec4(0.2, 0.2, 0.2, 1));
+  const float margin = 4;
+  graphics_server->draw_color_rect(origin, size, Vec4(1, 1, 1, 1));
+  graphics_server->draw_color_rect(origin + Vec2(margin),
+    size - (2.0f * Vec2(margin)), Vec4(0.2, 0.2, 0.2, 1));
 
   // Use 16 pixels = 1 meter
   // Draw the player
-  graphics_server->draw_color_rect(origin + ((1.0 / 2.0) * size) - Vec2(8, 32),
-    Vec2(16, 32), Vec4(0.8, 0.2, 0.1, 1));
+  graphics_server->draw_color_rect(origin + Vec2(margin) + ((1.0 / 2.0) * size)
+    - Vec2(8, 32), Vec2(16, 32), Vec4(0.8, 0.2, 0.1, 1));
 
   // Draw the level
   const std::vector<LevelGeometryBlock *> &geometry =
     level->get_geometry();
-  Mat3 world_to_screen_transform = Mat3::translate(origin + ((1.0 / 2.0) * size))
+  Mat3 world_to_screen_transform = Mat3::translate(origin + Vec2(margin) + ((1.0 / 2.0) * size))
     * Mat3::scale(Vec2(16, 16)) * Mat3::translate(-player_position);
 
   // Clip the geometry to the viewing window by applying a stencil
   graphics_server->enable_stencil();
-  graphics_server->draw_stencil_rect(origin, size);
+  graphics_server->draw_stencil_rect(origin + Vec2(margin), size - (2.0f * Vec2(margin)));
 
   for (unsigned int i = 0; i < geometry.size(); ++i)
   {

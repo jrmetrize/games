@@ -31,7 +31,8 @@ ElectricMaterial::light(Vec2 ray_dir, Vec2 hit_location, RenderObject *obj)
   Vec3 noise_pos = Vec3(hit_location.x, hit_location.y, GameState::get()->get_time() / 15.0f);
 
   float x = (0.5 * texture->value_at(noise_pos).x) + 1;
-  Vec4 value = x * color;
+  float dot = ray_dir.normalized() * obj->get_normal();
+  Vec4 value = dot * dot * x * color;
   value.w = 1;
   return value;
 }

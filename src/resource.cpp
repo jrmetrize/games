@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <bit>
+#include "picosha2.h"
 
 #ifdef RESOURCE_IMPORTER
 #define STB_IMAGE_IMPLEMENTATION
