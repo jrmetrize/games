@@ -8,7 +8,6 @@
 #include "linear_algebra.h"
 #include "graphics.h"
 
-class InputMonitor;
 class Button;
 class DialogueTree;
 
@@ -182,6 +181,7 @@ class LevelState
   Vec2 player_position;
   Vec2 player_velocity;
   float player_camera_angle;
+  float player_health;
 
   DialogueTree *current_dialogue;
   Button *dialogue_choices[6];
@@ -194,7 +194,7 @@ public:
   ~LevelState();
 
   void
-  update(InputMonitor *input, float time_elapsed);
+  update(float time_elapsed);
 
   Vec2
   get_player_position() const;
@@ -212,20 +212,10 @@ public:
   set_current_dialogue(DialogueTree *_current_dialogue);
 
   void
-  draw_background_in_rect(GraphicsServer *graphics_server,
-    Vec2 origin, Vec2 size);
+  draw_background_in_rect(Vec2 origin, Vec2 size);
 
   void
-  draw_stats_in_rect(GraphicsServer *graphics_server,
-    Vec2 origin, Vec2 size);
-
-  void
-  draw_side_view_in_rect(GraphicsServer *graphics_server,
-    Vec2 origin, Vec2 size);
-
-  void
-  draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
-    Vec2 origin, Vec2 size);
+  draw_stats_in_rect(Vec2 origin, Vec2 size);
 };
 
 #endif

@@ -2,19 +2,28 @@
 #define TITLE_SCREEN_H
 
 #include "screen.h"
+#include "input.h"
+#include <string>
 
 class TitleScreen : public Screen
 {
+  Listener listener;
+
+  void
+  draw_button(float y, std::string text);
+
+  void
+  mouse_pressed(MouseButton button, bool pressed);
 public:
-  TitleScreen(GameState *_state);
+  TitleScreen();
 
   ~TitleScreen();
 
   void
-  update(InputMonitor *input, float time_elapsed);
+  update(float time_elapsed);
 
   void
-  draw_custom(GraphicsServer *graphics_server);
+  draw_custom();
 };
 
 #endif

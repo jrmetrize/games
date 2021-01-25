@@ -9,15 +9,15 @@ class LevelScreen : public Screen
 {
   TrainingLevelController *level;
 public:
-  LevelScreen(GameState *_state);
+  LevelScreen();
 
   ~LevelScreen();
 
   void
-  update(InputMonitor *input, float time_elapsed);
+  update(float time_elapsed);
 
   void
-  draw_custom(GraphicsServer *graphics_server);
+  draw_custom();
 };
 
 #endif

@@ -11,15 +11,15 @@ class LevelEditorScreen : public Screen
 
   bool paused;
 public:
-  LevelEditorScreen(GameState *_state);
+  LevelEditorScreen();
 
   ~LevelEditorScreen();
 
   void
-  update(InputMonitor *input, float time_elapsed);
+  update(float time_elapsed);
 
   void
-  draw_custom(GraphicsServer *graphics_server);
+  draw_custom();
 };
 
 #endif

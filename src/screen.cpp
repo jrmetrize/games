@@ -1,13 +1,6 @@
 #include "screen.h"
 
-Screen::Screen(GameState *_state) :
-  state(_state)
+Screen::Screen()
 {
 
-}
-
-GameState *
-Screen::get_state()
-{
-  return state;
 }

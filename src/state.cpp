@@ -6,6 +6,7 @@
 #include "screens/level_editor_screen.h"
 #include "screens/level_screen.h"
 #include "screens/options_screen.h"
+#include "screens/splash_screen.h"
 #include "screens/title_screen.h"
 
 DialoguePoint::DialoguePoint()
@@ -75,14 +76,15 @@ GameState::GameState() :
   ref(std::chrono::steady_clock::now()),
   last_update(ref)
 {
-  level_editor_screen = new LevelEditorScreen(this);
-  level_screen = new LevelScreen(this);
-  options_screen = new OptionsScreen(this);
-  title_screen = new TitleScreen(this);
+  level_editor_screen = new LevelEditorScreen();
+  level_screen = new LevelScreen();
+  options_screen = new OptionsScreen();
+  splash_screen = new SplashScreen();
+  title_screen = new TitleScreen();
 
   font_bundle = new ResourceBundle(local_to_absolute_path("resources/fonts.rbz"));
 
-  current_screen = title_screen;
+  current_screen = splash_screen;
 }
 
 GameState::~GameState()
@@ -90,6 +92,7 @@ GameState::~GameState()
   delete level_editor_screen;
   delete level_screen;
   delete options_screen;
+  delete splash_screen;
   delete title_screen;
 
   delete font_bundle;
@@ -112,7 +115,7 @@ GameState::update(float time_elapsed)
 {
   last_update = std::chrono::steady_clock::now();
   GraphicsServer::get()->set_current_screen(current_screen);
-  current_screen->update(InputMonitor::get(), time_elapsed);
+  current_screen->update(time_elapsed);
 }
 
 float
@@ -136,46 +139,41 @@ GameState::get_serif()
   return reinterpret_cast<FontFace *>(font_bundle->get_resource("serif"));
 }
 
-void
-GameState::title_screen_to_level_screen()
+Screen *
+GameState::get_level_editor_screen()
 {
-  GraphicsServer::get()->set_current_screen(level_screen);
-  current_screen = level_screen;
+  return level_editor_screen;
+}
+
+Screen *
+GameState::get_level_screen()
+{
+  return level_screen;
+}
+
+Screen *
+GameState::get_options_screen()
+{
+  return options_screen;
+}
+
+Screen *
+GameState::get_splash_screen()
+{
+  return splash_screen;
+}
+
+Screen *
+GameState::get_title_screen()
+{
+  return title_screen;
 }
 
 void
-GameState::level_screen_to_title_screen()
+GameState::switch_to_screen(Screen *target_screen)
 {
-  GraphicsServer::get()->set_current_screen(title_screen);
-  current_screen = title_screen;
-}
-
-void
-GameState::title_screen_to_level_editor_screen()
-{
-  GraphicsServer::get()->set_current_screen(level_editor_screen);
-  current_screen = level_editor_screen;
-}
-
-void
-GameState::level_editor_screen_to_title_screen()
-{
-  GraphicsServer::get()->set_current_screen(title_screen);
-  current_screen = title_screen;
-}
-
-void
-GameState::title_screen_to_options_screen()
-{
-  GraphicsServer::get()->set_current_screen(options_screen);
-  current_screen = options_screen;
-}
-
-void
-GameState::options_screen_to_title_screen()
-{
-  GraphicsServer::get()->set_current_screen(title_screen);
-  current_screen = title_screen;
+  GraphicsServer::get()->set_current_screen(target_screen);
+  current_screen = target_screen;
 }
 
 void

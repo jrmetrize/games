@@ -2,8 +2,7 @@
 #include "state.h"
 #include "imgui/imgui.h"
 
-OptionsScreen::OptionsScreen(GameState *_state) :
-  Screen(_state)
+OptionsScreen::OptionsScreen()
 {
 
 }
@@ -14,19 +13,19 @@ OptionsScreen::~OptionsScreen()
 }
 
 void
-OptionsScreen::update(InputMonitor *input, float time_elapsed)
+OptionsScreen::update(float time_elapsed)
 {
 
 }
 
 void
-OptionsScreen::draw_custom(GraphicsServer *graphics_server)
+OptionsScreen::draw_custom()
 {
   ImGui::Begin("Options Menu");
 
   if (ImGui::Button("Back to Main Menu"))
   {
-    get_state()->options_screen_to_title_screen();
+    GameState::get()->switch_to_screen(GameState::get()->get_title_screen());
   }
 
   ImGui::End();

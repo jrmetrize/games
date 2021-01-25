@@ -9,6 +9,7 @@
 class LevelEditorScreen;
 class LevelScreen;
 class OptionsScreen;
+class SplashScreen;
 class TitleScreen;
 
 class Screen;
@@ -74,6 +75,7 @@ class GameState
   LevelEditorScreen *level_editor_screen;
   LevelScreen *level_screen;
   OptionsScreen *options_screen;
+  SplashScreen *splash_screen;
   TitleScreen *title_screen;
 
   Screen *current_screen;
@@ -102,23 +104,23 @@ public:
   FontFace *
   get_serif();
 
-  void
-  title_screen_to_level_screen();
+  Screen *
+  get_level_editor_screen();
+
+  Screen *
+  get_level_screen();
+
+  Screen *
+  get_options_screen();
+
+  Screen *
+  get_splash_screen();
+
+  Screen *
+  get_title_screen();
 
   void
-  level_screen_to_title_screen();
-
-  void
-  title_screen_to_level_editor_screen();
-
-  void
-  level_editor_screen_to_title_screen();
-
-  void
-  title_screen_to_options_screen();
-
-  void
-  options_screen_to_title_screen();
+  switch_to_screen(Screen *target_screen);
 
   void
   close_game();

@@ -593,7 +593,7 @@ GraphicsServer::draw()
   ImGui::NewFrame();
 
   if (current_screen != nullptr)
-    current_screen->draw_custom(this);
+    current_screen->draw_custom();
 
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

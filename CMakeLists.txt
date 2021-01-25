@@ -17,6 +17,7 @@ add_executable(fp2d
   src/screens/level_editor_screen.cpp
   src/screens/level_screen.cpp
   src/screens/options_screen.cpp
+  src/screens/splash_screen.cpp
   src/screens/title_screen.cpp
 
   src/glad.c

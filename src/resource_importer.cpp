@@ -70,6 +70,9 @@ struct BundleCache
 int
 main(int argc, const char **argv)
 {
+  // TODO: parse this as an option
+  bool force_import = false;
+
   // Process the resources described in RESOURCE_IMPORT_FILE
   json resource_import_data = json();
   {
@@ -124,38 +127,48 @@ main(int argc, const char **argv)
     json bundle_data = bundle_data_kv.value();
     std::string bundle_name = bundle_data["name"];
 
+    // TODO: cache the local filesystem timestamps to avoid reading the files
+    // each time.
+
     // Iterate through the resources in the bundle and check the hashes
     bool hashes_match = true;
-    if (cache.bundles.find(bundle_name) == cache.bundles.end())
+    if (!force_import)
     {
-      hashes_match = false;
+      if (cache.bundles.find(bundle_name) == cache.bundles.end())
+      {
+        hashes_match = false;
+      }
+      else
+      {
+        BundleCacheEntry bundle_cache = cache.bundles[bundle_name];
+        for (const auto &resource_data_kv : bundle_data["resources"].items())
+        {
+          json resource_data = resource_data_kv.value();
+          std::string resource_type = resource_data["type"];
+          std::string resource_name = resource_data["name"];
+          std::string resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/"
+            + std::string(resource_data["path"]);
+
+          if (bundle_cache.resources.find(resource_name) == bundle_cache.resources.end())
+          {
+            hashes_match = false;
+            break;
+          }
+
+          ResourceCacheEntry resource_cache = bundle_cache.resources[resource_name];
+          Hash current_hash = hash_file(resource_path);
+
+          if (current_hash != resource_cache.file_hash)
+          {
+            hashes_match = false;
+            break;
+          }
+        }
+      }
     }
     else
     {
-      BundleCacheEntry bundle_cache = cache.bundles[bundle_name];
-      for (const auto &resource_data_kv : bundle_data["resources"].items())
-      {
-        json resource_data = resource_data_kv.value();
-        std::string resource_type = resource_data["type"];
-        std::string resource_name = resource_data["name"];
-        std::string resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/"
-          + std::string(resource_data["path"]);
-
-        if (bundle_cache.resources.find(resource_name) == bundle_cache.resources.end())
-        {
-          hashes_match = false;
-          break;
-        }
-
-        ResourceCacheEntry resource_cache = bundle_cache.resources[resource_name];
-        Hash current_hash = hash_file(resource_path);
-
-        if (current_hash != resource_cache.file_hash)
-        {
-          hashes_match = false;
-          break;
-        }
-      }
+      hashes_match = false;
     }
 
     // If all the hashes expected in the bundle match, so the source files
@@ -192,6 +205,9 @@ main(int argc, const char **argv)
       ResourceCacheEntry new_resource_entry = ResourceCacheEntry();
       new_resource_entry.name = resource_name;
 
+      std::cout << "Adding resource " + resource_name + " (" + resource_type
+        + ")" + " to bundle " + bundle_name << std::endl;
+
       if (resource_type == "image")
       {
         resource = new Image(resource_path);
@@ -209,9 +225,6 @@ main(int argc, const char **argv)
         std::cout << "Skipping " + resource_name
           + ": unsupported type" << std::endl;
       }
-
-      std::cout << "Adding resource " + resource_name + " (" + resource_type
-        + ")" + " to bundle " + bundle_name << std::endl;
 
       bundle->add_resource(resource_name, resource);
       delete resource;

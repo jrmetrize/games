@@ -301,6 +301,7 @@ LevelState::LevelState(Level *_level) :
   player_position(),
   player_velocity(),
   player_camera_angle(),
+  player_health(1),
   current_dialogue(nullptr)
 {
   for (unsigned int i = 0; i < 6; ++i)
@@ -327,7 +328,7 @@ LevelState::dialogue_choice_callback(void *userdata)
 }
 
 void
-LevelState::update(InputMonitor *input, float time_elapsed)
+LevelState::update(float time_elapsed)
 {
   Vec2 next_velocity = player_velocity
     + (time_elapsed * Vec2(0, -level->get_gravity()));
@@ -360,23 +361,23 @@ LevelState::update(InputMonitor *input, float time_elapsed)
   if (collision.intersection && player_velocity.y <= 0)
     on_ground = true;
 
-  if (on_ground && input->get_jump_input())
+  if (on_ground && InputMonitor::get()->get_jump_input())
   {
     player_velocity += Vec2(0, 10);
   }
 
-  if (input->is_key_down(KeyW))
+  if (InputMonitor::get()->is_key_down(KeyW))
     player_position += time_elapsed * level->get_player_speed() * Vec2(1, 0);
-  else if (input->is_key_down(KeyS))
+  else if (InputMonitor::get()->is_key_down(KeyS))
     player_position += time_elapsed * level->get_player_speed() * Vec2(-1, 0);
-  player_position += -input->gamepad_left_stick().y * time_elapsed
+  player_position += -InputMonitor::get()->gamepad_left_stick().y * time_elapsed
     * level->get_player_speed() * Vec2(1, 0);
 
-  if (input->is_key_down(KeyUp))
+  if (InputMonitor::get()->is_key_down(KeyUp))
     player_camera_angle += time_elapsed * 1;
-  else if (input->is_key_down(KeyDown))
+  else if (InputMonitor::get()->is_key_down(KeyDown))
     player_camera_angle += time_elapsed * -1;
-  player_camera_angle += -input->gamepad_right_stick().y * time_elapsed * 1;
+  player_camera_angle += -InputMonitor::get()->gamepad_right_stick().y * time_elapsed * 1;
 }
 
 Vec2
@@ -420,22 +421,21 @@ LevelState::set_current_dialogue(DialogueTree *_current_dialogue)
 }
 
 void
-LevelState::draw_background_in_rect(GraphicsServer *graphics_server,
-  Vec2 origin, Vec2 size)
+LevelState::draw_background_in_rect(Vec2 origin, Vec2 size)
 {
   float x = sin(GameState::get()->get_time());
   x = x * x;
   Vec4 color = Vec4(x, x, x, 1);
-  graphics_server->draw_color_rect(origin, size, color);
+  GraphicsServer::get()->draw_color_rect(origin, size, color);
 }
 
 void
-LevelState::draw_stats_in_rect(GraphicsServer *graphics_server,
-  Vec2 origin, Vec2 size)
+LevelState::draw_stats_in_rect(Vec2 origin, Vec2 size)
 {
-  draw_side_view_in_rect(graphics_server, origin, Vec2(size.x, size.x));
+  //draw_side_view_in_rect(graphics_server, origin, Vec2(size.x, size.x));
 }
 
+/*
 void
 LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
   Vec2 origin, Vec2 size)
@@ -535,3 +535,4 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
     }
   }
 }
+*/
