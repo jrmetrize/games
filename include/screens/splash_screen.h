@@ -19,6 +19,12 @@ public:
   update(float time_elapsed);
 
   void
+  to_appear();
+
+  void
+  to_disappear();
+
+  void
   draw_custom();
 };
 

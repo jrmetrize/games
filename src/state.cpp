@@ -85,6 +85,7 @@ GameState::GameState() :
   font_bundle = new ResourceBundle(local_to_absolute_path("resources/fonts.rbz"));
 
   current_screen = splash_screen;
+  current_screen->to_appear();
 }
 
 GameState::~GameState()
@@ -172,6 +173,9 @@ GameState::get_title_screen()
 void
 GameState::switch_to_screen(Screen *target_screen)
 {
+  current_screen->to_disappear();
+  target_screen->to_appear();
+
   GraphicsServer::get()->set_current_screen(target_screen);
   current_screen = target_screen;
 }

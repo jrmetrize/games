@@ -6,13 +6,11 @@ SplashScreen::SplashScreen()
 {
   listener.key_handle = std::bind(&SplashScreen::key_pressed, this,
     std::placeholders::_1, std::placeholders::_2);
-
-  InputMonitor::get()->install_listener(&listener);
 }
 
 SplashScreen::~SplashScreen()
 {
-  InputMonitor::get()->remove_listener(&listener);
+
 }
 
 void
@@ -26,6 +24,18 @@ void
 SplashScreen::update(float time_elapsed)
 {
 
+}
+
+void
+SplashScreen::to_appear()
+{
+  InputMonitor::get()->install_listener(&listener);
+}
+
+void
+SplashScreen::to_disappear()
+{
+  InputMonitor::get()->remove_listener(&listener);
 }
 
 void

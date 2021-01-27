@@ -4,13 +4,18 @@
 #include "screen.h"
 #include "input.h"
 #include <string>
+#include <functional>
 
 class TitleScreen : public Screen
 {
   Listener listener;
 
+  MenuButton *play_button;
+  MenuButton *options_button;
+  MenuButton *quit_button;
+
   void
-  draw_button(float y, std::string text);
+  draw_button(MenuButton *button);
 
   void
   mouse_pressed(MouseButton button, bool pressed);
@@ -23,7 +28,16 @@ public:
   update(float time_elapsed);
 
   void
+  to_appear();
+
+  void
+  to_disappear();
+
+  void
   draw_custom();
+
+  void
+  button_pressed(int button);
 };
 
 #endif
