@@ -20,6 +20,9 @@ struct Vec2
   Vec2
   normalized() const;
 
+  Vec2
+  perp() const;
+
   bool
   inside_rect(const Vec2 &origin, const Vec2 &size) const;
 

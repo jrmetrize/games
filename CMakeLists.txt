@@ -80,6 +80,8 @@ endif()
 
 if(BUILD_RESOURCE_IMPORTER)
 add_executable(resource_importer
+  src/linear_algebra.cpp
+  src/raster.cpp
   src/resource_importer.cpp
   src/resource.cpp
 )

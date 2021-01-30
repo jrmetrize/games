@@ -19,6 +19,10 @@ nbo_to_host(const uint32_t &x);
 int32_t
 nbo_to_host(const int32_t &x);
 
+#ifdef GAME
+class Texture;
+#endif
+
 class Resource
 {
 public:
@@ -45,6 +49,10 @@ class Image : public Resource
   unsigned char *data;
 
   bool stb_allocated;
+
+#ifdef GAME
+  Texture *texture;
+#endif
 public:
 #ifdef RESOURCE_IMPORTER
   Image(std::string path);
@@ -60,6 +68,14 @@ public:
 
   std::string
   get_type() const;
+
+#ifdef GAME
+  void
+  generate_texture();
+
+  const Texture *
+  get_texture();
+#endif
 
   static Image *
   from_data(const char *data, uint32_t length);
@@ -87,10 +103,6 @@ struct Glyph
   int32_t vertical_bearing_y;
   int32_t vertical_advance;
 };
-
-#ifdef GAME
-class Texture;
-#endif
 
 class FontFace : public Resource
 {

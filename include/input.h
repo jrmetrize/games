@@ -111,6 +111,7 @@ enum GamepadButton
 struct Listener
 {
   std::optional<std::function<void(MouseButton, bool)>> mouse_button_handle;
+  std::optional<std::function<void(Vec2)>> scroll_handle;
   std::optional<std::function<void(Key, bool)>> key_handle;
   std::optional<std::function<void(GamepadButton, bool)>> gamepad_button_handle;
 };
@@ -147,6 +148,9 @@ public:
 
   void
   mouse_button_press(MouseButton button, bool press);
+
+  void
+  mouse_scroll(Vec2 scroll);
 
   void
   key_changed(Key key, bool press);

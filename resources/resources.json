@@ -24,6 +24,19 @@
           "path" : "training_levels.json"
         }
       ]
+    },
+    {
+      "name" : "global",
+      "resources" : [
+        {
+          "type" : "text",
+          "name" : "default_settings",
+          "path" : "settings.json"
+        }
+      ],
+      "include" : [
+        "icons.json"
+      ]
     }
   ]
 }

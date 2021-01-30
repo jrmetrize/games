@@ -34,6 +34,12 @@ Vec2::normalized() const
   return (1 / norm()) * (*this);
 }
 
+Vec2
+Vec2::perp() const
+{
+  return Vec2(-y, x);
+}
+
 bool
 Vec2::inside_rect(const Vec2 &origin, const Vec2 &size) const
 {

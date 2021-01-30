@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <chrono>
+#include <variant>
 
 class LevelEditorScreen;
 class LevelScreen;
@@ -14,8 +15,9 @@ class TitleScreen;
 
 class Screen;
 
-class ResourceBundle;
-class FontFace;
+#include "resource.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 struct DialogueChoice
 {
@@ -63,6 +65,17 @@ public:
   choice_made(unsigned int index);
 };
 
+struct PropertyData
+{
+  std::string property_name;
+  std::string property_type;
+  std::string property_text;
+  std::variant<bool, std::string, float> data;
+
+  static PropertyData
+  from_json(const json &spec);
+};
+
 class GameState
 {
   std::chrono::time_point<std::chrono::steady_clock> ref;
@@ -81,6 +94,9 @@ class GameState
   Screen *current_screen;
 
   ResourceBundle *font_bundle;
+  ResourceBundle *global_bundle;
+
+  std::map<std::string, PropertyData> properties;
 public:
   GameState();
 
@@ -118,6 +134,12 @@ public:
 
   Screen *
   get_title_screen();
+
+  ResourceBundle *
+  get_globals();
+
+  PropertyData &
+  get_property(std::string name);
 
   void
   switch_to_screen(Screen *target_screen);

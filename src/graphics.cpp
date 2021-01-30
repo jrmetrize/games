@@ -77,7 +77,7 @@ uniform sampler2D sampler;
 void
 main()
 {
-  frag_color = vec4(texture(sampler, uv).rgb, 1);
+  frag_color = texture(sampler, uv);
 }
 
   )---";
@@ -185,6 +185,11 @@ Texture::Texture(unsigned int _width, unsigned int _height, unsigned int _channe
   {
     glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
       /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, data);
+  }
+  else if (channels == 4)
+  {
+    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGBA /**/, width, height, 0,
+      /**/ GL_RGBA /**/, GL_UNSIGNED_BYTE, data);
   }
   glGenerateMipmap(GL_TEXTURE_2D);
 }
@@ -640,6 +645,16 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   Vec2 current_pos = text_request.bounding_box_origin;
+
+  if (text_request.center_vertical)
+  {
+    // We want the vertical center of the text to be the same as the vertical
+    // center of the bounding box.
+    current_pos.y = text_request.bounding_box_origin.y
+      + ((1.0f / 2.0f) * text_request.bounding_box_size.y)
+      - ((1.0f / 2.0f) * text_request.size);
+  }
+
   for (unsigned int i = 0; i < text_request.text.length(); ++i)
   {
     char c = text_request.text[i];

@@ -106,7 +106,12 @@ Image::Image(std::string path) :
 
 Image::Image(uint32_t _width, uint32_t _height, uint32_t _channels,
   const unsigned char *_data) :
+#ifdef GAME
+  width(_width), height(_height), channels(_channels), stb_allocated(false),
+  texture(nullptr)
+#else
   width(_width), height(_height), channels(_channels), stb_allocated(false)
+#endif
 {
   data = new unsigned char[width * height * channels];
   memcpy(data, _data, sizeof(unsigned char) * width * height * channels);
@@ -118,6 +123,10 @@ Image::~Image()
     stbi_image_free(data);
   else
     delete[] data;
+#ifdef GAME
+  if (texture != nullptr)
+    delete texture;
+#endif
 }
 
 Resource *
@@ -131,6 +140,21 @@ Image::get_type() const
 {
   return "image";
 }
+
+#ifdef GAME
+void
+Image::generate_texture()
+{
+  if (texture == nullptr)
+    texture = new Texture(width, height, channels, data);
+}
+
+const Texture *
+Image::get_texture()
+{
+  return texture;
+}
+#endif
 
 Image *
 Image::from_data(const char *data, uint32_t length)

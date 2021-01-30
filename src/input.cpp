@@ -218,7 +218,7 @@ mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 static void
 scroll_callback(GLFWwindow *window, double scroll_x, double scroll_y)
 {
-
+  InputMonitor::get()->mouse_scroll(Vec2(scroll_x, scroll_y));
 }
 
 static void
@@ -298,6 +298,16 @@ InputMonitor::mouse_button_press(MouseButton button, bool press)
   {
     if (listeners[i]->mouse_button_handle)
       listeners[i]->mouse_button_handle.value()(button, press);
+  }
+}
+
+void
+InputMonitor::mouse_scroll(Vec2 scroll)
+{
+  for (unsigned int i = 0; i < listeners.size(); ++i)
+  {
+    if (listeners[i]->scroll_handle)
+      listeners[i]->scroll_handle.value()(scroll);
   }
 }
 

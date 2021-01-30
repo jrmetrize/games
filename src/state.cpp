@@ -8,6 +8,8 @@
 #include "screens/options_screen.h"
 #include "screens/splash_screen.h"
 #include "screens/title_screen.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 DialoguePoint::DialoguePoint()
 {
@@ -68,13 +70,34 @@ DialogueTree::choice_made(unsigned int index)
   current_point = points[current_point].get_choices()[index].next;
 }
 
+PropertyData
+PropertyData::from_json(const json &spec)
+{
+  PropertyData data = {};
+  data.property_name = spec["name"];
+  data.property_type = spec["type"];
+  data.property_text = spec["text"];
+
+  data.data = false;
+  if (spec.contains("default"))
+  {
+    if (data.property_type == "bool")
+      data.data = (bool)spec["default"];
+    else if (data.property_type == "range")
+      data.data = (float)spec["default"];
+  }
+
+  return data;
+}
+
 GameState * GameState::instance = nullptr;
 
 GameState::GameState() :
   should_close(false),
   current_screen(nullptr),
   ref(std::chrono::steady_clock::now()),
-  last_update(ref)
+  last_update(ref),
+  properties()
 {
   level_editor_screen = new LevelEditorScreen();
   level_screen = new LevelScreen();
@@ -83,6 +106,21 @@ GameState::GameState() :
   title_screen = new TitleScreen();
 
   font_bundle = new ResourceBundle(local_to_absolute_path("resources/fonts.rbz"));
+  global_bundle = new ResourceBundle(local_to_absolute_path("resources/global.rbz"));
+
+  {
+    json settings_data =
+      json::parse(((Text *)global_bundle->get_resource("default_settings"))->get_text());
+
+    for (const auto &setting_entry_kv : settings_data["settings"].items())
+    {
+      const json &setting_entry = setting_entry_kv.value();
+      std::string name = setting_entry["name"];
+      properties[name] = PropertyData::from_json(setting_entry);
+    }
+
+    options_screen->build_tree(settings_data["options_menu"], properties);
+  }
 
   current_screen = splash_screen;
   current_screen->to_appear();
@@ -168,6 +206,18 @@ Screen *
 GameState::get_title_screen()
 {
   return title_screen;
+}
+
+ResourceBundle *
+GameState::get_globals()
+{
+  return global_bundle;
+}
+
+PropertyData &
+GameState::get_property(std::string name)
+{
+  return properties[name];
 }
 
 void

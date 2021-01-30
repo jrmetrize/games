@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <filesystem>
 #include "resource.h"
+#include "raster.h"
 #include "json.hpp"
 #include "picosha2.h"
 
@@ -66,6 +67,62 @@ struct BundleCache
 {
   std::map<std::string, BundleCacheEntry> bundles;
 };
+
+void
+add_resource_list_to_bundle(ResourceBundle *bundle, std::string bundle_name,
+  BundleCacheEntry &new_bundle_entry, const json &resource_list)
+{
+  // Iterate through the resources listed in the bundle
+  for (const auto &resource_data_kv : resource_list.items())
+  {
+    json resource_data = resource_data_kv.value();
+    std::string resource_type = resource_data["type"];
+    std::string resource_name = resource_data["name"];
+    std::string resource_path = "";
+    if (resource_data.contains("path"))
+      resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/"
+        + std::string(resource_data["path"]);
+    Resource *resource = nullptr;
+
+    ResourceCacheEntry new_resource_entry = ResourceCacheEntry();
+    new_resource_entry.name = resource_name;
+
+    std::cout << "Adding resource " + resource_name + " (" + resource_type
+      + ")" + " to bundle " + bundle_name << std::endl;
+
+    if (resource_type == "image")
+    {
+      if (resource_path.length() > 0)
+      {
+        resource = new Image(resource_path);
+      }
+      else
+      {
+        const json &options = resource_data["options"];
+        resource = render_bitmap_from_json(options);
+      }
+    }
+    else if (resource_type == "font")
+    {
+      resource = new FontFace(resource_path);
+    }
+    else if (resource_type == "text")
+    {
+      resource = new Text(resource_path);
+    }
+    else
+    {
+      std::cout << "Skipping " + resource_name
+        + ": unsupported type" << std::endl;
+    }
+
+    bundle->add_resource(resource_name, resource);
+    delete resource;
+
+    new_resource_entry.file_hash = hash_file(resource_path);
+    new_bundle_entry.resources[resource_name] = new_resource_entry;
+  }
+}
 
 int
 main(int argc, const char **argv)
@@ -131,7 +188,7 @@ main(int argc, const char **argv)
     // each time.
 
     // Iterate through the resources in the bundle and check the hashes
-    bool hashes_match = true;
+    /*bool hashes_match = true;
     if (!force_import)
     {
       if (cache.bundles.find(bundle_name) == cache.bundles.end())
@@ -185,52 +242,27 @@ main(int argc, const char **argv)
         new_cache.bundles[bundle_name] = cache.bundles[bundle_name];
         continue;
       }
-    }
+    }*/
 
     ResourceBundle *bundle = new ResourceBundle();
 
     BundleCacheEntry new_bundle_entry = BundleCacheEntry();
     new_bundle_entry.name = bundle_name;
 
-    // Iterate through the resources listed in the bundle
-    for (const auto &resource_data_kv : bundle_data["resources"].items())
+    add_resource_list_to_bundle(bundle, bundle_name,
+      new_bundle_entry, bundle_data["resources"]);
+
+    // Iterate through included resource files
+    for (const auto &include_kv : bundle_data["include"].items())
     {
-      json resource_data = resource_data_kv.value();
-      std::string resource_type = resource_data["type"];
-      std::string resource_name = resource_data["name"];
-      std::string resource_path = std::string(RESOURCE_IMPORT_PATH) + "raw/"
-        + std::string(resource_data["path"]);
-      Resource *resource = nullptr;
+      std::string include = include_kv.value();
+      std::ifstream file = std::ifstream(std::string(RESOURCE_IMPORT_PATH) + "raw/" + include);
+      json include_bundle = json();
+      file >> include_bundle;
+      file.close();
 
-      ResourceCacheEntry new_resource_entry = ResourceCacheEntry();
-      new_resource_entry.name = resource_name;
-
-      std::cout << "Adding resource " + resource_name + " (" + resource_type
-        + ")" + " to bundle " + bundle_name << std::endl;
-
-      if (resource_type == "image")
-      {
-        resource = new Image(resource_path);
-      }
-      else if (resource_type == "font")
-      {
-        resource = new FontFace(resource_path);
-      }
-      else if (resource_type == "text")
-      {
-        resource = new Text(resource_path);
-      }
-      else
-      {
-        std::cout << "Skipping " + resource_name
-          + ": unsupported type" << std::endl;
-      }
-
-      bundle->add_resource(resource_name, resource);
-      delete resource;
-
-      new_resource_entry.file_hash = hash_file(resource_path);
-      new_bundle_entry.resources[resource_name] = new_resource_entry;
+      add_resource_list_to_bundle(bundle, bundle_name,
+        new_bundle_entry, include_bundle["resources"]);
     }
 
     bundle->write_to(std::string(RESOURCE_IMPORT_PATH) + "processed/"
