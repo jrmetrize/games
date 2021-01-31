@@ -6,17 +6,44 @@
 struct MenuButton
 {
   std::string text;
-  float height;
+  Vec2 origin;
+  Vec2 size;
 
   std::function<void()> target;
 
   bool highlighted;
   bool pressed;
 
-  MenuButton(std::string _text, float _height, std::function<void()> _target);
+  MenuButton(std::string _text, Vec2 _origin, Vec2 _size, std::function<void()> _target);
 
   void
   update();
+
+  void
+  draw();
+
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
+};
+
+struct MenuSwitch
+{
+  bool value;
+  Vec2 origin;
+  Vec2 size;
+
+  std::function<void(bool)> value_changed;
+
+  int highlighted;
+  int pressed;
+
+  MenuSwitch(Vec2 _origin, Vec2 _size, std::function<void(bool)> _value_changed);
+
+  void
+  update();
+
+  void
+  draw();
 
   void
   mouse_pressed(MouseButton button, bool button_pressed);

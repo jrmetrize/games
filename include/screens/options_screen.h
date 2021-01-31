@@ -13,14 +13,31 @@ class OptionsScreen : public Screen
   {
     virtual float
     draw(Vec2 offset) = 0;
+
+    virtual void
+    update(float time_elapsed) = 0;
+
+    virtual void
+    mouse_pressed(MouseButton button, bool pressed) = 0;
   };
 
   struct OptionSelector : public OptionsEntry
   {
+    PropertyData *game_property;
     std::string text;
+    MenuSwitch *bool_switch;
 
     float
     draw(Vec2 offset);
+
+    void
+    update(float time_elapsed);
+
+    void
+    mouse_pressed(MouseButton button, bool pressed);
+
+    void
+    bool_switch_changed(bool value);
   };
 
   struct OptionsList : public OptionsEntry
@@ -28,12 +45,20 @@ class OptionsScreen : public Screen
     std::string name;
     std::vector<OptionsEntry *> entries;
     bool open;
+    MenuButton *arrow_button;
 
     float
     draw(Vec2 offset);
+
+    void
+    update(float time_elapsed);
+
+    void
+    mouse_pressed(MouseButton button, bool pressed);
   };
 
   Listener listener;
+  MenuButton *back_button;
 
   OptionsList root;
   float list_height;
@@ -44,6 +69,12 @@ class OptionsScreen : public Screen
 
   void
   mouse_scrolled(Vec2 scroll);
+
+  void
+  toggle_list_open(OptionsList *list);
+
+  void
+  back_pressed();
 
   void
   parse_options_group(const json &group, OptionsList *parent,

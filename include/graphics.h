@@ -249,6 +249,9 @@ public:
   static GraphicsServer *
   get();
 
+  void
+  set_fullscreen(bool fullscreen);
+
   Vec2
   get_framebuffer_size() const;
 

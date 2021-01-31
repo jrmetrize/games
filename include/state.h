@@ -71,9 +71,17 @@ struct PropertyData
   std::string property_type;
   std::string property_text;
   std::variant<bool, std::string, float> data;
+  std::function<void(PropertyData *)> changed_callback;
 
   static PropertyData
   from_json(const json &spec);
+
+  template<typename T> void
+  set_data(T _data)
+  {
+    data = _data;
+    changed_callback(this);
+  }
 };
 
 class GameState
@@ -97,6 +105,9 @@ class GameState
   ResourceBundle *global_bundle;
 
   std::map<std::string, PropertyData> properties;
+
+  void
+  fullscreen_changed(PropertyData *prop);
 public:
   GameState();
 

@@ -478,6 +478,25 @@ GraphicsServer::get()
   return instance;
 }
 
+void
+GraphicsServer::set_fullscreen(bool fullscreen)
+{
+  if (fullscreen)
+  {
+    int monitor_count;
+    int monitor_width;
+    int monitor_height;
+    GLFWmonitor **monitors = glfwGetMonitors(&monitor_count);
+    glfwGetMonitorWorkarea(monitors[0], nullptr, nullptr, &monitor_width, &monitor_height);
+
+    glfwSetWindowMonitor(window, monitors[0], 0, 0, monitor_width, monitor_height, 144);
+  }
+  else
+  {
+    glfwSetWindowMonitor(window, nullptr, 64, 64, 1280, 720, 0);
+  }
+}
+
 Vec2
 GraphicsServer::get_framebuffer_size() const
 {
@@ -648,11 +667,26 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
 
   if (text_request.center_vertical)
   {
+    const Glyph &glyph = text_request.font->get_glyph('B');
+    float g_height = (scale_factor * glyph.height);
+
     // We want the vertical center of the text to be the same as the vertical
     // center of the bounding box.
     current_pos.y = text_request.bounding_box_origin.y
       + ((1.0f / 2.0f) * text_request.bounding_box_size.y)
-      - ((1.0f / 2.0f) * text_request.size);
+      - ((1.0f / 2.0f) * g_height);
+  }
+
+  if (text_request.center)
+  {
+    float width = 0;
+    for (unsigned int i = 0; i < text_request.text.length(); ++i)
+    {
+      char c = text_request.text[i];
+      const Glyph &glyph = text_request.font->get_glyph(c);
+      width += scale_factor * glyph.horizontal_advance;
+    }
+    current_pos += Vec2((1.0f / 2.0f) * (text_request.bounding_box_size.x - width), 0);
   }
 
   for (unsigned int i = 0; i < text_request.text.length(); ++i)
@@ -768,6 +802,7 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
   {
     TextRenderRequest req = text_request;
     req.text = lines[i];
+    req.center = false;
 
     Vec2 alignment = Vec2(0, text_request.bounding_box_size.y);
     if (text_request.center)

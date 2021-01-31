@@ -119,6 +119,9 @@ GameState::GameState() :
       properties[name] = PropertyData::from_json(setting_entry);
     }
 
+    properties["is_fullscreen"].changed_callback =
+      std::bind(&GameState::fullscreen_changed, this, std::placeholders::_1);
+
     options_screen->build_tree(settings_data["options_menu"], properties);
   }
 
@@ -135,6 +138,12 @@ GameState::~GameState()
   delete title_screen;
 
   delete font_bundle;
+}
+
+void
+GameState::fullscreen_changed(PropertyData *prop)
+{
+  GraphicsServer::get()->set_fullscreen(std::get<bool>(prop->data));
 }
 
 void
