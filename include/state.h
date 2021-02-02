@@ -65,12 +65,24 @@ public:
   choice_made(unsigned int index);
 };
 
+struct EnumData
+{
+  struct EnumChoice
+  {
+    std::string name;
+    std::string text;
+  };
+
+  std::vector<EnumChoice> choices;
+  unsigned int current;
+};
+
 struct PropertyData
 {
   std::string property_name;
   std::string property_type;
   std::string property_text;
-  std::variant<bool, std::string, float> data;
+  std::variant<bool, float, EnumData> data;
   std::function<void(PropertyData *)> changed_callback;
 
   static PropertyData
@@ -80,7 +92,8 @@ struct PropertyData
   set_data(T _data)
   {
     data = _data;
-    changed_callback(this);
+    if (changed_callback)
+      changed_callback(this);
   }
 };
 

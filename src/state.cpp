@@ -87,6 +87,21 @@ PropertyData::from_json(const json &spec)
       data.data = (float)spec["default"];
   }
 
+  if (data.property_type == "enum")
+  {
+    EnumData enum_data = {};
+    for (const auto &choice_kv : spec["choices"].items())
+    {
+      const json &choice = choice_kv.value();
+      EnumData::EnumChoice choice_data = {};
+      choice_data.name = choice["name"];
+      choice_data.text = choice["text"];
+
+      enum_data.choices.push_back(choice_data);
+    }
+    data.data = enum_data;
+  }
+
   return data;
 }
 

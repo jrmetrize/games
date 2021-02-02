@@ -25,7 +25,7 @@ class OptionsScreen : public Screen
   {
     PropertyData *game_property;
     std::string text;
-    MenuSwitch *bool_switch;
+    MenuControl *property_control;
 
     float
     draw(Vec2 offset);
@@ -38,6 +38,9 @@ class OptionsScreen : public Screen
 
     void
     bool_switch_changed(bool value);
+
+    void
+    range_slider_changed(float value);
   };
 
   struct OptionsList : public OptionsEntry

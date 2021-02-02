@@ -3,6 +3,7 @@
 #include <string>
 #include <chrono>
 
+#include "audio.h"
 #include "graphics.h"
 #include "input.h"
 #include "state.h"
@@ -76,6 +77,9 @@ main(int argc, const char **argv)
   GraphicsServer *renderer = new GraphicsServer(window);
   GraphicsServer::set_instance(renderer);
 
+  AudioServer *audio = new AudioServer();
+  AudioServer::set_instance(audio);
+
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();
 
@@ -91,6 +95,7 @@ main(int argc, const char **argv)
     renderer->draw();
   }
 
+  delete audio;
   delete renderer;
   delete state;
   delete input;

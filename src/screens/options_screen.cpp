@@ -6,11 +6,16 @@ const float top_bar_size = 64.0f;
 float
 OptionsScreen::OptionSelector::draw(Vec2 offset)
 {
-  bool_switch->origin = offset + Vec2(256, 5);
-  bool_switch->size = Vec2(256, 40);
-  bool_switch->draw();
-
   Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
+
+  if (property_control != nullptr)
+  {
+    property_control->size = Vec2(256, 40);
+    property_control->origin = offset + Vec2(256, 5);
+    property_control->origin.x = window_size.x - property_control->size.x - 64;
+    property_control->draw();
+  }
+
   TextRenderRequest req = {};
   req.bounding_box_origin = offset;
   req.bounding_box_size = Vec2(window_size.x, 32);
@@ -26,7 +31,8 @@ OptionsScreen::OptionSelector::draw(Vec2 offset)
 void
 OptionsScreen::OptionSelector::mouse_pressed(MouseButton button, bool pressed)
 {
-  bool_switch->mouse_pressed(button, pressed);
+  if (property_control != nullptr)
+    property_control->mouse_pressed(button, pressed);
 }
 
 void
@@ -37,9 +43,16 @@ OptionsScreen::OptionSelector::bool_switch_changed(bool value)
 }
 
 void
+OptionsScreen::OptionSelector::range_slider_changed(float value)
+{
+
+}
+
+void
 OptionsScreen::OptionSelector::update(float time_elapsed)
 {
-  bool_switch->update();
+  if (property_control != nullptr)
+    property_control->update();
 }
 
 float
@@ -150,8 +163,20 @@ OptionsScreen::parse_options_group(const json &group, OptionsList *parent,
 
       OptionSelector *item = new OptionSelector();
       item->text = prop.property_text;
-      item->bool_switch = new MenuSwitch(Vec2(), Vec2(),
-        std::bind(&OptionsScreen::OptionSelector::bool_switch_changed, item, std::placeholders::_1));
+      if (prop.property_type == "bool")
+      {
+        item->property_control = new MenuSwitch(Vec2(), Vec2(),
+          std::bind(&OptionsScreen::OptionSelector::bool_switch_changed, item, std::placeholders::_1));
+      }
+      else if (prop.property_type == "range")
+      {
+        item->property_control = new MenuSlider(Vec2(), Vec2(),
+          std::bind(&OptionsScreen::OptionSelector::range_slider_changed, item, std::placeholders::_1));
+      }
+      else if (prop.property_type == "enum")
+      {
+        item->property_control = new MenuSelector(Vec2(), Vec2(), &prop);
+      }
       item->game_property = &prop;
       list->entries.push_back(item);
     }

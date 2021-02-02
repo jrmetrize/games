@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(fp2d
+  src/backends/audio_wasapi.cpp
+
   src/imgui/imgui_impl_glfw.cpp
   src/imgui/imgui_impl_opengl3.cpp
   src/imgui/imgui_draw.cpp
@@ -20,6 +22,7 @@ add_executable(fp2d
   src/screens/splash_screen.cpp
   src/screens/title_screen.cpp
 
+  src/audio.cpp
   src/glad.c
   src/graphics.cpp
   src/input.cpp

@@ -2,12 +2,28 @@
 #define SCREEN_H
 
 #include "input.h"
+#include "state.h"
 
-struct MenuButton
+struct MenuControl
 {
-  std::string text;
   Vec2 origin;
   Vec2 size;
+
+  MenuControl(Vec2 _origin, Vec2 _size);
+
+  virtual void
+  update() = 0;
+
+  virtual void
+  draw() = 0;
+
+  virtual void
+  mouse_pressed(MouseButton button, bool button_pressed) = 0;
+};
+
+struct MenuButton : public MenuControl
+{
+  std::string text;
 
   std::function<void()> target;
 
@@ -26,11 +42,9 @@ struct MenuButton
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct MenuSwitch
+struct MenuSwitch : public MenuControl
 {
   bool value;
-  Vec2 origin;
-  Vec2 size;
 
   std::function<void(bool)> value_changed;
 
@@ -38,6 +52,46 @@ struct MenuSwitch
   int pressed;
 
   MenuSwitch(Vec2 _origin, Vec2 _size, std::function<void(bool)> _value_changed);
+
+  void
+  update();
+
+  void
+  draw();
+
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
+};
+
+struct MenuSlider : public MenuControl
+{
+  float value;
+
+  std::function<void(float)> value_changed;
+
+  bool highlighted;
+  bool pressed;
+
+  MenuSlider(Vec2 _origin, Vec2 _size, std::function<void(float)> _value_changed);
+
+  void
+  update();
+
+  void
+  draw();
+
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
+};
+
+struct MenuSelector : public MenuControl
+{
+  PropertyData *property;
+
+  int highlighted;
+  int pressed;
+
+  MenuSelector(Vec2 _origin, Vec2 _size, PropertyData *_property);
 
   void
   update();
