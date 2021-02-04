@@ -12,7 +12,7 @@ class AudioLayerWasapi : public AudioLayer
   IMMDeviceCollection *device_collection;
   IMMDevice *device;
 
-  WAVEFORMATEX *format;
+  WAVEFORMATEX format;
 
   IAudioClient *client;
   IAudioRenderClient *render_client;

@@ -1,0 +1,2 @@
+py bootstrap.py
+pause

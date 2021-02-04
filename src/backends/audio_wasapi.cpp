@@ -1,16 +1,7 @@
 #include "backends/audio_wasapi.h"
 #include <cstdint>
+#include <limits>
 #include <cmath>
-
-#include <iostream>
-void
-log_err(HRESULT err)
-{
-  if (err == S_OK)
-    std::cout << "ok\n";
-  else
-    std::cout << "err\n";
-}
 
 AudioLayerWasapi::AudioLayerWasapi()
 {
@@ -23,11 +14,27 @@ AudioLayerWasapi::AudioLayerWasapi()
   /*result = device_collection->Item(0, &device);*/
   result = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
     reinterpret_cast<void **>(&client));
-  result = client->GetMixFormat(&format);
+
+  {
+    WAVEFORMATEX *mix_fmt;
+    result = client->GetMixFormat(&mix_fmt);
+
+    format = {};
+    format.wFormatTag = WAVE_FORMAT_PCM;
+    format.nChannels = 2;
+    format.nSamplesPerSec = mix_fmt->nSamplesPerSec;
+    format.wBitsPerSample = 16;
+    format.nBlockAlign = (format.wBitsPerSample / 8) * format.nChannels;
+    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+
+    WAVEFORMATEX *match;
+    auto err = client->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED,
+      &format, &match);
+  }
 
   int buffer_length = 1 * (1000 * 1000 * 10);
 
-  result = client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, buffer_length, 0, format, nullptr);
+  result = client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, buffer_length, 0, &format, nullptr);
   result = client->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void **>(&render_client));
 
   result = client->GetBufferSize(&buffer_frames);
@@ -44,30 +51,8 @@ AudioLayerWasapi::~AudioLayerWasapi()
 void
 AudioLayerWasapi::start()
 {
-
-auto result = client->Reset();
-result = client->Start();
-
-  {
-    unsigned int buffer_padding;
-    auto result = client->GetCurrentPadding(&buffer_padding);
-
-    unsigned int frames_available = buffer_frames - buffer_padding;
-    unsigned char *buffer_data;
-    result = render_client->GetBuffer(frames_available, &buffer_data);
-
-    for (unsigned int i = 0; i < frames_available; ++i)
-    {
-      float *left = reinterpret_cast<float *>(&buffer_data[8 * i]);
-      float *right = reinterpret_cast<float *>(&buffer_data[(8 * i) + 4]);
-
-      float val = sin((1.0f / 20.0f) * float(i));
-      *left = val;
-      *right = val;
-    }
-
-    result = render_client->ReleaseBuffer(frames_available, 0);
-  }
+  auto result = client->Reset();
+  result = client->Start();
 }
 
 void
