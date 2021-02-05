@@ -4,7 +4,7 @@
  *
  *   OpenType and CFF data/program tables loader (body).
  *
- * Copyright (C) 1996-2021 by
+ * Copyright (C) 1996-2020 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -2361,8 +2361,8 @@
       if ( font->name_index.count > 1 )
       {
         FT_ERROR(( "cff_font_load:"
-                   " invalid CFF font with multiple subfonts\n" ));
-        FT_ERROR(( "              "
+                   " invalid CFF font with multiple subfonts\n"
+                   "              "
                    " in SFNT wrapper\n" ));
         error = FT_THROW( Invalid_File_Format );
         goto Exit;

@@ -2,7 +2,7 @@
 # Meson project file for FreeType 2
 #
 
-# Copyright (C) 2020-2021 by
+# Copyright (C) 2020 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -13,7 +13,6 @@
 
 
 project('freetype2', 'c',
-  version: '2.10.4',
   meson_version: '>= 0.55.0',
   default_options: ['default_library=both'],
 )
@@ -201,8 +200,6 @@ endif
 if use_mmap
   # This version of ftsystem.c uses mmap() to read input font files.
   ft2_sources += files(['builds/unix/ftsystem.c',])
-elif host_machine.system() == 'windows'
-  ft2_sources += files(['builds/windows/ftsystem.c',])
 else
   ft2_sources += files(['src/base/ftsystem.c',])
 endif
@@ -234,12 +231,10 @@ ftoption_command = [python_exe,
   '@INPUT@', '--output=@OUTPUT@']
 
 # GZip support
-have_zlib='no'
 zlib_option = get_option('zlib')
 if zlib_option == 'disabled'
   ftoption_command += ['--disable=FT_CONFIG_OPTION_USE_ZLIB']
 else
-  have_zlib='yes'
   ftoption_command += ['--enable=FT_CONFIG_OPTION_USE_ZLIB']
   if zlib_option == 'builtin'
     ftoption_command += ['--disable=FT_CONFIG_OPTION_SYSTEM_ZLIB']
@@ -269,14 +264,12 @@ endif
 
 # PNG support
 libpng_dep = dependency('libpng', required: get_option('png'))
-if libpng_dep.found()
-  ftoption_command += ['--enable=FT_CONFIG_OPTION_USE_PNG']
-  ft2_deps += [libpng_dep]
-endif
+ftoption_command += ['--enable=FT_CONFIG_OPTION_USE_PNG']
+ft2_deps += [libpng_dep]
 
 # Harfbuzz support
 harfbuzz_dep = dependency('harfbuzz',
-                 version: '>= 2.0.0',
+                 version: '>= 1.8.0',
                  required: get_option('harfbuzz'))
 if harfbuzz_dep.found()
   ftoption_command += ['--enable=FT_CONFIG_OPTION_USE_HARFBUZZ']
@@ -383,14 +376,5 @@ gen_docs = custom_target('freetype2 reference documentation',
     '--output-dir=@OUTPUT@'
   ],
 )
-
-
-summary({'OS': host_machine.system(),
-         'Zlib': have_zlib,
-         'Bzip2': bzip2_dep.found() ? 'yes' : 'no',
-         'Png': libpng_dep.found() ? 'yes' : 'no',
-         'Harfbuzz': harfbuzz_dep.found() ? 'yes' : 'no',
-         'Brotli': brotli_dep.found() ? 'yes' : 'no',
-        }, section: 'Configuration Options Summary:')
 
 # EOF

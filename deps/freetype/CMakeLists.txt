@@ -1,6 +1,6 @@
 # CMakeLists.txt
 #
-# Copyright (C) 2013-2021 by
+# Copyright (C) 2013-2020 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # Written originally by John Cary <cary@txcorp.com>
@@ -205,7 +205,7 @@ endif ()
 
 
 # Find dependencies
-set(HARFBUZZ_MIN_VERSION "2.0.0")
+set(HARFBUZZ_MIN_VERSION "1.8.0")
 if (FT_WITH_HARFBUZZ)
   find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION} REQUIRED)
 else ()
@@ -358,8 +358,6 @@ set(BASE_SRCS
 
 if (UNIX)
   list(APPEND BASE_SRCS "builds/unix/ftsystem.c")
-elseif (WIN32)
-  list(APPEND BASE_SRCS "builds/windows/ftsystem.c")
 else ()
   list(APPEND BASE_SRCS "src/base/ftsystem.c")
 endif ()

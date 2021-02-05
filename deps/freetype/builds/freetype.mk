@@ -3,7 +3,7 @@
 #
 
 
-# Copyright (C) 1996-2021 by
+# Copyright (C) 1996-2020 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -20,8 +20,8 @@
 # The following variables (set by other Makefile components, in the
 # environment, or on the command line) are used:
 #
-#   PLATFORM_DIR   The architecture-dependent directory,
-#                  e.g., `$(TOP_DIR)/builds/unix'.  Added to INCLUDES also.
+#   BUILD_DIR      The architecture dependent directory,
+#                  e.g. `$(TOP_DIR)/builds/unix'.  Added to INCLUDES also.
 #
 #   OBJ_DIR        The directory in which object files are created.
 #
@@ -101,6 +101,7 @@ PUBLIC_DIR   := $(TOP_DIR)/include/freetype
 INTERNAL_DIR := $(PUBLIC_DIR)/internal
 SERVICES_DIR := $(INTERNAL_DIR)/services
 CONFIG_DIR   := $(PUBLIC_DIR)/config
+DLG_DIR      := $(TOP_DIR)/src/dlg
 
 # The documentation directory.
 #
@@ -121,7 +122,8 @@ PROJECT_LIBRARY := $(LIB_DIR)/$(LIBRARY).$A
 #
 INCLUDES := $(subst /,$(COMPILER_SEP),$(OBJ_DIR) \
                                       $(DEVEL_DIR) \
-                                      $(PLATFORM_DIR) \
+                                      $(BUILD_DIR) \
+                                      $(DLG_DIR) \
                                       $(TOP_DIR)/include)
 
 INCLUDE_FLAGS := $(INCLUDES:%=$I%)
@@ -175,16 +177,16 @@ OBJECTS_LIST :=
 # changes, the whole library is recompiled.
 #
 ifneq ($(wildcard $(OBJ_DIR)/ftoption.h),)
-  FTOPTION_H := $(OBJ_DIR)/ftoption.h
-else ifneq ($(wildcard $(PLATFORM_DIR)/ftoption.h),)
-  FTOPTION_H := $(PLATFORM_DIR)/ftoption.h
+  FTOPTION_H    := $(OBJ_DIR)/ftoption.h
+else ifneq ($(wildcard $(BUILD_DIR)/ftoption.h),)
+  FTOPTION_H    := $(BUILD_DIR)/ftoption.h
 endif
 
 PUBLIC_H   := $(wildcard $(PUBLIC_DIR)/*.h)
 INTERNAL_H := $(wildcard $(INTERNAL_DIR)/*.h) \
               $(wildcard $(SERVICES_DIR)/*.h)
 CONFIG_H   := $(wildcard $(CONFIG_DIR)/*.h) \
-              $(wildcard $(PLATFORM_DIR)/config/*.h) \
+              $(wildcard $(BUILD_DIR)/config/*.h) \
               $(FTMODULE_H) \
               $(FTOPTION_H)
 DEVEL_H    := $(wildcard $(TOP_DIR)/devel/*.h)

@@ -4,7 +4,7 @@
  *
  *   CID-keyed Type1 font loader (body).
  *
- * Copyright (C) 1996-2021 by
+ * Copyright (C) 1996-2020 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -843,8 +843,8 @@
     if ( cid->fd_bytes > 4 || cid->gd_bytes > 4 )
     {
       FT_ERROR(( "cid_face_open:"
-                 " Values of `FDBytes' or `GDBytes' larger than 4\n" ));
-      FT_ERROR(( "               "
+                 " Values of `FDBytes' or `GDBytes' larger than 4\n"
+                 "               "
                  " are not supported\n" ));
       error = FT_THROW( Invalid_File_Format );
       goto Exit;

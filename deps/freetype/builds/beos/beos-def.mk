@@ -5,7 +5,7 @@
 #
 
 
-# Copyright (C) 1996-2021 by
+# Copyright (C) 1996-2020 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -15,11 +15,11 @@
 # fully.
 
 
-DELETE       := rm -f
-CAT          := cat
-SEP          := /
-PLATFORM_DIR := $(TOP_DIR)/builds/beos
-PLATFORM     := beos
+DELETE    := rm -f
+CAT       := cat
+SEP       := /
+BUILD_DIR := $(TOP_DIR)/builds/beos
+PLATFORM  := beos
 
 # This is used for `make refdoc' and `make refdoc-venv'
 #

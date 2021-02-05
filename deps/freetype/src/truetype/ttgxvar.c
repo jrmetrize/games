@@ -4,7 +4,7 @@
  *
  *   TrueType GX Font Variation loader
  *
- * Copyright (C) 2004-2021 by
+ * Copyright (C) 2004-2020 by
  * David Turner, Robert Wilhelm, Werner Lemberg, and George Williams.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -487,8 +487,8 @@
     if ( itemStore->axisCount != (FT_Long)blend->mmvar->num_axis )
     {
       FT_TRACE2(( "ft_var_load_item_variation_store:"
-                  " number of axes in item variation store\n" ));
-      FT_TRACE2(( "                                 "
+                  " number of axes in item variation store\n"
+                  "                                 "
                   " and `fvar' table are different\n" ));
       error = FT_THROW( Invalid_Table );
       goto Exit;

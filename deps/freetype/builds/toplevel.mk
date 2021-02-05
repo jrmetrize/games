@@ -3,7 +3,7 @@
 #
 
 
-# Copyright (C) 1996-2021 by
+# Copyright (C) 1996-2020 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -113,7 +113,7 @@ ifdef check_platform
   include $(TOP_DIR)/builds/detect.mk
 
   # For builds directly from the git repository we need to copy files
-  # from `submodule/dlg' to `src/dlg' and `include/dlg'.
+  # from `submodule/dlg' to `src/dlg'.
   #
   ifeq ($(wildcard src/dlg/dlg.*),)
     ifeq ($(wildcard submodules/dlg/*),)
@@ -122,12 +122,12 @@ ifdef check_platform
       $(shell git submodule update)
     endif
 
-    $(info Copying files from `submodules/dlg' to `src/dlg' and `include/dlg')
-    $(shell mkdir $(subst /,$(SEP),include/dlg) $(NO_OUTPUT))
+    $(info Copying files from `submodules/dlg' to `src/dlg')
+    $(shell mkdir $(subst /,$(SEP),src/dlg/dlg) $(NO_OUTPUT))
     $(shell $(COPY) \
-      $(subst /,$(SEP),submodules/dlg/include/dlg/output.h include/dlg))
+      $(subst /,$(SEP),submodules/dlg/include/dlg/dlg.h src/dlg/dlg))
     $(shell $(COPY) \
-      $(subst /,$(SEP),submodules/dlg/include/dlg/dlg.h include/dlg))
+      $(subst /,$(SEP),submodules/dlg/include/dlg/output.h src/dlg/dlg))
     $(shell $(COPY) \
       $(subst /,$(SEP),submodules/dlg/src/dlg/dlg.c src/dlg))
   endif

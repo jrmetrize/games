@@ -1087,8 +1087,8 @@ THE SOFTWARE.
     if ( defaultCharEncodingOffset == 0xFFFF )
     {
       FT_TRACE0(( "pcf_get_encodings:"
-                  " No glyph for default character,\n" ));
-      FT_TRACE0(( "                  "
+                  " No glyph for default character,\n"
+                  "                  "
                   " setting it to the first glyph of the font\n" ));
       defaultCharEncodingOffset = 1;
     }
@@ -1099,8 +1099,8 @@ THE SOFTWARE.
       if ( defaultCharEncodingOffset >= face->nmetrics )
       {
         FT_TRACE0(( "pcf_get_encodings:"
-                    " Invalid glyph index for default character,\n" ));
-        FT_TRACE0(( "                  "
+                    " Invalid glyph index for default character,\n"
+                    "                  "
                     " setting it to the first glyph of the font\n" ));
         defaultCharEncodingOffset = 1;
       }
@@ -1232,16 +1232,16 @@ THE SOFTWARE.
     }
 
     FT_TRACE5(( "  noOverlap=%s, constantMetrics=%s,"
-                " terminalFont=%s, constantWidth=%s\n",
+                " terminalFont=%s, constantWidth=%s\n"
+                "  inkInside=%s, inkMetrics=%s, drawDirection=%s\n"
+                "  fontAscent=%ld, fontDescent=%ld, maxOverlap=%ld\n",
                 accel->noOverlap ? "yes" : "no",
                 accel->constantMetrics ? "yes" : "no",
                 accel->terminalFont ? "yes" : "no",
-                accel->constantWidth ? "yes" : "no" ));
-    FT_TRACE5(( "  inkInside=%s, inkMetrics=%s, drawDirection=%s\n",
+                accel->constantWidth ? "yes" : "no",
                 accel->inkInside ? "yes" : "no",
                 accel->inkMetrics ? "yes" : "no",
-                accel->drawDirection ? "RTL" : "LTR" ));
-    FT_TRACE5(( "  fontAscent=%ld, fontDescent=%ld, maxOverlap=%ld\n",
+                accel->drawDirection ? "RTL" : "LTR",
                 accel->fontAscent,
                 accel->fontDescent,
                 accel->maxOverlap ));

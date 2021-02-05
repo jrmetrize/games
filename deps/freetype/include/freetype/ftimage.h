@@ -5,7 +5,7 @@
  *   FreeType glyph image formats and default raster interface
  *   (specification).
  *
- * Copyright (C) 1996-2021 by
+ * Copyright (C) 1996-2020 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -191,10 +191,10 @@ FT_BEGIN_HEADER
     FT_PIXEL_MODE_GRAY,
     FT_PIXEL_MODE_GRAY2,
     FT_PIXEL_MODE_GRAY4,
+    FT_PIXEL_MODE_GRAY16,
     FT_PIXEL_MODE_LCD,
     FT_PIXEL_MODE_LCD_V,
     FT_PIXEL_MODE_BGRA,
-    FT_PIXEL_MODE_GRAY16,
 
     FT_PIXEL_MODE_MAX      /* do not remove */
 
