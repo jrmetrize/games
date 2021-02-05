@@ -4,9 +4,10 @@ project(fp2d)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(fp2d
-  src/backends/audio_wasapi.cpp
+find_package(glfw3 3.3 REQUIRED PATHS deps/build)
+find_package(Freetype REQUIRED PATHS deps/build)
 
+set(GAME_SOURCES
   src/imgui/imgui_impl_glfw.cpp
   src/imgui/imgui_impl_opengl3.cpp
   src/imgui/imgui_draw.cpp
@@ -35,6 +36,21 @@ add_executable(fp2d
   src/util.cpp
 )
 
+if(WIN32)
+  list(APPEND GAME_SOURCES
+    src/backends/audio_wasapi.cpp
+  )
+endif()
+
+add_executable(fp2d ${GAME_SOURCES})
+target_link_libraries(fp2d
+  dl
+  glfw
+  GLEW
+  GL
+  z
+)
+
 add_custom_command(TARGET fp2d POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:fp2d>/resources/"
   COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -49,39 +65,8 @@ target_compile_definitions(fp2d
 target_include_directories(fp2d
   PUBLIC include
   PUBLIC include/imgui
-  PUBLIC ${GLFW_PATH}/include
-  PUBLIC ${ZLIB_PATH}/include
 )
 
-target_link_directories(fp2d
-  PUBLIC ${GLFW_PATH}/lib
-  PUBLIC ${ZLIB_PATH}/lib
-)
-
-if(WIN32)
-target_link_libraries(fp2d
-  glfw3
-  zlibstaticd
-)
-endif()
-
-if(APPLE)
-target_include_directories(fp2d
-  PUBLIC /usr/local/include
-)
-
-target_link_directories(fp2d
-  PUBLIC /usr/local/lib
-)
-
-target_link_libraries(fp2d
-  glfw
-  z
-)
-endif()
-
-
-if(BUILD_RESOURCE_IMPORTER)
 add_executable(resource_importer
   src/linear_algebra.cpp
   src/raster.cpp
@@ -96,29 +81,9 @@ target_compile_definitions(resource_importer
 
 target_include_directories(resource_importer
   PUBLIC include
-  PUBLIC ${ZLIB_PATH}/include
-  PUBLIC ${FT_PATH}/include
-  PUBLIC ${FT_PATH}/include/freetype2
-)
-
-target_link_directories(resource_importer
-  PUBLIC ${ZLIB_PATH}/lib
-  PUBLIC ${FT_PATH}/lib
+  PUBLIC deps/build/include/freetype2
 )
 
 target_link_libraries(resource_importer
-  zlibstaticd
-  freetyped
+  freetype
 )
-
-if(APPLE)
-target_include_directories(resource_importer
-  PUBLIC /usr/local/include
-  PUBLIC /usr/local/include/freetype2
-)
-
-target_link_directories(resource_importer
-  PUBLIC /usr/local/lib
-)
-endif()
-endif()

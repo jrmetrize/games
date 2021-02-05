@@ -322,9 +322,9 @@ LevelState::~LevelState()
 void
 LevelState::dialogue_choice_callback(void *userdata)
 {
-  unsigned int i = reinterpret_cast<unsigned int>(userdata);
+  /*unsigned int i = reinterpret_cast<unsigned int>(userdata);
   current_dialogue->set_current(
-    current_dialogue->get_current_point().get_choices()[i].next);
+    current_dialogue->get_current_point().get_choices()[i].next);*/
 }
 
 void

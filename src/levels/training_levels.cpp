@@ -55,7 +55,7 @@ TrainingLevelController::TrainingLevelController() :
   {
     Tile t = {};
     t.tile = c.value()["tile"];
-    map->set_tile(c.value()["x"], c.value()["y"] + 8, t);
+    map->set_tile(c.value()["x"], (unsigned int)c.value()["y"] + 8, t);
   }
   map->set_material("purple_electric_block", new ElectricMaterial(colors["vw_purple"]));
 

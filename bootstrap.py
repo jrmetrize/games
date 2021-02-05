@@ -25,7 +25,8 @@ def build_cmake(dep_name):
 
     cmd_result = subprocess.run(['cmake',
         '-S', get_source_dir(dep_name),
-        '-B', get_build_dir(dep_name)],
+        '-B', get_build_dir(dep_name),
+        '-D', f'CMAKE_INSTALL_PREFIX={get_build_dir()}'],
         capture_output=True)
     if cmd_result.returncode != 0:
         print("CMake generation failed.")
@@ -59,9 +60,14 @@ def build_glfw():
     print("Building dependency 'glfw'")
     return build_cmake("glfw")
 
+def build_zlib():
+    print("Building dependency 'zlib'")
+    return build_cmake("zlib")
+
 build_cmds = [
     build_freetype,
-    build_glfw
+    build_glfw,
+    build_zlib
 ]
 for cmd in build_cmds:
     cmd_result = cmd()

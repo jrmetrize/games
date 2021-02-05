@@ -23,6 +23,14 @@ error_dialog(std::string error_message)
 }
 #endif
 
+#ifdef __linux__
+void
+error_dialog(std::string error_message)
+{
+
+}
+#endif
+
 #ifdef __APPLE__
 void
 error_dialog(std::string error_message)

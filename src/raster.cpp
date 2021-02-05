@@ -185,8 +185,8 @@ render_bitmap_from_json(const json &data)
   // Render the image at 4x resolution, and then sample at the specified
   // resolution
   RawBitmap bitmap = {};
-  bitmap.width = 4 * data["width"];
-  bitmap.height = 4 * data["height"];
+  bitmap.width = 4 * (unsigned int)data["width"];
+  bitmap.height = 4 * (unsigned int)data["height"];
   bitmap.channels = 4;
   bitmap.data = new unsigned char[bitmap.width * bitmap.height * bitmap.channels];
 

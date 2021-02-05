@@ -28,11 +28,11 @@ AudioServer::AudioServer()
 #ifdef _WIN32
   backend = new AudioLayerWasapi();
 #endif
-  backend->start();
+  //backend->start();
 }
 
 AudioServer::~AudioServer()
 {
-  backend->stop();
-  delete backend;
+  //backend->stop();
+  //delete backend;
 }

@@ -12,6 +12,18 @@ get_executable_path()
 }
 #endif
 
+#ifdef __linux__
+#include <unistd.h>
+
+std::string
+get_executable_path()
+{
+  char buffer[1024];
+  readlink("/proc/self/exe", buffer, 1024);
+  return std::string(buffer);
+}
+#endif
+
 std::string
 get_executable_dir()
 {

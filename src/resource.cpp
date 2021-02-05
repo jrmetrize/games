@@ -6,6 +6,7 @@
 
 #include <sstream>
 #include <bit>
+#include <cstring>
 #include "picosha2.h"
 
 #ifdef RESOURCE_IMPORTER
