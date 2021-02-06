@@ -24,6 +24,19 @@ get_executable_path()
 }
 #endif
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+
+std::string
+get_executable_path()
+{
+  char buffer[1024];
+  uint32_t size = 1024;
+  _NSGetExecutablePath(buffer, &size);
+  return std::string(buffer);
+}
+#endif
+
 std::string
 get_executable_dir()
 {

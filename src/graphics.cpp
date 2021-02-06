@@ -451,7 +451,7 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   ImGui_ImplOpenGL3_Init("#version 330");
 
   glEnable(GL_DEBUG_OUTPUT);
-  glDebugMessageCallback(opengl_debug, nullptr);
+  //glDebugMessageCallback(opengl_debug, nullptr);
 }
 
 GraphicsServer::~GraphicsServer()
@@ -498,19 +498,37 @@ GraphicsServer::set_fullscreen(bool fullscreen)
 }
 
 Vec2
-GraphicsServer::get_framebuffer_size() const
+GraphicsServer::get_scale() const
+{
+  Vec2 scale;
+  glfwGetWindowContentScale(window, &scale.x, &scale.y);
+  return scale;
+}
+
+Vec2
+GraphicsServer::get_framebuffer_size(bool scaled) const
 {
   int width;
   int height;
   glfwGetFramebufferSize(window, &width, &height);
 
-  return Vec2(float(width), float(height));
+  if (scaled)
+  {
+    Vec2 scale = get_scale();
+
+    return Vec2(float(width) / scale.x, float(height) / scale.y);
+  }
+  else
+  {
+    return Vec2(float(width), float(height));
+  }
 }
 
 Mat3
 GraphicsServer::get_pixel_to_screen_transform() const
 {
   Vec2 viewport_size = get_framebuffer_size();
+  Vec2 scale = get_scale();
   return Mat3::translate(Vec2(-1.0f, -1.0f)) *
     Mat3::scale(Vec2(2.0f / viewport_size.x, 2.0f / viewport_size.y));
 }
@@ -602,12 +620,14 @@ GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
   }
 }
 
+#include <iostream>
 void
 GraphicsServer::draw()
 {
   glfwPollEvents();
 
-  Vec2 viewport_size = get_framebuffer_size();
+  Vec2 viewport_size = get_framebuffer_size(false);
+  std::cout << std::to_string(viewport_size.x) << std::endl;
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);

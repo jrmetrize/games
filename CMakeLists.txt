@@ -3,6 +3,7 @@ project(fp2d)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Debug)
 
 find_package(glfw3 3.3 REQUIRED PATHS deps/build)
 find_package(Freetype REQUIRED PATHS deps/build)
@@ -46,8 +47,6 @@ add_executable(fp2d ${GAME_SOURCES})
 target_link_libraries(fp2d
   dl
   glfw
-  GLEW
-  GL
   z
 )
 

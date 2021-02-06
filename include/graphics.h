@@ -253,7 +253,10 @@ public:
   set_fullscreen(bool fullscreen);
 
   Vec2
-  get_framebuffer_size() const;
+  get_scale() const;
+
+  Vec2
+  get_framebuffer_size(bool scaled = true) const;
 
   Mat3
   get_pixel_to_screen_transform() const;

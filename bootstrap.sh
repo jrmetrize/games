@@ -1,2 +1,2 @@
 #!/bin/sh
-python bootstrap.py
+python3 bootstrap.py

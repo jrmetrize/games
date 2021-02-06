@@ -55,6 +55,7 @@ IMGUI_IMPL_API void     ImGui_ImplOpenGL3_DestroyDeviceObjects();
  && !defined(IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 
 // Try to detect GLES on matching platforms
+/*
 #if defined(__APPLE__)
 #include "TargetConditionals.h"
 #endif
@@ -83,5 +84,9 @@ IMGUI_IMPL_API void     ImGui_ImplOpenGL3_DestroyDeviceObjects();
 #else
     #define IMGUI_IMPL_OPENGL_LOADER_GL3W   // Default to GL3W embedded in our repository
 #endif
+*/
+
+#include <glad/glad.h>
+#define IMGUI_IMPL_OPENGL_LOADER_GLAD
 
 #endif
