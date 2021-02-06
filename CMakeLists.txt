@@ -44,11 +44,24 @@ if(WIN32)
 endif()
 
 add_executable(fp2d ${GAME_SOURCES})
-target_link_libraries(fp2d
-  dl
-  glfw
-  z
+target_link_directories(fp2d
+  PUBLIC deps/build/lib
 )
+target_include_directories(fp2d
+  PUBLIC deps/build/include
+)
+if(WIN32)
+  target_link_libraries(fp2d
+    glfw
+    zlibstaticd
+  )
+else()
+  target_link_libraries(fp2d
+    dl
+    glfw
+    z
+  )
+endif()
 
 add_custom_command(TARGET fp2d POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:fp2d>/resources/"
@@ -83,6 +96,20 @@ target_include_directories(resource_importer
   PUBLIC deps/build/include/freetype2
 )
 
-target_link_libraries(resource_importer
-  freetype
+target_link_directories(resource_importer
+  PUBLIC deps/build/lib
 )
+target_include_directories(resource_importer
+  PUBLIC deps/build/include
+)
+if(WIN32)
+  target_link_libraries(resource_importer
+    freetyped
+    zlibstaticd
+  )
+else()
+  target_link_libraries(resource_importer
+    freetype
+    z
+  )
+endif()

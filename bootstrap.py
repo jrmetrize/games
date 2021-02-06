@@ -26,8 +26,9 @@ def build_cmake(dep_name):
     cmd_result = subprocess.run(['cmake',
         '-S', get_source_dir(dep_name),
         '-B', get_build_dir(dep_name),
-        '-D', f'CMAKE_INSTALL_PREFIX={get_build_dir()}'],
-        capture_output=True)
+        '-D', f'CMAKE_INSTALL_PREFIX={get_build_dir()}',
+        '-D', 'CMAKE_BUILD_TYPE=Release'],
+        capture_output=True, text=True)
     if cmd_result.returncode != 0:
         print("CMake generation failed.")
         print(cmd_result.stderr)
@@ -35,7 +36,7 @@ def build_cmake(dep_name):
 
     cmd_result = subprocess.run(['cmake',
         '--build', get_build_dir(dep_name)],
-        capture_output=True)
+        capture_output=True, text=True)
     if cmd_result.returncode != 0:
         print("Build failed.")
         print(cmd_result.stderr)
@@ -43,8 +44,9 @@ def build_cmake(dep_name):
 
     cmd_result = subprocess.run(['cmake',
         '--install', get_build_dir(dep_name),
-        '--prefix', get_build_dir()],
-        capture_output=True)
+        '--prefix', get_build_dir(),
+        '--config', 'Debug'],
+        capture_output=True, text=True)
     if cmd_result.returncode != 0:
         print("Install failed.")
         print(cmd_result.stderr)

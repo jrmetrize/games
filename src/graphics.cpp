@@ -620,14 +620,12 @@ GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
   }
 }
 
-#include <iostream>
 void
 GraphicsServer::draw()
 {
   glfwPollEvents();
 
   Vec2 viewport_size = get_framebuffer_size(false);
-  std::cout << std::to_string(viewport_size.x) << std::endl;
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
