@@ -1,12 +1,27 @@
 #include "screen.h"
 #include "graphics.h"
 #include "state.h"
+#include "audio.h"
 #include <algorithm>
 
 MenuControl::MenuControl(Vec2 _origin, Vec2 _size) :
   origin(_origin), size(_size)
 {
 
+}
+
+void
+MenuControl::play_highlight_sound()
+{
+  AudioTrack *cursor = (AudioTrack *)GameState::get()->get_globals()->get_resource("menu_cursor");
+  AudioServer::get()->play(cursor);
+}
+
+void
+MenuControl::play_confirm_sound()
+{
+  AudioTrack *confirm = (AudioTrack *)GameState::get()->get_globals()->get_resource("menu_confirm");
+  AudioServer::get()->play(confirm);
 }
 
 MenuButton::MenuButton(std::string _text, Vec2 _origin, Vec2 _size,
@@ -21,8 +36,15 @@ void
 MenuButton::update()
 {
   if (!InputMonitor::get()->is_left_mouse_down())
+  {
+    bool prev_highlighted = highlighted;
     highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
       origin, size);
+    if (prev_highlighted == false && highlighted)
+    {
+      play_highlight_sound();
+    }
+  }
 }
 
 void
@@ -68,7 +90,10 @@ MenuButton::mouse_pressed(MouseButton button, bool button_pressed)
     bool contains_mouse = InputMonitor::get()->get_mouse_position().inside_rect(
       origin, size);
     if (pressed && !button_pressed && contains_mouse)
+    {
       target();
+      play_confirm_sound();
+    }
   }
 
   if (!button_pressed)

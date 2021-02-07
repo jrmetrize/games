@@ -189,6 +189,45 @@ public:
 #endif
 };
 
+class AudioTrack : public Resource
+{
+  // TODO: arbitrary sample rates and channels? For now, just assume mono/stereo
+  // and 44.1khz
+  unsigned int channels;
+  std::vector<int16_t> samples;
+public:
+#ifdef RESOURCE_IMPORTER
+  AudioTrack(std::string path);
+#endif
+
+  AudioTrack();
+
+  ~AudioTrack();
+
+  Resource *
+  duplicate() const;
+
+  std::string
+  get_type() const;
+
+  unsigned int
+  get_channels() const;
+
+  unsigned int
+  get_frames() const;
+
+  const std::vector<int16_t> &
+  get_samples() const;
+
+  static AudioTrack *
+  from_data(const char *data, uint32_t length);
+
+#ifdef RESOURCE_IMPORTER
+  uint32_t
+  append_to(std::ostream &out) const;
+#endif
+};
+
 class ResourceBundle
 {
   std::map<std::string, Resource *> resources;

@@ -10,11 +10,15 @@
 #include "picosha2.h"
 
 #ifdef RESOURCE_IMPORTER
+#include "AudioFile.h"
+#include <samplerate.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #endif
+
 #include "stb_image.h"
 
 #include <zlib.h>
@@ -588,6 +592,121 @@ Text::append_to(std::ostream &out) const
 }
 #endif
 
+#ifdef RESOURCE_IMPORTER
+AudioTrack::AudioTrack(std::string path) :
+  samples()
+{
+  AudioFile<float> file = AudioFile<float>();
+  file.load(path);
+
+  channels = file.getNumChannels();
+
+  std::vector<float> to_resample = std::vector<float>();
+  for (unsigned int i = 0; i < file.getNumSamplesPerChannel(); ++i)
+  {
+    for (unsigned int j = 0; j < channels; ++j)
+    {
+      to_resample.push_back(file.samples[j][i]);
+    }
+  }
+
+  // Resample the data
+  unsigned int sample_rate = file.getSampleRate();
+  float sample_ratio = 48000.0f / float(sample_rate);
+  unsigned int num_samples = sample_ratio * file.getNumSamplesPerChannel();
+
+  SRC_DATA resample_data = {};
+  resample_data.data_in = to_resample.data();
+  resample_data.input_frames = file.getNumSamplesPerChannel();
+  resample_data.data_out = new float[channels * num_samples];
+  resample_data.output_frames = num_samples;
+  resample_data.src_ratio = sample_ratio;
+
+  src_simple(&resample_data, SRC_SINC_BEST_QUALITY, channels);
+
+  // After resampling, convert float back to int16_t
+  samples = std::vector<int16_t>(channels * num_samples);
+  src_float_to_short_array(resample_data.data_out, samples.data(),
+    channels * num_samples);
+
+  delete resample_data.data_out;
+}
+#endif
+
+AudioTrack::AudioTrack() :
+  channels(0), samples()
+{
+
+}
+
+AudioTrack::~AudioTrack()
+{
+
+}
+
+Resource *
+AudioTrack::duplicate() const
+{
+  AudioTrack *dup = new AudioTrack();
+  dup->channels = channels;
+  dup->samples = samples;
+  return dup;
+}
+
+std::string
+AudioTrack::get_type() const
+{
+  return "audiotrack";
+}
+
+unsigned int
+AudioTrack::get_channels() const
+{
+  return channels;
+}
+
+unsigned int
+AudioTrack::get_frames() const
+{
+  return samples.size() / channels;
+}
+
+const std::vector<int16_t> &
+AudioTrack::get_samples() const
+{
+  return samples;
+}
+
+AudioTrack *
+AudioTrack::from_data(const char *data, uint32_t length)
+{
+  AudioTrack *track = new AudioTrack();
+
+  uint32_t channels = host_to_nbo(*reinterpret_cast<const uint32_t *>(&data[0]));
+  track->channels = channels;
+  uint32_t frames = host_to_nbo(*reinterpret_cast<const uint32_t *>(&data[4]));
+  track->samples = std::vector<int16_t>(channels * frames);
+  memcpy(track->samples.data(), &data[8], sizeof(int16_t) * channels * frames);
+
+  return track;
+}
+
+#ifdef RESOURCE_IMPORTER
+uint32_t
+AudioTrack::append_to(std::ostream &out) const
+{
+  // Write the number of channels and number of frames, then raw data
+  uint32_t channels_nbo = host_to_nbo(uint32_t(channels));
+  out.write(reinterpret_cast<char *>(&channels_nbo), sizeof(channels_nbo));
+
+  uint32_t frames_nbo = host_to_nbo(uint32_t(samples.size() / channels));
+  out.write(reinterpret_cast<char *>(&frames_nbo), sizeof(frames_nbo));
+
+  out.write(reinterpret_cast<const char *>(samples.data()), samples.size() * sizeof(int16_t));
+  return 4 + 4 + (samples.size() * sizeof(int16_t));
+}
+#endif
+
 ResourceBundle::ResourceBundle() :
   resources()
 {
@@ -685,6 +804,11 @@ ResourceBundle::ResourceBundle(std::string path) :
     {
       resources[header.entries[i].resource_name] =
         Text::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
+    }
+    else if (header.entries[i].resource_type == "audiotrack")
+    {
+      resources[header.entries[i].resource_name] =
+        AudioTrack::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
     }
     else
     {

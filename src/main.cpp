@@ -87,6 +87,7 @@ main(int argc, const char **argv)
 
   AudioServer *audio = new AudioServer();
   AudioServer::set_instance(audio);
+  audio->start();
 
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();

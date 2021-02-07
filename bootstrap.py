@@ -62,6 +62,10 @@ def build_glfw():
     print("Building dependency 'glfw'")
     return build_cmake("glfw")
 
+def build_libsamplerate():
+    print("Building dependency 'libsamplerate'")
+    return build_cmake("libsamplerate")
+
 def build_zlib():
     print("Building dependency 'zlib'")
     return build_cmake("zlib")
@@ -69,6 +73,7 @@ def build_zlib():
 build_cmds = [
     build_freetype,
     build_glfw,
+    build_libsamplerate,
     build_zlib
 ]
 for cmd in build_cmds:

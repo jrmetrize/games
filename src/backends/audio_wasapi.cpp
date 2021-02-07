@@ -22,7 +22,7 @@ AudioLayerWasapi::AudioLayerWasapi()
     format = {};
     format.wFormatTag = WAVE_FORMAT_PCM;
     format.nChannels = 2;
-    format.nSamplesPerSec = mix_fmt->nSamplesPerSec;
+    format.nSamplesPerSec = 48000;
     format.wBitsPerSample = 16;
     format.nBlockAlign = (format.wBitsPerSample / 8) * format.nChannels;
     format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
@@ -59,4 +59,13 @@ void
 AudioLayerWasapi::stop()
 {
   client->Stop();
+}
+
+void
+AudioLayerWasapi::load_buffer(int16_t *buffer_data, uint32_t frames)
+{
+  BYTE *data;
+  render_client->GetBuffer(frames, &data);
+  memcpy(data, buffer_data, sizeof(int16_t) * 2 * frames);
+  render_client->ReleaseBuffer(frames, 0);
 }

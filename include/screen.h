@@ -19,6 +19,12 @@ struct MenuControl
 
   virtual void
   mouse_pressed(MouseButton button, bool button_pressed) = 0;
+
+  void
+  play_highlight_sound();
+
+  void
+  play_confirm_sound();
 };
 
 struct MenuButton : public MenuControl

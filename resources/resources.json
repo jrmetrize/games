@@ -32,6 +32,16 @@
           "type" : "text",
           "name" : "default_settings",
           "path" : "settings.json"
+        },
+        {
+          "type" : "audio",
+          "name" : "menu_cursor",
+          "path" : "cursor_style_2.wav"
+        },
+        {
+          "type" : "audio",
+          "name" : "menu_confirm",
+          "path" : "confirm_style_4_001.wav"
         }
       ],
       "include" : [

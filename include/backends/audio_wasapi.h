@@ -28,6 +28,9 @@ public:
 
   void
   stop();
+
+  void
+  load_buffer(int16_t *buffer_data, uint32_t frames);
 };
 
 #endif

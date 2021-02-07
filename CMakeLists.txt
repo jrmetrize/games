@@ -106,6 +106,7 @@ if(WIN32)
   target_link_libraries(resource_importer
     freetyped
     zlibstaticd
+    samplerate
   )
 else()
   target_link_libraries(resource_importer
