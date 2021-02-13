@@ -20,6 +20,9 @@ public:
 
   virtual void
   load_buffer(int16_t *buffer_data, uint32_t frames) = 0;
+
+  virtual uint32_t
+  get_current_padding() = 0;
 };
 
 class AudioServer
@@ -39,6 +42,12 @@ class AudioServer
   };
 
   std::vector<PlayingAudio> playing;
+  PlayingAudio music;
+  bool music_on;
+
+  bool
+  mix_to_buffer(PlayingAudio *audio, std::vector<int16_t> &stereo_buffer,
+    uint32_t buffer_frames);
 
   void
   buffer();
@@ -61,6 +70,15 @@ public:
 
   void
   play(AudioTrack *track);
+
+  void
+  set_music(AudioTrack *_music);
+
+  void
+  start_music();
+
+  void
+  stop_music();
 };
 
 #endif

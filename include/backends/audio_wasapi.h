@@ -31,6 +31,9 @@ public:
 
   void
   load_buffer(int16_t *buffer_data, uint32_t frames);
+
+  uint32_t
+  get_current_padding();
 };
 
 #endif

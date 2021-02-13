@@ -10,6 +10,8 @@
 #include "picosha2.h"
 
 #ifdef RESOURCE_IMPORTER
+#include <vorbis/vorbisenc.h>
+#include <ogg/ogg.h>
 #include "AudioFile.h"
 #include <samplerate.h>
 
@@ -596,7 +598,7 @@ Text::append_to(std::ostream &out) const
 AudioTrack::AudioTrack(std::string path) :
   samples()
 {
-  AudioFile<float> file = AudioFile<float>();
+  /*AudioFile<float> file = AudioFile<float>();
   file.load(path);
 
   channels = file.getNumChannels();
@@ -629,7 +631,67 @@ AudioTrack::AudioTrack(std::string path) :
   src_float_to_short_array(resample_data.data_out, samples.data(),
     channels * num_samples);
 
-  delete resample_data.data_out;
+  delete resample_data.data_out;*/
+
+  vorbis_info enc_info;
+  vorbis_info_init(&enc_info);
+
+  vorbis_encode_init_vbr(&enc_info, channels, 48000, 0.5f);
+
+  vorbis_dsp_state enc_state;
+  vorbis_analysis_init(&enc_state, &enc_info);
+
+  vorbis_comment enc_comment;
+  vorbis_comment_init(&enc_comment);
+
+  ogg_packet op_id;
+  ogg_packet op_comment;
+  ogg_packet op_code;
+  vorbis_analysis_headerout(&enc_state, &enc_comment, &op_id, &op_comment,
+    &op_code);
+
+  vorbis_block enc_block;
+  vorbis_block_init(&enc_state, &enc_block);
+
+  {
+    // TODO: 1024 samples per buffer? Does it matter for encoding?
+    float **buffer = vorbis_analysis_buffer(&enc_state, 1024);
+
+    // Write the data
+
+    uint32_t packets_written = 1024;
+    vorbis_analysis_wrote(&enc_state, packets_written);
+
+    // Compress
+    while (vorbis_analysis_blockout(&enc_state, &enc_block) == 1)
+    {
+      vorbis_analysis(&enc_block, NULL);
+      vorbis_bitrate_addblock(&enc_block);
+
+      ogg_packet audio_block;
+      while (vorbis_bitrate_flushpacket(&enc_state, &audio_block) == 1)
+      {
+
+      }
+    }
+  }
+
+  // Submit an empty buffer
+  vorbis_analysis_wrote(&enc_state, 0);
+  while (vorbis_analysis_blockout(&enc_state, &enc_block) == 1)
+  {
+    vorbis_analysis(&enc_block, NULL);
+    vorbis_bitrate_addblock(&enc_block);
+
+    ogg_packet audio_block;
+    while (vorbis_bitrate_flushpacket(&enc_state, &audio_block) == 1)
+    {
+
+    }
+  }
+
+  vorbis_block_clear(&enc_block);
+  vorbis_info_clear(&enc_info);
 }
 #endif
 

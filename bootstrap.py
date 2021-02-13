@@ -70,11 +70,21 @@ def build_zlib():
     print("Building dependency 'zlib'")
     return build_cmake("zlib")
 
+def build_ogg():
+    print("Building dependency 'ogg'")
+    return build_cmake("ogg")
+
+def build_vorbis():
+    print("Building dependency 'vorbis'")
+    return build_cmake("vorbis")
+
 build_cmds = [
     build_freetype,
     build_glfw,
     build_libsamplerate,
-    build_zlib
+    build_zlib,
+    build_ogg,
+    build_vorbis
 ]
 for cmd in build_cmds:
     cmd_result = cmd()

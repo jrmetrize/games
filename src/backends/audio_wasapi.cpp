@@ -69,3 +69,11 @@ AudioLayerWasapi::load_buffer(int16_t *buffer_data, uint32_t frames)
   memcpy(data, buffer_data, sizeof(int16_t) * 2 * frames);
   render_client->ReleaseBuffer(frames, 0);
 }
+
+uint32_t
+AudioLayerWasapi::get_current_padding()
+{
+  uint32_t padding;
+  client->GetCurrentPadding(&padding);
+  return padding;
+}

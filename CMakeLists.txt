@@ -107,10 +107,14 @@ if(WIN32)
     freetyped
     zlibstaticd
     samplerate
+    ogg
+    vorbis
   )
 else()
   target_link_libraries(resource_importer
     freetype
+    ogg
+    vorbis
     z
   )
 endif()

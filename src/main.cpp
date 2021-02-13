@@ -89,6 +89,12 @@ main(int argc, const char **argv)
   AudioServer::set_instance(audio);
   audio->start();
 
+  {
+    AudioTrack *menu = (AudioTrack *)GameState::get()->get_globals()->get_resource("menu_music");
+    AudioServer::get()->set_music(menu);
+    AudioServer::get()->start_music();
+  }
+
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();
 

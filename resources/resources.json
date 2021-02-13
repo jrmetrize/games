@@ -42,6 +42,11 @@
           "type" : "audio",
           "name" : "menu_confirm",
           "path" : "confirm_style_4_001.wav"
+        },
+        {
+          "type" : "audio",
+          "name" : "menu_music",
+          "path" : "title_music.wav"
         }
       ],
       "include" : [
