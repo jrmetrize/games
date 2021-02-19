@@ -14,6 +14,7 @@
 #include <ogg/ogg.h>
 #include "AudioFile.h"
 #include <samplerate.h>
+#include <algorithm>
 
 #define STB_IMAGE_IMPLEMENTATION
 
@@ -598,7 +599,7 @@ Text::append_to(std::ostream &out) const
 AudioTrack::AudioTrack(std::string path) :
   samples()
 {
-  /*AudioFile<float> file = AudioFile<float>();
+  AudioFile<float> file = AudioFile<float>();
   file.load(path);
 
   channels = file.getNumChannels();
@@ -626,15 +627,10 @@ AudioTrack::AudioTrack(std::string path) :
 
   src_simple(&resample_data, SRC_SINC_BEST_QUALITY, channels);
 
-  // After resampling, convert float back to int16_t
-  samples = std::vector<int16_t>(channels * num_samples);
-  src_float_to_short_array(resample_data.data_out, samples.data(),
-    channels * num_samples);
-
-  delete resample_data.data_out;*/
-
   vorbis_info enc_info;
   vorbis_info_init(&enc_info);
+
+  int err;
 
   vorbis_encode_init_vbr(&enc_info, channels, 48000, 0.5f);
 
@@ -653,25 +649,36 @@ AudioTrack::AudioTrack(std::string path) :
   vorbis_block enc_block;
   vorbis_block_init(&enc_state, &enc_block);
 
+  uint32_t sample_offset = 0;
+  while (num_samples - sample_offset > 0)
   {
     // TODO: 1024 samples per buffer? Does it matter for encoding?
     float **buffer = vorbis_analysis_buffer(&enc_state, 1024);
 
     // Write the data
+    uint32_t samples_to_write = std::min(uint32_t(num_samples - sample_offset), uint32_t(1024));
+    for (uint32_t j = 0; j < channels; ++j)
+    {
+      for (uint32_t i = 0; i < samples_to_write; ++i)
+      {
+        uint32_t pcm_index = (channels * (sample_offset + i)) + j;
+        buffer[j][i] = resample_data.data_out[pcm_index];
+      }
+    }
 
-    uint32_t packets_written = 1024;
-    vorbis_analysis_wrote(&enc_state, packets_written);
+    vorbis_analysis_wrote(&enc_state, samples_to_write);
+    sample_offset += samples_to_write;
 
     // Compress
     while (vorbis_analysis_blockout(&enc_state, &enc_block) == 1)
     {
-      vorbis_analysis(&enc_block, NULL);
+      ogg_packet audio_block;
+      vorbis_analysis(&enc_block, nullptr);
       vorbis_bitrate_addblock(&enc_block);
 
-      ogg_packet audio_block;
-      while (vorbis_bitrate_flushpacket(&enc_state, &audio_block) == 1)
+      while (vorbis_bitrate_flushpacket(&enc_state, &audio_block))
       {
-
+        //ogg_stream_packetin
       }
     }
   }
@@ -692,6 +699,8 @@ AudioTrack::AudioTrack(std::string path) :
 
   vorbis_block_clear(&enc_block);
   vorbis_info_clear(&enc_info);
+
+  delete resample_data.data_out;
 }
 #endif
 
