@@ -4,14 +4,15 @@
 #include "graphics.h"
 #endif
 
+#include <ogg/ogg.h>
+#include <vorbis/vorbisenc.h>
+
 #include <sstream>
 #include <bit>
 #include <cstring>
 #include "picosha2.h"
 
 #ifdef RESOURCE_IMPORTER
-#include <vorbis/vorbisenc.h>
-#include <ogg/ogg.h>
 #include "AudioFile.h"
 #include <samplerate.h>
 #include <algorithm>
@@ -627,12 +628,18 @@ AudioTrack::AudioTrack(std::string path) :
 
   src_simple(&resample_data, SRC_SINC_BEST_QUALITY, channels);
 
+  ogg_stream_state encoded_stream;
+  ogg_page encoded_page;
+  ogg_packet encoded_packet;
+
+  ogg_stream_init(&encoded_stream, 0);
+
   vorbis_info enc_info;
   vorbis_info_init(&enc_info);
 
   int err;
 
-  vorbis_encode_init_vbr(&enc_info, channels, 48000, 0.5f);
+  vorbis_encode_init_vbr(&enc_info, channels, 48000, 0.1f);
 
   vorbis_dsp_state enc_state;
   vorbis_analysis_init(&enc_state, &enc_info);
@@ -645,6 +652,21 @@ AudioTrack::AudioTrack(std::string path) :
   ogg_packet op_code;
   vorbis_analysis_headerout(&enc_state, &enc_comment, &op_id, &op_comment,
     &op_code);
+  ogg_stream_packetin(&encoded_stream, &op_id);
+  ogg_stream_packetin(&encoded_stream, &op_comment);
+  ogg_stream_packetin(&encoded_stream, &op_code);
+
+  // Flush the header and append the page to the buffer.
+  if (ogg_stream_flush(&encoded_stream, &encoded_page) != 0)
+  {
+    uint32_t start_write = ogg_data.size();
+    ogg_data.resize(start_write + encoded_page.header_len + encoded_page.body_len);
+
+    std::copy(encoded_page.header, &encoded_page.header[encoded_page.header_len],
+      &ogg_data[start_write]);
+    std::copy(encoded_page.body, &encoded_page.body[encoded_page.body_len],
+      &ogg_data[start_write + encoded_page.header_len]);
+  }
 
   vorbis_block enc_block;
   vorbis_block_init(&enc_state, &enc_block);
@@ -678,7 +700,17 @@ AudioTrack::AudioTrack(std::string path) :
 
       while (vorbis_bitrate_flushpacket(&enc_state, &audio_block))
       {
-        //ogg_stream_packetin
+        ogg_stream_packetin(&encoded_stream, &audio_block);
+        while (ogg_stream_pageout(&encoded_stream, &encoded_page) != 0)
+        {
+          uint32_t start_write = ogg_data.size();
+          ogg_data.resize(start_write + encoded_page.header_len + encoded_page.body_len);
+
+          std::copy(encoded_page.header, &encoded_page.header[encoded_page.header_len],
+            &ogg_data[start_write]);
+          std::copy(encoded_page.body, &encoded_page.body[encoded_page.body_len],
+            &ogg_data[start_write + encoded_page.header_len]);
+        }
       }
     }
   }
@@ -693,11 +725,25 @@ AudioTrack::AudioTrack(std::string path) :
     ogg_packet audio_block;
     while (vorbis_bitrate_flushpacket(&enc_state, &audio_block) == 1)
     {
+      ogg_stream_packetin(&encoded_stream, &audio_block);
+      while (ogg_stream_pageout(&encoded_stream, &encoded_page) != 0)
+      {
+        uint32_t start_write = ogg_data.size();
+        ogg_data.resize(start_write + encoded_page.header_len + encoded_page.body_len);
 
+        std::copy(encoded_page.header, &encoded_page.header[encoded_page.header_len],
+          &ogg_data[start_write]);
+        std::copy(encoded_page.body, &encoded_page.body[encoded_page.body_len],
+          &ogg_data[start_write + encoded_page.header_len]);
+      }
     }
   }
 
+  ogg_stream_clear(&encoded_stream);
+
   vorbis_block_clear(&enc_block);
+  vorbis_dsp_clear(&enc_state);
+  vorbis_comment_clear(&enc_comment);
   vorbis_info_clear(&enc_info);
 
   delete resample_data.data_out;
@@ -721,6 +767,7 @@ AudioTrack::duplicate() const
   AudioTrack *dup = new AudioTrack();
   dup->channels = channels;
   dup->samples = samples;
+  dup->ogg_data = ogg_data;
   return dup;
 }
 
@@ -755,9 +802,111 @@ AudioTrack::from_data(const char *data, uint32_t length)
 
   uint32_t channels = host_to_nbo(*reinterpret_cast<const uint32_t *>(&data[0]));
   track->channels = channels;
-  uint32_t frames = host_to_nbo(*reinterpret_cast<const uint32_t *>(&data[4]));
-  track->samples = std::vector<int16_t>(channels * frames);
-  memcpy(track->samples.data(), &data[8], sizeof(int16_t) * channels * frames);
+
+  uint32_t ogg_bytes = host_to_nbo(*reinterpret_cast<const uint32_t *>(&data[4]));
+  track->ogg_data = std::vector<unsigned char>(ogg_bytes);
+  memcpy(track->ogg_data.data(), &data[8], ogg_bytes);
+
+  // The ogg data is loaded, now convert it back to PCM
+  ogg_sync_state decoder_sync;
+  ogg_page decoder_page;
+  ogg_stream_state decoder_stream;
+  ogg_packet decoder_packet;
+  ogg_sync_init(&decoder_sync);
+
+  char *sync_buffer;
+
+  uint32_t read_offset = 0;
+  bool stream_ready = false;
+
+  vorbis_info pcm_info;
+  vorbis_info_init(&pcm_info);
+
+  vorbis_comment pcm_comment;
+  vorbis_comment_init(&pcm_comment);
+
+  // Loop until we get 3 packets
+  uint32_t packets_found = 0;
+  while (packets_found < 3)
+  {
+    /* First, fetch more data, and then look through all pages until we get
+       enough packets. */
+    uint32_t bytes_to_read = std::min(uint32_t(4096),
+     uint32_t(track->ogg_data.size() - read_offset));
+    if (bytes_to_read == 0)
+     break;
+    sync_buffer = ogg_sync_buffer(&decoder_sync, 4096);
+    memcpy(sync_buffer, &track->ogg_data.data()[read_offset], bytes_to_read);
+    ogg_sync_wrote(&decoder_sync, bytes_to_read);
+    read_offset += bytes_to_read;
+
+    // Do we have enough data to get a page?
+    while (ogg_sync_pageout(&decoder_sync, &decoder_page) == 1)
+    {
+      if (!stream_ready)
+      {
+        ogg_stream_init(&decoder_stream, ogg_page_serialno(&decoder_page));
+        stream_ready = true;
+      }
+      ogg_stream_pagein(&decoder_stream, &decoder_page);
+      while (ogg_stream_packetout(&decoder_stream, &decoder_packet) == 1)
+      {
+        vorbis_synthesis_headerin(&pcm_info, &pcm_comment, &decoder_packet);
+        packets_found += 1;
+        if (packets_found >= 3)
+          break;
+      }
+      if (packets_found >= 3)
+        break;
+    }
+  }
+
+  vorbis_dsp_state pcm_dsp;
+  vorbis_synthesis_init(&pcm_dsp, &pcm_info);
+
+  vorbis_block pcm_block;
+  vorbis_block_init(&pcm_dsp, &pcm_block);
+
+  // Loop through the packets in the ogg data and convert it to pcm audio.
+  while (read_offset <= track->ogg_data.size())
+  {
+    /* First, fetch more data, and then look through all pages until we get
+       enough packets. */
+    uint32_t bytes_to_read = std::min(uint32_t(4096),
+     uint32_t(track->ogg_data.size() - read_offset));
+    if (bytes_to_read == 0)
+     break;
+    sync_buffer = ogg_sync_buffer(&decoder_sync, 4096);
+    memcpy(sync_buffer, &track->ogg_data.data()[read_offset], bytes_to_read);
+    ogg_sync_wrote(&decoder_sync, bytes_to_read);
+    read_offset += bytes_to_read;
+
+    // Do we have enough data to get a page?
+    while (ogg_sync_pageout(&decoder_sync, &decoder_page) == 1)
+    {
+      ogg_stream_pagein(&decoder_stream, &decoder_page);
+      while (ogg_stream_packetout(&decoder_stream, &decoder_packet) == 1)
+      {
+        vorbis_synthesis(&pcm_block, &decoder_packet);
+        vorbis_synthesis_blockin(&pcm_dsp, &pcm_block);
+
+        float **pcm_f;
+        int frames_available = vorbis_synthesis_pcmout(&pcm_dsp, &pcm_f);
+
+        for (int i = 0; i < frames_available; ++i)
+        {
+          for (int j = 0; j < channels; ++j)
+          {
+            float value_f = pcm_f[j][i];
+            int16_t value_i = floor((value_f * 32767.0f) + 0.5f);
+            track->samples.push_back(value_i);
+          }
+        }
+
+        vorbis_synthesis_read(&pcm_dsp, frames_available);
+      }
+    }
+  }
 
   return track;
 }
@@ -770,11 +919,12 @@ AudioTrack::append_to(std::ostream &out) const
   uint32_t channels_nbo = host_to_nbo(uint32_t(channels));
   out.write(reinterpret_cast<char *>(&channels_nbo), sizeof(channels_nbo));
 
-  uint32_t frames_nbo = host_to_nbo(uint32_t(samples.size() / channels));
-  out.write(reinterpret_cast<char *>(&frames_nbo), sizeof(frames_nbo));
+  uint32_t ogg_bytes_nbo = host_to_nbo(uint32_t(ogg_data.size()));
+  out.write(reinterpret_cast<char *>(&ogg_bytes_nbo), sizeof(ogg_bytes_nbo));
 
-  out.write(reinterpret_cast<const char *>(samples.data()), samples.size() * sizeof(int16_t));
-  return 4 + 4 + (samples.size() * sizeof(int16_t));
+  out.write(reinterpret_cast<const char *>(ogg_data.data()), ogg_data.size());
+
+  return 4 + 4 + ogg_data.size();
 }
 #endif
 

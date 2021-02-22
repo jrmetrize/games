@@ -54,6 +54,8 @@ if(WIN32)
   target_link_libraries(fp2d
     glfw
     zlibstaticd
+    ogg
+    vorbis
   )
 else()
   target_link_libraries(fp2d

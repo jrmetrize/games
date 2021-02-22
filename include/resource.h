@@ -192,9 +192,10 @@ public:
 class AudioTrack : public Resource
 {
   // TODO: arbitrary sample rates and channels? For now, just assume mono/stereo
-  // and 44.1khz
+  // and 48khz
   unsigned int channels;
   std::vector<int16_t> samples;
+  std::vector<unsigned char> ogg_data;
 public:
 #ifdef RESOURCE_IMPORTER
   AudioTrack(std::string path);
