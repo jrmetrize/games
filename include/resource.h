@@ -229,6 +229,11 @@ public:
 #endif
 };
 
+class Model3D : public Resource
+{
+public:
+};
+
 class ResourceBundle
 {
   std::map<std::string, Resource *> resources;
