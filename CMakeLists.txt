@@ -62,6 +62,9 @@ else()
     dl
     glfw
     z
+    vorbis
+    ogg
+    pthread
   )
 endif()
 
@@ -115,8 +118,10 @@ if(WIN32)
 else()
   target_link_libraries(resource_importer
     freetype
-    ogg
     vorbis
+    vorbisenc
+    ogg
     z
+    samplerate
   )
 endif()

@@ -27,7 +27,7 @@ AudioServer::get()
 }
 
 AudioServer::AudioServer() :
-  is_playing(false), playing()
+  is_playing(false), playing(), backend(nullptr)
 {
 #ifdef _WIN32
   backend = new AudioLayerWasapi();
@@ -37,7 +37,8 @@ AudioServer::AudioServer() :
 AudioServer::~AudioServer()
 {
   stop();
-  delete backend;
+  if (backend != nullptr)
+    delete backend;
 }
 
 bool
@@ -50,7 +51,7 @@ AudioServer::mix_to_buffer(PlayingAudio *audio,
   // Find the number of frames available and load them, possibly converting
   // mono to stereo.
   uint32_t frames_available = audio_length - audio->offset;
-  uint32_t to_copy = min(buffer_frames, frames_available);
+  uint32_t to_copy = std::min(buffer_frames, frames_available);
   // If looping, always fill the buffer
   if (audio->loop)
     to_copy = buffer_frames;
@@ -129,17 +130,23 @@ AudioServer::buffer()
 void
 AudioServer::start()
 {
-  backend->start();
-  is_playing = true;
-  buffer_thread = std::thread(&AudioServer::buffer, this);
+  if (backend != nullptr)
+  {
+    backend->start();
+    is_playing = true;
+    buffer_thread = std::thread(&AudioServer::buffer, this);
+  }
 }
 
 void
 AudioServer::stop()
 {
-  is_playing = false;
-  buffer_thread.join();
-  backend->stop();
+  if (backend != nullptr)
+  {
+    is_playing = false;
+    buffer_thread.join();
+    backend->stop();
+  }
 }
 
 void
