@@ -11,13 +11,19 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+class GraphicsLayer
+{
+public:
+  virtual
+  ~GraphicsLayer() = 0;
+};
+
 class Mesh;
-class Shader;
 class FontFace;
 
 class Texture
 {
-  friend class Shader;
+  //friend class Shader;
 
   unsigned int texture;
 
@@ -31,42 +37,6 @@ public:
     const unsigned char *data);
 
   ~Texture();
-};
-
-class Shader
-{
-  unsigned int program;
-public:
-  Shader(const std::string &vertex_shader_source,
-    const std::string &fragment_shader_source);
-
-  ~Shader();
-
-  void
-  draw(const Mesh *mesh) const;
-
-  void
-  bind_uniform(float x, std::string name) const;
-
-  void
-  bind_uniform(Vec2 x, std::string name) const;
-
-  void
-  bind_uniform(Vec3 x, std::string name) const;
-
-  void
-  bind_uniform(Vec4 x, std::string name) const;
-
-  void
-  bind_uniform(Mat3 x, std::string name) const;
-
-  void
-  bind_uniform(Mat4 x, std::string name) const;
-
-  // TODO: if a shader needs more than one texture at a time, allow binding
-  // multiple texture units
-  void
-  bind_uniform(const Texture &x, std::string name) const;
 };
 
 struct Vertex
@@ -84,11 +54,6 @@ class Mesh
 {
   VertexVector vertices;
   IndexVector indices;
-
-  unsigned int vbo;
-  unsigned int ebo;
-
-  unsigned int vao;
 public:
   Mesh(const VertexVector &_vertices, const IndexVector &_indices);
 
@@ -226,11 +191,9 @@ class GraphicsServer
 {
   static GraphicsServer *instance;
 
-  GLFWwindow *window;
+  GraphicsLayer *backend;
 
-  Shader *color_shader;
-  Shader *texture_shader;
-  Shader *text_shader;
+  GLFWwindow *window;
 
   Mesh *quad;
 

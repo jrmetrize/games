@@ -2,6 +2,8 @@
 #include "screen.h"
 #include "resource.h"
 #include "glad/glad.h"
+#include "backends/graphics_opengl.h"
+#include "backends/graphics_vulkan.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -11,129 +13,16 @@
 
 #include <iostream>
 
-namespace ColorShaderSources
-{
-  const std::string vertex = R"---(
-
-#version 330 core
-layout (location = 0) in vec2 position;
-
-uniform mat3 transform;
-
-void
-main()
-{
-  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
-}
-
-  )---";
-
-  const std::string fragment = R"---(
-
-#version 330 core
-out vec4 frag_color;
-
-uniform vec4 color;
-
-void
-main()
-{
-  frag_color = color;
-}
-
-  )---";
-}
-
-namespace TextureShaderSources
-{
-  const std::string vertex = R"---(
-
-#version 330 core
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 texture_coordinates;
-
-uniform mat3 transform;
-
-out vec2 uv;
-
-void
-main()
-{
-  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
-  uv = texture_coordinates;
-}
-
-  )---";
-
-  const std::string fragment = R"---(
-
-#version 330 core
-out vec4 frag_color;
-
-in vec2 uv;
-
-uniform sampler2D sampler;
-
-void
-main()
-{
-  frag_color = texture(sampler, uv);
-}
-
-  )---";
-}
-
-namespace TextShaderSources
-{
-  const std::string vertex = R"---(
-
-#version 330 core
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 texture_coordinates;
-
-uniform mat3 transform;
-
-out vec2 uv;
-
-void
-main()
-{
-  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
-  uv = texture_coordinates;
-}
-
-  )---";
-
-  const std::string fragment = R"---(
-
-#version 330 core
-out vec4 frag_color;
-
-in vec2 uv;
-
-uniform vec4 color;
-uniform sampler2D sdf;
-
-#define HALF_SMOOTHING (1.0 / 32.0)
-#define LOWER_STEP (0.5 - (HALF_SMOOTHING))
-#define UPPER_STEP (0.5 + (HALF_SMOOTHING))
-
-void
-main()
-{
-  float distance = texture(sdf, uv).r;
-  float alpha = smoothstep(LOWER_STEP, UPPER_STEP, distance);
-  frag_color = vec4(color.rgb, alpha);
-}
-
-  )---";
-}
-
 void
 opengl_debug(unsigned int source, unsigned int type, unsigned int id,
   unsigned int severity, int length, const char *message, const void *userdata)
 {
   std::cout << std::string(message) << std::endl;
+}
+
+GraphicsLayer::~GraphicsLayer()
+{
+
 }
 
 Texture::Texture(std::string path)
@@ -197,99 +86,6 @@ Texture::Texture(unsigned int _width, unsigned int _height, unsigned int _channe
 Texture::~Texture()
 {
   glDeleteTextures(1, &texture);
-}
-
-Shader::Shader(const std::string &vertex_shader_source,
-  const std::string &fragment_shader_source)
-{
-  /* TODO: exceptions for shader compilation or link errors */
-
-  unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  {
-    const char *vertex_shader_source_c = vertex_shader_source.c_str();
-    glShaderSource(vertex_shader, 1, &vertex_shader_source_c, nullptr);
-  }
-  glCompileShader(vertex_shader);
-
-  unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  {
-    const char *fragment_shader_source_c = fragment_shader_source.c_str();
-    glShaderSource(fragment_shader, 1, &fragment_shader_source_c, nullptr);
-  }
-  glCompileShader(fragment_shader);
-
-  program = glCreateProgram();
-  glAttachShader(program, vertex_shader);
-  glAttachShader(program, fragment_shader);
-  glLinkProgram(program);
-
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
-}
-
-Shader::~Shader()
-{
-  glDeleteProgram(program);
-}
-
-void
-Shader::draw(const Mesh *mesh) const
-{
-  glUseProgram(program);
-  mesh->draw();
-}
-
-void
-Shader::bind_uniform(float x, std::string name) const
-{
-  glUseProgram(program);
-  glUniform1fv(glGetUniformLocation(program, name.c_str()), 1, &x);
-}
-
-void
-Shader::bind_uniform(Vec2 x, std::string name) const
-{
-  glUseProgram(program);
-  glUniform2fv(glGetUniformLocation(program, name.c_str()), 1, (float *)(&x));
-}
-
-void
-Shader::bind_uniform(Vec3 x, std::string name) const
-{
-  glUseProgram(program);
-  glUniform3fv(glGetUniformLocation(program, name.c_str()), 1, (float *)(&x));
-}
-
-void
-Shader::bind_uniform(Vec4 x, std::string name) const
-{
-  glUseProgram(program);
-  glUniform4fv(glGetUniformLocation(program, name.c_str()), 1, (float *)(&x));
-}
-
-void
-Shader::bind_uniform(Mat3 x, std::string name) const
-{
-  glUseProgram(program);
-  glUniformMatrix3fv(glGetUniformLocation(program, name.c_str()),
-    1, GL_FALSE, (float *)(&x));
-}
-
-void
-Shader::bind_uniform(Mat4 x, std::string name) const
-{
-  glUseProgram(program);
-  glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()),
-    1, GL_FALSE, (float *)(&x));
-}
-
-void
-Shader::bind_uniform(const Texture &x, std::string name) const
-{
-  glUseProgram(program);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, x.texture);
-  glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
 }
 
 Vertex::Vertex(const Vec2 &_position, const Vec2 &_texture_coordinates) :
@@ -434,12 +230,8 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   window(_window),
   current_screen(nullptr)
 {
-  color_shader = new Shader(ColorShaderSources::vertex,
-    ColorShaderSources::fragment);
-  texture_shader = new Shader(TextureShaderSources::vertex,
-    TextureShaderSources::fragment);
-  text_shader = new Shader(TextShaderSources::vertex,
-    TextShaderSources::fragment);
+  backend = new GraphicsLayerOpenGL();
+
   quad = Mesh::primitive_quad();
 
   // TODO: only use imgui in dev builds
@@ -460,9 +252,6 @@ GraphicsServer::~GraphicsServer()
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 
-  delete color_shader;
-  delete texture_shader;
-  delete text_shader;
   delete quad;
 }
 
@@ -646,6 +435,7 @@ GraphicsServer::draw()
 void
 GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 {
+  /*
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   color_shader->bind_uniform(get_pixel_to_screen_transform()
@@ -653,11 +443,13 @@ GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(color, "color");
   color_shader->draw(quad);
+  */
 }
 
 void
 GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture)
 {
+  /*
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   texture_shader->bind_uniform(get_pixel_to_screen_transform()
@@ -665,6 +457,7 @@ GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture
     * Mat3::scale(size), "transform");
   texture_shader->bind_uniform(texture, "sampler");
   texture_shader->draw(quad);
+  */
 }
 
 // Draws a line of text with no wrapping or alignment, with the baseline and
@@ -672,6 +465,7 @@ GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture
 void
 GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
 {
+  /*
   // TODO: this should be calculated by the font face object
   float scale_factor = text_request.size / (64.0f * 64.0f);
   float texture_padding = 8; // 'spread' value in SDF generation
@@ -737,6 +531,7 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
 
     current_pos += scale_factor * Vec2(glyph.horizontal_advance, 0);
   }
+  */
 }
 
 void
@@ -843,6 +638,7 @@ GraphicsServer::clear_stencil_buffer()
 void
 GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
 {
+  /*
   glStencilMask(0xFF);
   glStencilFunc(GL_ALWAYS, 1, 0xFF);
 
@@ -856,6 +652,7 @@ GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
 
   glStencilMask(0x00);
   glStencilFunc(GL_EQUAL, 1, 0xFF);
+  */
 }
 
 void
@@ -874,6 +671,7 @@ GraphicsServer::disable_stencil()
 void
 GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
 {
+  /*
   if (to_render.camera_mode == Vertical)
   {
     Vec2 unit_direction = to_render.camera_dir.normalized();
@@ -924,4 +722,5 @@ GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
       color_shader->draw(quad);
     }
   }
+  */
 }

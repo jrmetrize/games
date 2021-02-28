@@ -9,6 +9,9 @@ find_package(glfw3 3.3 REQUIRED PATHS deps/build)
 find_package(Freetype REQUIRED PATHS deps/build)
 
 set(GAME_SOURCES
+  src/backends/graphics_opengl.cpp
+  src/backends/graphics_vulkan.cpp
+
   src/imgui/imgui_impl_glfw.cpp
   src/imgui/imgui_impl_opengl3.cpp
   src/imgui/imgui_draw.cpp
@@ -41,6 +44,9 @@ if(WIN32)
   list(APPEND GAME_SOURCES
     src/backends/audio_wasapi.cpp
   )
+elseif(UNIX AND NOT APPLE)
+  list(APPEND GAME_SOURCES
+    src/backends/audio_pulseaudio.cpp)
 endif()
 
 add_executable(fp2d ${GAME_SOURCES})

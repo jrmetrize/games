@@ -6,6 +6,9 @@
 #ifdef _WIN32
 #include "backends/audio_wasapi.h"
 #endif
+#ifdef __linux__
+#include "backends/audio_pulseaudio.h"
+#endif
 
 AudioLayer::~AudioLayer()
 {
@@ -31,6 +34,9 @@ AudioServer::AudioServer() :
 {
 #ifdef _WIN32
   backend = new AudioLayerWasapi();
+#endif
+#ifdef __linux__
+  backend = new AudioLayerPulseAudio();
 #endif
 }
 
