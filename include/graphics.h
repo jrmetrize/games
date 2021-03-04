@@ -11,11 +11,22 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+class GraphicsServer;
+
 class GraphicsLayer
 {
 public:
   virtual
   ~GraphicsLayer() = 0;
+
+  virtual void
+  set_graphics_server(GraphicsServer *_graphics_server) = 0;
+
+  virtual void
+  draw_color_rect(Vec2 origin, Vec2 size, Vec4 color) = 0;
+
+  /*void
+  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);*/
 };
 
 class Mesh;
@@ -59,8 +70,11 @@ public:
 
   ~Mesh();
 
-  void
-  draw() const;
+  const VertexVector &
+  get_vertices() const;
+
+  const IndexVector &
+  get_indices() const;
 
   static Mesh *
   primitive_quad();

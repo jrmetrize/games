@@ -7,6 +7,14 @@
 
 class GraphicsLayerOpenGL : public GraphicsLayer
 {
+  GraphicsServer *graphics_server;
+
+  struct TextureBinding
+  {
+    Texture *texture_data;
+    GLuint texture;
+  };
+
   struct Shader
   {
     GLuint program;
@@ -17,7 +25,7 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     ~Shader();
 
     void
-    draw(const Mesh *mesh) const;
+    use();
 
     void
     bind_uniform(float x, std::string name) const;
@@ -39,8 +47,8 @@ class GraphicsLayerOpenGL : public GraphicsLayer
 
     // TODO: if a shader needs more than one texture at a time, allow binding
     // multiple texture units
-    /*void
-    bind_uniform(const Texture &x, std::string name) const;*/
+    void
+    bind_uniform(const TextureBinding &x, std::string name) const;
   };
 
   Shader *color_shader;
@@ -51,25 +59,31 @@ class GraphicsLayerOpenGL : public GraphicsLayer
   {
     Mesh *mesh;
 
-    unsigned int vbo;
-    unsigned int ebo;
+    GLuint vbo;
+    GLuint ebo;
 
-    unsigned int vao;
+    GLuint vao;
 
-    /*Mesh(const VertexVector &_vertices, const IndexVector &_indices);
+    MeshBinding(Mesh *_mesh);
 
-    ~Mesh();
+    ~MeshBinding();
 
     void
-    draw() const;
-
-    static Mesh *
-    primitive_quad();*/
+    draw();
   };
+
+  Mesh *quad;
+  MeshBinding *quad_binding;
 public:
   GraphicsLayerOpenGL();
 
   ~GraphicsLayerOpenGL();
+
+  void
+  set_graphics_server(GraphicsServer *_graphics_server);
+
+  void
+  draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
 };
 
 #endif

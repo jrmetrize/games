@@ -99,40 +99,24 @@ Mesh::Mesh(const VertexVector &_vertices, const IndexVector &_indices) :
   vertices(_vertices),
   indices(_indices)
 {
-  glGenBuffers(1, &vbo);
-  glGenBuffers(1, &ebo);
-  glGenVertexArrays(1, &vao);
 
-  glBindVertexArray(vao);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex),
-    vertices.data(), GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-    indices.data(), GL_STATIC_DRAW);
-
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
-  glEnableVertexAttribArray(0);
-
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)sizeof(Vec2));
-  glEnableVertexAttribArray(1);
 }
 
 Mesh::~Mesh()
 {
-  glDeleteBuffers(1, &vbo);
-  glDeleteBuffers(1, &ebo);
 
-  glDeleteVertexArrays(1, &vao);
 }
 
-void
-Mesh::draw() const
+const VertexVector &
+Mesh::get_vertices() const
 {
-  glBindVertexArray(vao);
-  glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+  return vertices;
+}
+
+const IndexVector &
+Mesh::get_indices() const
+{
+  return indices;
 }
 
 Mesh *
@@ -231,6 +215,7 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   current_screen(nullptr)
 {
   backend = new GraphicsLayerOpenGL();
+  backend->set_graphics_server(this);
 
   quad = Mesh::primitive_quad();
 
@@ -426,6 +411,8 @@ GraphicsServer::draw()
   if (current_screen != nullptr)
     current_screen->draw_custom();
 
+  draw_color_rect(Vec2(10, 10), Vec2(128, 128), Vec4(1, 0, 1, 1));
+
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -444,6 +431,7 @@ GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
   color_shader->bind_uniform(color, "color");
   color_shader->draw(quad);
   */
+  backend->draw_color_rect(origin, size, color);
 }
 
 void

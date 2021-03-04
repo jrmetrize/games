@@ -152,10 +152,9 @@ GraphicsLayerOpenGL::Shader::~Shader()
 }
 
 void
-GraphicsLayerOpenGL::Shader::draw(const Mesh *mesh) const
+GraphicsLayerOpenGL::Shader::use()
 {
   glUseProgram(program);
-  mesh->draw();
 }
 
 void
@@ -211,6 +210,48 @@ GraphicsLayerOpenGL::Shader::bind_uniform(const Texture &x, std::string name) co
   glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
 }*/
 
+GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
+  : mesh(_mesh)
+{
+  const VertexVector &vertices = mesh->get_vertices();
+  const IndexVector &indices = mesh->get_indices();
+
+  glGenBuffers(1, &vbo);
+  glGenBuffers(1, &ebo);
+  glGenVertexArrays(1, &vao);
+
+  glBindVertexArray(vao);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex),
+    vertices.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
+    indices.data(), GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)sizeof(Vec2));
+  glEnableVertexAttribArray(1);
+}
+
+GraphicsLayerOpenGL::MeshBinding::~MeshBinding()
+{
+  glDeleteBuffers(1, &vbo);
+  glDeleteBuffers(1, &ebo);
+
+  glDeleteVertexArrays(1, &vao);
+}
+
+void
+GraphicsLayerOpenGL::MeshBinding::draw()
+{
+  glBindVertexArray(vao);
+  glDrawElements(GL_TRIANGLES, mesh->get_indices().size(), GL_UNSIGNED_INT, 0);
+}
+
 GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 {
   color_shader = new Shader(ColorShaderSources::vertex,
@@ -219,9 +260,36 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
     TextureShaderSources::fragment);
   text_shader = new Shader(TextShaderSources::vertex,
     TextShaderSources::fragment);
+
+  quad = Mesh::primitive_quad();
+  quad_binding = new MeshBinding(quad);
 }
 
 GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
 {
+  delete color_shader;
+  delete texture_shader;
+  delete text_shader;
 
+  delete quad_binding;
+  delete quad;
+}
+
+void
+GraphicsLayerOpenGL::set_graphics_server(GraphicsServer *_graphics_server)
+{
+  graphics_server = _graphics_server;
+}
+
+void
+GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
+{
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  color_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  color_shader->bind_uniform(color, "color");
+  color_shader->use();
+  quad_binding->draw();
 }
