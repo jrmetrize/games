@@ -118,6 +118,44 @@ main()
   )---";
 }
 
+GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture_data)
+  : texture_data(_texture_data)
+{
+  unsigned int width = texture_data->get_width();
+  unsigned int height = texture_data->get_height();
+  unsigned int channels = texture_data->get_channels();
+  const unsigned char *data = texture_data->get_data();
+
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  if (channels == 1)
+  {
+    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RED /**/, width, height, 0,
+      /**/ GL_RED /**/, GL_UNSIGNED_BYTE, data);
+  }
+  else if (channels == 3)
+  {
+    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
+      /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, data);
+  }
+  else if (channels == 4)
+  {
+    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGBA /**/, width, height, 0,
+      /**/ GL_RGBA /**/, GL_UNSIGNED_BYTE, data);
+  }
+  glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+GraphicsLayerOpenGL::TextureBinding::~TextureBinding()
+{
+  glDeleteTextures(1, &texture);
+}
+
 GraphicsLayerOpenGL::Shader::Shader(const std::string &vertex_shader_source,
   const std::string &fragment_shader_source)
 {
@@ -158,35 +196,35 @@ GraphicsLayerOpenGL::Shader::use()
 }
 
 void
-GraphicsLayerOpenGL::Shader::bind_uniform(float x, std::string name) const
+GraphicsLayerOpenGL::Shader::bind_uniform(float x, std::string name)
 {
   glUseProgram(program);
   glUniform1fv(glGetUniformLocation(program, name.c_str()), 1, &x);
 }
 
 void
-GraphicsLayerOpenGL::Shader::bind_uniform(Vec2 x, std::string name) const
+GraphicsLayerOpenGL::Shader::bind_uniform(Vec2 x, std::string name)
 {
   glUseProgram(program);
   glUniform2fv(glGetUniformLocation(program, name.c_str()), 1, (float *)(&x));
 }
 
 void
-GraphicsLayerOpenGL::Shader::bind_uniform(Vec3 x, std::string name) const
+GraphicsLayerOpenGL::Shader::bind_uniform(Vec3 x, std::string name)
 {
   glUseProgram(program);
   glUniform3fv(glGetUniformLocation(program, name.c_str()), 1, (float *)(&x));
 }
 
 void
-GraphicsLayerOpenGL::Shader::bind_uniform(Vec4 x, std::string name) const
+GraphicsLayerOpenGL::Shader::bind_uniform(Vec4 x, std::string name)
 {
   glUseProgram(program);
   glUniform4fv(glGetUniformLocation(program, name.c_str()), 1, (float *)(&x));
 }
 
 void
-GraphicsLayerOpenGL::Shader::bind_uniform(Mat3 x, std::string name) const
+GraphicsLayerOpenGL::Shader::bind_uniform(Mat3 x, std::string name)
 {
   glUseProgram(program);
   glUniformMatrix3fv(glGetUniformLocation(program, name.c_str()),
@@ -194,21 +232,21 @@ GraphicsLayerOpenGL::Shader::bind_uniform(Mat3 x, std::string name) const
 }
 
 void
-GraphicsLayerOpenGL::Shader::bind_uniform(Mat4 x, std::string name) const
+GraphicsLayerOpenGL::Shader::bind_uniform(Mat4 x, std::string name)
 {
   glUseProgram(program);
   glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()),
     1, GL_FALSE, (float *)(&x));
 }
 
-/*void
-GraphicsLayerOpenGL::Shader::bind_uniform(const Texture &x, std::string name) const
+void
+GraphicsLayerOpenGL::Shader::bind_uniform(const TextureBinding *x, std::string name)
 {
   glUseProgram(program);
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, x.texture);
+  glBindTexture(GL_TEXTURE_2D, x->texture);
   glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
-}*/
+}
 
 GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
   : mesh(_mesh)
@@ -282,6 +320,13 @@ GraphicsLayerOpenGL::set_graphics_server(GraphicsServer *_graphics_server)
 }
 
 void
+GraphicsLayerOpenGL::bind_texture(Texture *tex)
+{
+  TextureBinding *binding = new TextureBinding(tex);
+  set_texture_binding(tex, binding);
+}
+
+void
 GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 {
   glEnable(GL_BLEND);
@@ -291,5 +336,35 @@ GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(color, "color");
   color_shader->use();
+  quad_binding->draw();
+}
+
+void
+GraphicsLayerOpenGL::draw_texture_rect(Vec2 origin, Vec2 size,
+    const Texture &texture)
+{
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  texture_shader->bind_uniform((TextureBinding *)get_texture_binding(&texture),
+    "sampler");
+  texture_shader->use();
+  quad_binding->draw();
+}
+
+void
+GraphicsLayerOpenGL::draw_character(Vec2 origin, Vec2 size, Vec4 color,
+  const Texture &sdf)
+{
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  text_shader->bind_uniform(color, "color");
+  text_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  text_shader->bind_uniform((TextureBinding *)get_texture_binding(&sdf), "sdf");
+  text_shader->use();
   quad_binding->draw();
 }

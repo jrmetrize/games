@@ -17,12 +17,11 @@
 #include <samplerate.h>
 #include <algorithm>
 
-#define STB_IMAGE_IMPLEMENTATION
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #endif
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include <zlib.h>

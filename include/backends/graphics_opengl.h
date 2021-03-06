@@ -13,6 +13,10 @@ class GraphicsLayerOpenGL : public GraphicsLayer
   {
     Texture *texture_data;
     GLuint texture;
+
+    TextureBinding(Texture *_texture_data);
+
+    ~TextureBinding();
   };
 
   struct Shader
@@ -28,27 +32,27 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     use();
 
     void
-    bind_uniform(float x, std::string name) const;
+    bind_uniform(float x, std::string name);
 
     void
-    bind_uniform(Vec2 x, std::string name) const;
+    bind_uniform(Vec2 x, std::string name);
 
     void
-    bind_uniform(Vec3 x, std::string name) const;
+    bind_uniform(Vec3 x, std::string name);
 
     void
-    bind_uniform(Vec4 x, std::string name) const;
+    bind_uniform(Vec4 x, std::string name);
 
     void
-    bind_uniform(Mat3 x, std::string name) const;
+    bind_uniform(Mat3 x, std::string name);
 
     void
-    bind_uniform(Mat4 x, std::string name) const;
+    bind_uniform(Mat4 x, std::string name);
 
     // TODO: if a shader needs more than one texture at a time, allow binding
     // multiple texture units
     void
-    bind_uniform(const TextureBinding &x, std::string name) const;
+    bind_uniform(const TextureBinding *x, std::string name);
   };
 
   Shader *color_shader;
@@ -83,7 +87,17 @@ public:
   set_graphics_server(GraphicsServer *_graphics_server);
 
   void
+  bind_texture(Texture *tex);
+
+  void
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
+
+  void
+  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);
+
+  void
+  draw_character(Vec2 origin, Vec2 size, Vec4 color,
+    const Texture &sdf);
 };
 
 #endif

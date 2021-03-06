@@ -8,9 +8,6 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include <iostream>
 
 void
@@ -25,67 +22,52 @@ GraphicsLayer::~GraphicsLayer()
 
 }
 
-Texture::Texture(std::string path)
-{
-  int _width;
-  int _height;
-  int _channels;
-
-  unsigned char *img_data = stbi_load(path.c_str(),
-    &_width, &_height, &_channels, 0);
-
-  // TODO: check that img_data is not nullptr
-
-  width = (unsigned int)_width;
-  height = (unsigned int)_height;
-  channels = (unsigned int)_channels;
-
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
-    /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, img_data);
-  glGenerateMipmap(GL_TEXTURE_2D);
-
-  stbi_image_free(img_data);
-}
-
 Texture::Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
-  const unsigned char *data) :
-  width(_width), height(_height), channels(_channels)
+  const unsigned char *_data) :
+  width(_width), height(_height), channels(_channels), data(_data)
 {
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  if (channels == 1)
-  {
-    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RED /**/, width, height, 0,
-      /**/ GL_RED /**/, GL_UNSIGNED_BYTE, data);
-  }
-  else if (channels == 3)
-  {
-    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGB /**/, width, height, 0,
-      /**/ GL_RGB /**/, GL_UNSIGNED_BYTE, data);
-  }
-  else if (channels == 4)
-  {
-    glTexImage2D(GL_TEXTURE_2D, 0, /**/ GL_RGBA /**/, width, height, 0,
-      /**/ GL_RGBA /**/, GL_UNSIGNED_BYTE, data);
-  }
-  glGenerateMipmap(GL_TEXTURE_2D);
+  GraphicsServer::get()->bind(this);
 }
 
 Texture::~Texture()
 {
-  glDeleteTextures(1, &texture);
+
+}
+
+unsigned int
+Texture::get_width() const
+{
+  return width;
+}
+
+unsigned int
+Texture::get_height() const
+{
+  return height;
+}
+
+unsigned int
+Texture::get_channels() const
+{
+  return channels;
+}
+
+const unsigned char *
+Texture::get_data() const
+{
+  return data;
+}
+
+void
+GraphicsLayer::set_texture_binding(Texture *tex, void *binding)
+{
+  tex->binding = binding;
+}
+
+void *
+GraphicsLayer::get_texture_binding(const Texture *tex)
+{
+  return tex->binding;
 }
 
 Vertex::Vertex(const Vec2 &_position, const Vec2 &_texture_coordinates) :
@@ -253,6 +235,13 @@ GraphicsServer::get()
 }
 
 void
+GraphicsServer::bind(Texture *tex)
+{
+  // Bind the texture to the backend.
+  backend->bind_texture(tex);
+}
+
+void
 GraphicsServer::set_fullscreen(bool fullscreen)
 {
   if (fullscreen)
@@ -411,8 +400,6 @@ GraphicsServer::draw()
   if (current_screen != nullptr)
     current_screen->draw_custom();
 
-  draw_color_rect(Vec2(10, 10), Vec2(128, 128), Vec4(1, 0, 1, 1));
-
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -422,30 +409,13 @@ GraphicsServer::draw()
 void
 GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 {
-  /*
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  color_shader->bind_uniform(get_pixel_to_screen_transform()
-    * Mat3::translate(origin)
-    * Mat3::scale(size), "transform");
-  color_shader->bind_uniform(color, "color");
-  color_shader->draw(quad);
-  */
   backend->draw_color_rect(origin, size, color);
 }
 
 void
 GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture)
 {
-  /*
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  texture_shader->bind_uniform(get_pixel_to_screen_transform()
-    * Mat3::translate(origin)
-    * Mat3::scale(size), "transform");
-  texture_shader->bind_uniform(texture, "sampler");
-  texture_shader->draw(quad);
-  */
+  backend->draw_texture_rect(origin, size, texture);
 }
 
 // Draws a line of text with no wrapping or alignment, with the baseline and
@@ -453,16 +423,11 @@ GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture
 void
 GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
 {
-  /*
   // TODO: this should be calculated by the font face object
   float scale_factor = text_request.size / (64.0f * 64.0f);
   float texture_padding = 8; // 'spread' value in SDF generation
 
-  text_shader->bind_uniform(text_request.color, "color");
-
   text_request.font->generate_textures();
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   Vec2 current_pos = text_request.bounding_box_origin;
 
   if (text_request.center_vertical)
@@ -511,15 +476,11 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
     adjustment += -scale_factor * Vec2(texture_padding * (float(glyph.width) / float(glyph.bitmap_width)),
       texture_padding * (float(glyph.height) / float(glyph.bitmap_height)));
 
-    text_shader->bind_uniform(get_pixel_to_screen_transform()
-      * Mat3::translate(current_pos + adjustment)
-      * Mat3::scale(glyph_size), "transform");
-    text_shader->bind_uniform(*tex, "sdf");
-    text_shader->draw(quad);
+    backend->draw_character(current_pos + adjustment, glyph_size,
+      text_request.color, *tex);
 
     current_pos += scale_factor * Vec2(glyph.horizontal_advance, 0);
   }
-  */
 }
 
 void
@@ -620,7 +581,7 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
 void
 GraphicsServer::clear_stencil_buffer()
 {
-  glClear(GL_STENCIL_BUFFER_BIT);
+  //glClear(GL_STENCIL_BUFFER_BIT);
 }
 
 void
@@ -646,8 +607,8 @@ GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
 void
 GraphicsServer::enable_stencil()
 {
-  glEnable(GL_STENCIL_TEST);
-  glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+  //glEnable(GL_STENCIL_TEST);
+  //glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 }
 
 void
@@ -659,7 +620,6 @@ GraphicsServer::disable_stencil()
 void
 GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
 {
-  /*
   if (to_render.camera_mode == Vertical)
   {
     Vec2 unit_direction = to_render.camera_dir.normalized();
@@ -677,12 +637,8 @@ GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
       cast.direction = ray_dir;
 
       Vec4 color = render_ray(to_render, cast);
-
-      color_shader->bind_uniform(get_pixel_to_screen_transform()
-        * Mat3::translate(Vec2(origin.x, origin.y + (float(i) * row_height)))
-        * Mat3::scale(Vec2(size.x, row_height)), "transform");
-      color_shader->bind_uniform(color, "color");
-      color_shader->draw(quad);
+      draw_color_rect(Vec2(origin.x, origin.y + (float(i) * row_height)),
+        Vec2(size.x, row_height), color);
     }
   }
   else if (to_render.camera_mode == Horizontal)
@@ -702,13 +658,8 @@ GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
       cast.direction = ray_dir;
 
       Vec4 color = render_ray(to_render, cast);
-
-      color_shader->bind_uniform(get_pixel_to_screen_transform()
-        * Mat3::translate(Vec2(origin.x + (float(i) * column_width), origin.y))
-        * Mat3::scale(Vec2(column_width, size.y)), "transform");
-      color_shader->bind_uniform(color, "color");
-      color_shader->draw(quad);
+      draw_color_rect(Vec2(origin.x + (float(i) * column_width), origin.y),
+        Vec2(column_width, size.y), color);
     }
   }
-  */
 }

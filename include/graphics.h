@@ -11,10 +11,47 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+class GraphicsLayer;
+
+class Texture
+{
+  friend class GraphicsLayer;
+
+  unsigned int width;
+  unsigned int height;
+  unsigned int channels;
+  const unsigned char *data;
+
+  void *binding;
+public:
+  Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
+    const unsigned char *_data);
+
+  ~Texture();
+
+  unsigned int
+  get_width() const;
+
+  unsigned int
+  get_height() const;
+
+  unsigned int
+  get_channels() const;
+
+  const unsigned char *
+  get_data() const;
+};
+
 class GraphicsServer;
 
 class GraphicsLayer
 {
+protected:
+  void
+  set_texture_binding(Texture *tex, void *binding);
+
+  void *
+  get_texture_binding(const Texture *tex);
 public:
   virtual
   ~GraphicsLayer() = 0;
@@ -23,32 +60,21 @@ public:
   set_graphics_server(GraphicsServer *_graphics_server) = 0;
 
   virtual void
+  bind_texture(Texture *tex) = 0;
+
+  virtual void
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color) = 0;
 
-  /*void
-  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);*/
+  virtual void
+  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture) = 0;
+
+  virtual void
+  draw_character(Vec2 origin, Vec2 size, Vec4 color,
+    const Texture &sdf) = 0;
 };
 
 class Mesh;
 class FontFace;
-
-class Texture
-{
-  //friend class Shader;
-
-  unsigned int texture;
-
-  unsigned int width;
-  unsigned int height;
-  unsigned int channels;
-public:
-  Texture(std::string path);
-
-  Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
-    const unsigned char *data);
-
-  ~Texture();
-};
 
 struct Vertex
 {
@@ -225,6 +251,9 @@ public:
 
   static GraphicsServer *
   get();
+
+  void
+  bind(Texture *tex);
 
   void
   set_fullscreen(bool fullscreen);
