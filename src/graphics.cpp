@@ -8,15 +8,6 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
-#include <iostream>
-
-void
-opengl_debug(unsigned int source, unsigned int type, unsigned int id,
-  unsigned int severity, int length, const char *message, const void *userdata)
-{
-  std::cout << std::string(message) << std::endl;
-}
-
 GraphicsLayer::~GraphicsLayer()
 {
 
@@ -68,6 +59,18 @@ void *
 GraphicsLayer::get_texture_binding(const Texture *tex)
 {
   return tex->binding;
+}
+
+void
+GraphicsLayer::set_mesh_binding(Mesh *mesh, void *binding)
+{
+  mesh->binding = binding;
+}
+
+void *
+GraphicsLayer::get_mesh_binding(const Mesh *mesh)
+{
+  return mesh->binding;
 }
 
 Vertex::Vertex(const Vec2 &_position, const Vec2 &_texture_coordinates) :
@@ -200,6 +203,7 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   backend->set_graphics_server(this);
 
   quad = Mesh::primitive_quad();
+  bind(quad);
 
   // TODO: only use imgui in dev builds
   IMGUI_CHECKVERSION();
@@ -208,9 +212,6 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   ImGui::StyleColorsDark();
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init("#version 330");
-
-  glEnable(GL_DEBUG_OUTPUT);
-  //glDebugMessageCallback(opengl_debug, nullptr);
 }
 
 GraphicsServer::~GraphicsServer()
@@ -239,6 +240,18 @@ GraphicsServer::bind(Texture *tex)
 {
   // Bind the texture to the backend.
   backend->bind_texture(tex);
+}
+
+void
+GraphicsServer::bind(Mesh *mesh)
+{
+  backend->bind_mesh(mesh);
+}
+
+Mesh *
+GraphicsServer::get_quad()
+{
+  return quad;
 }
 
 void
@@ -388,10 +401,7 @@ GraphicsServer::draw()
 {
   glfwPollEvents();
 
-  Vec2 viewport_size = get_framebuffer_size(false);
-  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
-  glClearColor(0, 0, 0, 1);
-  glClear(GL_COLOR_BUFFER_BIT);
+  backend->begin_render();
 
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -581,40 +591,13 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
 void
 GraphicsServer::clear_stencil_buffer()
 {
-  //glClear(GL_STENCIL_BUFFER_BIT);
+  backend->clear_mask();
 }
 
 void
 GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
 {
-  /*
-  glStencilMask(0xFF);
-  glStencilFunc(GL_ALWAYS, 1, 0xFF);
-
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  color_shader->bind_uniform(get_pixel_to_screen_transform()
-    * Mat3::translate(origin)
-    * Mat3::scale(size), "transform");
-  color_shader->bind_uniform(Vec4(0), "color");
-  color_shader->draw(quad);
-
-  glStencilMask(0x00);
-  glStencilFunc(GL_EQUAL, 1, 0xFF);
-  */
-}
-
-void
-GraphicsServer::enable_stencil()
-{
-  //glEnable(GL_STENCIL_TEST);
-  //glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-}
-
-void
-GraphicsServer::disable_stencil()
-{
-  glDisable(GL_STENCIL_TEST);
+  backend->mask_rect(origin, size);
 }
 
 void

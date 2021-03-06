@@ -284,8 +284,9 @@ GraphicsLayerOpenGL::MeshBinding::~MeshBinding()
 }
 
 void
-GraphicsLayerOpenGL::MeshBinding::draw()
+GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
 {
+  shader->use();
   glBindVertexArray(vao);
   glDrawElements(GL_TRIANGLES, mesh->get_indices().size(), GL_UNSIGNED_INT, 0);
 }
@@ -298,9 +299,6 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
     TextureShaderSources::fragment);
   text_shader = new Shader(TextShaderSources::vertex,
     TextShaderSources::fragment);
-
-  quad = Mesh::primitive_quad();
-  quad_binding = new MeshBinding(quad);
 }
 
 GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
@@ -308,9 +306,6 @@ GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
   delete color_shader;
   delete texture_shader;
   delete text_shader;
-
-  delete quad_binding;
-  delete quad;
 }
 
 void
@@ -327,6 +322,22 @@ GraphicsLayerOpenGL::bind_texture(Texture *tex)
 }
 
 void
+GraphicsLayerOpenGL::bind_mesh(Mesh *mesh)
+{
+  MeshBinding *binding = new MeshBinding(mesh);
+  set_mesh_binding(mesh, binding);
+}
+
+void
+GraphicsLayerOpenGL::begin_render()
+{
+  Vec2 viewport_size = graphics_server->get_framebuffer_size(false);
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void
 GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 {
   glEnable(GL_BLEND);
@@ -335,8 +346,7 @@ GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(color, "color");
-  color_shader->use();
-  quad_binding->draw();
+  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(color_shader);
 }
 
 void
@@ -350,8 +360,7 @@ GraphicsLayerOpenGL::draw_texture_rect(Vec2 origin, Vec2 size,
     * Mat3::scale(size), "transform");
   texture_shader->bind_uniform((TextureBinding *)get_texture_binding(&texture),
     "sampler");
-  texture_shader->use();
-  quad_binding->draw();
+  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(texture_shader);
 }
 
 void
@@ -365,6 +374,32 @@ GraphicsLayerOpenGL::draw_character(Vec2 origin, Vec2 size, Vec4 color,
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
   text_shader->bind_uniform((TextureBinding *)get_texture_binding(&sdf), "sdf");
-  text_shader->use();
-  quad_binding->draw();
+  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(text_shader);
+}
+
+void
+GraphicsLayerOpenGL::clear_mask()
+{
+  glClear(GL_STENCIL_BUFFER_BIT);
+  glDisable(GL_STENCIL_TEST);
+}
+
+void
+GraphicsLayerOpenGL::mask_rect(Vec2 origin, Vec2 size)
+{
+  glEnable(GL_STENCIL_TEST);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
+  glStencilMask(0xFF);
+  glStencilFunc(GL_ALWAYS, 1, 0xFF);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  color_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(origin)
+    * Mat3::scale(size), "transform");
+  color_shader->bind_uniform(Vec4(0), "color");
+  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(color_shader);
+
+  glStencilMask(0x00);
+  glStencilFunc(GL_EQUAL, 1, 0xFF);
 }

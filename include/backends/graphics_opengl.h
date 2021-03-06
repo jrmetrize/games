@@ -55,10 +55,6 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     bind_uniform(const TextureBinding *x, std::string name);
   };
 
-  Shader *color_shader;
-  Shader *texture_shader;
-  Shader *text_shader;
-
   struct MeshBinding
   {
     Mesh *mesh;
@@ -73,11 +69,12 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     ~MeshBinding();
 
     void
-    draw();
+    draw(Shader *shader);
   };
 
-  Mesh *quad;
-  MeshBinding *quad_binding;
+  Shader *color_shader;
+  Shader *texture_shader;
+  Shader *text_shader;
 public:
   GraphicsLayerOpenGL();
 
@@ -90,6 +87,12 @@ public:
   bind_texture(Texture *tex);
 
   void
+  bind_mesh(Mesh *mesh);
+
+  void
+  begin_render();
+
+  void
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
 
   void
@@ -98,6 +101,12 @@ public:
   void
   draw_character(Vec2 origin, Vec2 size, Vec4 color,
     const Texture &sdf);
+
+  void
+  clear_mask();
+
+  void
+  mask_rect(Vec2 origin, Vec2 size);
 };
 
 #endif

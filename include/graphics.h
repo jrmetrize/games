@@ -42,40 +42,6 @@ public:
   get_data() const;
 };
 
-class GraphicsServer;
-
-class GraphicsLayer
-{
-protected:
-  void
-  set_texture_binding(Texture *tex, void *binding);
-
-  void *
-  get_texture_binding(const Texture *tex);
-public:
-  virtual
-  ~GraphicsLayer() = 0;
-
-  virtual void
-  set_graphics_server(GraphicsServer *_graphics_server) = 0;
-
-  virtual void
-  bind_texture(Texture *tex) = 0;
-
-  virtual void
-  draw_color_rect(Vec2 origin, Vec2 size, Vec4 color) = 0;
-
-  virtual void
-  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture) = 0;
-
-  virtual void
-  draw_character(Vec2 origin, Vec2 size, Vec4 color,
-    const Texture &sdf) = 0;
-};
-
-class Mesh;
-class FontFace;
-
 struct Vertex
 {
   Vec2 position;
@@ -89,8 +55,12 @@ using IndexVector = std::vector<unsigned int>;
 
 class Mesh
 {
+  friend class GraphicsLayer;
+
   VertexVector vertices;
   IndexVector indices;
+
+  void *binding;
 public:
   Mesh(const VertexVector &_vertices, const IndexVector &_indices);
 
@@ -105,6 +75,58 @@ public:
   static Mesh *
   primitive_quad();
 };
+
+class GraphicsServer;
+
+class GraphicsLayer
+{
+protected:
+  void
+  set_texture_binding(Texture *tex, void *binding);
+
+  void *
+  get_texture_binding(const Texture *tex);
+
+  void
+  set_mesh_binding(Mesh *mesh, void *binding);
+
+  void *
+  get_mesh_binding(const Mesh *mesh);
+public:
+  virtual
+  ~GraphicsLayer() = 0;
+
+  virtual void
+  set_graphics_server(GraphicsServer *_graphics_server) = 0;
+
+  virtual void
+  bind_texture(Texture *tex) = 0;
+
+  virtual void
+  bind_mesh(Mesh *mesh) = 0;
+
+  virtual void
+  begin_render() = 0;
+
+  virtual void
+  draw_color_rect(Vec2 origin, Vec2 size, Vec4 color) = 0;
+
+  virtual void
+  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture) = 0;
+
+  virtual void
+  draw_character(Vec2 origin, Vec2 size, Vec4 color,
+    const Texture &sdf) = 0;
+
+  // TODO: When it's needed, make a more robust API for masking
+  virtual void
+  clear_mask() = 0;
+
+  virtual void
+  mask_rect(Vec2 origin, Vec2 size) = 0;
+};
+
+class FontFace;
 
 struct RayResult
 {
@@ -256,6 +278,12 @@ public:
   bind(Texture *tex);
 
   void
+  bind(Mesh *mesh);
+
+  Mesh *
+  get_quad();
+
+  void
   set_fullscreen(bool fullscreen);
 
   Vec2
@@ -293,12 +321,6 @@ public:
 
   void
   draw_stencil_rect(Vec2 origin, Vec2 size);
-
-  void
-  enable_stencil();
-
-  void
-  disable_stencil();
 
   void
   render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render);

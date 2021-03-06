@@ -432,23 +432,21 @@ LevelState::draw_background_in_rect(Vec2 origin, Vec2 size)
 void
 LevelState::draw_stats_in_rect(Vec2 origin, Vec2 size)
 {
-  //draw_side_view_in_rect(graphics_server, origin, Vec2(size.x, size.x));
+  draw_side_view_in_rect(origin, Vec2(size.x, size.x));
 }
 
-/*
 void
-LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
-  Vec2 origin, Vec2 size)
+LevelState::draw_side_view_in_rect(Vec2 origin, Vec2 size)
 {
   // Border and background
   const float margin = 4;
-  graphics_server->draw_color_rect(origin, size, Vec4(1, 1, 1, 1));
-  graphics_server->draw_color_rect(origin + Vec2(margin),
+  GraphicsServer::get()->draw_color_rect(origin, size, Vec4(1, 1, 1, 1));
+  GraphicsServer::get()->draw_color_rect(origin + Vec2(margin),
     size - (2.0f * Vec2(margin)), Vec4(0.2, 0.2, 0.2, 1));
 
   // Use 16 pixels = 1 meter
   // Draw the player
-  graphics_server->draw_color_rect(origin + Vec2(margin) + ((1.0 / 2.0) * size)
+  GraphicsServer::get()->draw_color_rect(origin + Vec2(margin) + ((1.0 / 2.0) * size)
     - Vec2(8, 32), Vec2(16, 32), Vec4(0.8, 0.2, 0.1, 1));
 
   // Draw the level
@@ -458,8 +456,8 @@ LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
     * Mat3::scale(Vec2(16, 16)) * Mat3::translate(-player_position);
 
   // Clip the geometry to the viewing window by applying a stencil
-  graphics_server->enable_stencil();
-  graphics_server->draw_stencil_rect(origin + Vec2(margin), size - (2.0f * Vec2(margin)));
+  GraphicsServer::get()->clear_stencil_buffer();
+  GraphicsServer::get()->draw_stencil_rect(origin + Vec2(margin), size - (2.0f * Vec2(margin)));
 
   for (unsigned int i = 0; i < geometry.size(); ++i)
   {
@@ -468,24 +466,22 @@ LevelState::draw_side_view_in_rect(GraphicsServer *graphics_server,
     Vec2 block_size = geometry[i]->get_size();
     Vec3 screen_origin = world_to_screen_transform
       * Vec3(block_origin.x, block_origin.y, 1);
-    graphics_server->draw_color_rect(Vec2(screen_origin.x, screen_origin.y),
+    GraphicsServer::get()->draw_color_rect(Vec2(screen_origin.x, screen_origin.y),
       16.0 * block_size, Vec4(0, 1, 0, 1));
   }
 
-  graphics_server->clear_stencil_buffer();
-  graphics_server->disable_stencil();
+  GraphicsServer::get()->clear_stencil_buffer();
 }
 
 void
-LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
-  Vec2 origin, Vec2 size)
+LevelState::draw_dialogue_box_in_rect(Vec2 origin, Vec2 size)
 {
   // Border and background
   const float margin = 10;
   const float option_height = 40;
-  graphics_server->draw_color_rect(origin - Vec2(margin, margin),
+  GraphicsServer::get()->draw_color_rect(origin - Vec2(margin, margin),
     size + (2 * Vec2(margin, margin)), Vec4(1, 1, 1, 1));
-  graphics_server->draw_color_rect(origin,
+  GraphicsServer::get()->draw_color_rect(origin,
     size, Vec4(0.2, 0.2, 0.2, 1));
 
   if (current_dialogue != nullptr)
@@ -498,7 +494,7 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
     req.size = 20;
     req.font = GameState::get()->get_sans();
     req.center = false;
-    graphics_server->draw_text(req);
+    GraphicsServer::get()->draw_text(req);
 
     const std::vector<DialogueChoice> &choices =
       current_dialogue->get_current_point().get_choices();
@@ -511,23 +507,23 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
       bool selected = cursor_in && InputMonitor::get()->is_left_mouse_down();
       if (selected)
       {
-        graphics_server->draw_color_rect(origin + origin2,
+        GraphicsServer::get()->draw_color_rect(origin + origin2,
           size2, Vec4(0.4, 0.2, 0.9, 1));
       }
       else if (cursor_in)
       {
-        graphics_server->draw_color_rect(origin + origin2,
+        GraphicsServer::get()->draw_color_rect(origin + origin2,
           size2, Vec4(0.4, 0.2, 0.6, 1));
       }
       else
       {
-        graphics_server->draw_color_rect(origin + origin2,
+        GraphicsServer::get()->draw_color_rect(origin + origin2,
           size2, Vec4(0.4, 0.4, 0.4, 1));
       }
       req.bounding_box_origin = origin + origin2 + Vec2(margin);
       req.bounding_box_size = size2 - Vec2(margin);
       req.text = choices[i].text;
-      graphics_server->draw_text(req);
+      GraphicsServer::get()->draw_text(req);
 
       dialogue_choices[i]->set_origin(origin + origin2);
       dialogue_choices[i]->set_size(size2);
@@ -535,4 +531,3 @@ LevelState::draw_dialogue_box_in_rect(GraphicsServer *graphics_server,
     }
   }
 }
-*/

@@ -188,6 +188,12 @@ class LevelState
 
   void
   dialogue_choice_callback(void *userdata);
+
+  void
+  draw_side_view_in_rect(Vec2 origin, Vec2 size);
+
+  void
+  draw_dialogue_box_in_rect(Vec2 origin, Vec2 size);
 public:
   LevelState(Level *_level);
 
