@@ -156,6 +156,16 @@ Vec3::string() const
 }
 
 Vec3
+Vec3::cross(const Vec3 &v) const
+{
+  Vec3 r = Vec3();
+  r.x = (y * v.z) - (z * v.y);
+  r.y = (z * v.x) - (x * v.z);
+  r.z = (x * v.y) - (y * v.x);
+  return r;
+}
+
+Vec3
 Vec3::operator - () const
 {
   return Vec3(-x, -y, -z);
@@ -429,6 +439,115 @@ Mat4::Mat4() :
   columns()
 {
 
+}
+
+Mat4
+Mat4::identity()
+{
+  Mat4 m = Mat4();
+
+  m.columns[0].x = 1;
+  m.columns[1].y = 1;
+  m.columns[2].z = 1;
+  m.columns[3].w = 1;
+
+  return m;
+}
+
+
+Mat4
+Mat4::translation(Vec3 v)
+{
+  Mat4 m = Mat4();
+
+  m.columns[0].x = 1;
+  m.columns[1].y = 1;
+  m.columns[2].z = 1;
+
+  m.columns[3].x = v.x;
+  m.columns[3].y = v.y;
+  m.columns[3].z = v.z;
+  m.columns[3].w = 1;
+
+  return m;
+}
+
+
+Mat4
+Mat4::scale(Vec3 v)
+{
+  Mat4 m = Mat4();
+
+  m.columns[0].x = v.x;
+  m.columns[1].y = v.y;
+  m.columns[2].z = v.z;
+  m.columns[3].w = 1;
+
+  return m;
+}
+
+
+Mat4
+Mat4::rotation(Vec3 axis, float angle)
+{
+  Mat4 m = Mat4();
+  Vec3 u = axis.normalized();
+
+  m[0] = Vec4(
+    cos(angle) + ((u.x * u.x) * (1 - cos(angle))),
+    ((u.y * u.x) * (1 - cos(angle))) + (u.z * sin(angle)),
+    ((u.z * u.x) * (1 - cos(angle))) - (u.y * sin(angle)),
+    0);
+  m[1] = Vec4(
+    ((u.x * u.y) * (1 - cos(angle))) - (u.z * sin(angle)),
+    cos(angle) + ((u.y * u.y) * (1 - cos(angle))),
+    ((u.z * u.y) * (1 - cos(angle))) + (u.x * sin(angle)),
+    0);
+  m[2] = Vec4(
+    ((u.x * u.z) * (1 - cos(angle))) + (u.y * sin(angle)),
+    ((u.y * u.z) * (1 - cos(angle))) - (u.x * sin(angle)),
+    cos(angle) + ((u.z * u.z) * (1 - cos(angle))),
+    0);
+  m[3] = Vec4(0, 0, 0, 1);
+
+  return m;
+}
+
+
+Mat4
+Mat4::projection(float fov, float aspect, float near, float far)
+{
+  const float f = 1 / tan(fov / 2);
+  Mat4 m = Mat4();
+
+  m[0][0] = f / aspect;
+  m[1][1] = -f;
+  m[2][2] = (near + far) / (near - far);
+  m[2][3] = -1;
+  m[3][2] = (2 * near * far) / (near - far);
+
+  return m;
+}
+
+
+Mat4
+Mat4::lookat(Vec3 camera, Vec3 target, Vec3 up)
+{
+  Mat4 m = Mat4();
+
+  Vec3 f = (target - camera).normalized();
+  Vec3 u = up.normalized();
+  Vec3 s = f.cross(u).normalized();
+  u = s.normalized().cross(f);
+
+  m[0] = Vec4(s.x, u.x, -f.x, 0);
+  m[1] = Vec4(s.y, u.y, -f.y, 0);
+  m[2] = Vec4(s.z, u.z, -f.z, 0);
+  m[3] = Vec4(0, 0, 0, 1);
+
+  Mat4 translate = Mat4::translation(-camera);
+
+  return m * translate;
 }
 
 Vec4 &

@@ -79,6 +79,9 @@ struct Vec3
   string() const;
 
   Vec3
+  cross(const Vec3 &v) const;
+
+  Vec3
   operator - () const;
 
   float &
@@ -192,6 +195,24 @@ struct Mat4
   Vec4 columns[4];
 
   Mat4();
+
+  static Mat4
+  identity();
+
+  static Mat4
+  translation(Vec3 v);
+
+  static Mat4
+  scale(Vec3 v);
+
+  static Mat4
+  rotation(Vec3 axis, float angle);
+
+  static Mat4
+  projection(float fov, float aspect, float near, float far);
+
+  static Mat4
+  lookat(Vec3 camera, Vec3 target, Vec3 up);
 
   Vec4 &
   operator [] (const unsigned int &i);

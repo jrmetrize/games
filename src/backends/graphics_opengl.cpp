@@ -5,14 +5,14 @@ namespace ColorShaderSources
   const std::string vertex = R"---(
 
 #version 330 core
-layout (location = 0) in vec2 position;
+layout (location = 0) in vec3 position;
 
 uniform mat3 transform;
 
 void
 main()
 {
-  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
+  gl_Position = vec4(transform * vec3(position.xy, 1.0), 1.0);
 }
 
   )---";
@@ -38,7 +38,7 @@ namespace TextureShaderSources
   const std::string vertex = R"---(
 
 #version 330 core
-layout (location = 0) in vec2 position;
+layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 texture_coordinates;
 
 uniform mat3 transform;
@@ -48,7 +48,7 @@ out vec2 uv;
 void
 main()
 {
-  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
+  gl_Position = vec4(transform * vec3(position.xy, 1.0), 1.0);
   uv = texture_coordinates;
 }
 
@@ -77,7 +77,7 @@ namespace TextShaderSources
   const std::string vertex = R"---(
 
 #version 330 core
-layout (location = 0) in vec2 position;
+layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 texture_coordinates;
 
 uniform mat3 transform;
@@ -87,7 +87,7 @@ out vec2 uv;
 void
 main()
 {
-  gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
+  gl_Position = vec4(transform * vec3(position.xy, 1.0), 1.0);
   uv = texture_coordinates;
 }
 
@@ -113,6 +113,45 @@ main()
   float distance = texture(sdf, uv).r;
   float alpha = smoothstep(LOWER_STEP, UPPER_STEP, distance);
   frag_color = vec4(color.rgb, alpha);
+}
+
+  )---";
+}
+
+namespace ModelShaderSources
+{
+  const std::string vertex = R"---(
+
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec2 texture_coordinates;
+layout (location = 2) in vec3 normal;
+
+uniform mat4 model;
+uniform mat4 view_proj;
+
+out vec2 uv;
+
+void
+main()
+{
+  gl_Position = view_proj * model * vec4(position, 1.0);
+  uv = texture_coordinates;
+}
+
+  )---";
+
+  const std::string fragment = R"---(
+
+#version 330 core
+layout(location = 0) out vec3 frag_color;
+
+in vec2 uv;
+
+void
+main()
+{
+  frag_color = vec4(1);
 }
 
   )---";
@@ -154,6 +193,47 @@ GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture_data)
 GraphicsLayerOpenGL::TextureBinding::~TextureBinding()
 {
   glDeleteTextures(1, &texture);
+}
+
+GraphicsLayerOpenGL::RenderTarget::RenderTarget()
+{
+  glGenFramebuffers(1, &framebuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+  glGenTextures(1, &target_texture);
+  glBindTexture(GL_TEXTURE_2D, target_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  glGenRenderbuffers(1, &depth_buffer);
+  glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer);
+
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target_texture, 0);
+  GLenum draw_buffers[] = {
+    GL_COLOR_ATTACHMENT0
+  };
+  glDrawBuffers(1, draw_buffers);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+GraphicsLayerOpenGL::RenderTarget::~RenderTarget()
+{
+  glDeleteTextures(1, &target_texture);
+  glDeleteRenderbuffers(1, &depth_buffer);
+  glDeleteFramebuffers(1, &framebuffer);
+}
+
+void
+GraphicsLayerOpenGL::RenderTarget::make_active()
+{
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+  glViewport(0, 0, 1280, 720);
 }
 
 GraphicsLayerOpenGL::Shader::Shader(const std::string &vertex_shader_source,
@@ -248,6 +328,15 @@ GraphicsLayerOpenGL::Shader::bind_uniform(const TextureBinding *x, std::string n
   glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
 }
 
+void
+GraphicsLayerOpenGL::Shader::bind_uniform(const RenderTarget *x, std::string name)
+{
+  glUseProgram(program);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, x->target_texture);
+  glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
+}
+
 GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
   : mesh(_mesh)
 {
@@ -268,10 +357,10 @@ GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
     indices.data(), GL_STATIC_DRAW);
 
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
   glEnableVertexAttribArray(0);
 
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)sizeof(Vec2));
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)sizeof(Vec3));
   glEnableVertexAttribArray(1);
 }
 
@@ -293,6 +382,10 @@ GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
 
 GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 {
+  target_3d = new RenderTarget();
+  model_shader = new Shader(ModelShaderSources::vertex,
+    ModelShaderSources::fragment);
+
   color_shader = new Shader(ColorShaderSources::vertex,
     ColorShaderSources::fragment);
   texture_shader = new Shader(TextureShaderSources::vertex,
@@ -303,6 +396,9 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 
 GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
 {
+  delete target_3d;
+  delete model_shader;
+
   delete color_shader;
   delete texture_shader;
   delete text_shader;
@@ -335,6 +431,20 @@ GraphicsLayerOpenGL::begin_render()
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  // TODO: proper api for managing 3d renders
+  target_3d->make_active();
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, 1280, 720);
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(Vec2(0, 0))
+    * Mat3::scale(Vec2(1280, 720)), "transform");
+  texture_shader->bind_uniform(target_3d, "sampler");
+  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(texture_shader);
 }
 
 void

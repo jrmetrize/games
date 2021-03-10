@@ -44,10 +44,12 @@ public:
 
 struct Vertex
 {
-  Vec2 position;
+  Vec3 position;
   Vec2 texture_coordinates;
 
-  Vertex(const Vec2 &_position, const Vec2 &_texture_coordinates);
+  Vec3 normal;
+
+  Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates);
 };
 
 using VertexVector = std::vector<Vertex>;
@@ -74,6 +76,9 @@ public:
 
   static Mesh *
   primitive_quad();
+
+  static Mesh *
+  primitive_cube();
 };
 
 class GraphicsServer;

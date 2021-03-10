@@ -19,6 +19,20 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     ~TextureBinding();
   };
 
+  struct RenderTarget
+  {
+    GLuint framebuffer;
+    GLuint target_texture;
+    GLuint depth_buffer;
+
+    RenderTarget();
+
+    ~RenderTarget();
+
+    void
+    make_active();
+  };
+
   struct Shader
   {
     GLuint program;
@@ -53,6 +67,9 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     // multiple texture units
     void
     bind_uniform(const TextureBinding *x, std::string name);
+
+    void
+    bind_uniform(const RenderTarget *x, std::string name);
   };
 
   struct MeshBinding
@@ -72,6 +89,11 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     draw(Shader *shader);
   };
 
+  // 3D
+  RenderTarget *target_3d;
+  Shader *model_shader;
+
+  // 2D
   Shader *color_shader;
   Shader *texture_shader;
   Shader *text_shader;

@@ -73,7 +73,7 @@ GraphicsLayer::get_mesh_binding(const Mesh *mesh)
   return mesh->binding;
 }
 
-Vertex::Vertex(const Vec2 &_position, const Vec2 &_texture_coordinates) :
+Vertex::Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates) :
   position(_position),
   texture_coordinates(_texture_coordinates)
 {
@@ -108,15 +108,51 @@ Mesh *
 Mesh::primitive_quad()
 {
   VertexVector vertices = {
-    Vertex(Vec2(0.0, 0.0), Vec2(0.0, 1.0)),
-    Vertex(Vec2(1.0, 0.0), Vec2(1.0, 1.0)),
-    Vertex(Vec2(0.0, 1.0), Vec2(0.0, 0.0)),
-    Vertex(Vec2(1.0, 1.0), Vec2(1.0, 0.0))
+    Vertex(Vec3(0.0, 0.0, 0.0), Vec2(0.0, 1.0)),
+    Vertex(Vec3(1.0, 0.0, 0.0), Vec2(1.0, 1.0)),
+    Vertex(Vec3(0.0, 1.0, 0.0), Vec2(0.0, 0.0)),
+    Vertex(Vec3(1.0, 1.0, 0.0), Vec2(1.0, 0.0))
   };
 
   IndexVector indices = {
     0, 1, 2,
     1, 2, 3
+  };
+
+  return new Mesh(vertices, indices);
+}
+
+Mesh *
+Mesh::primitive_cube()
+{
+  VertexVector vertices = {
+    {{-1, -1, -1}, {0, 0}},
+    {{1, -1, -1}, {0, 0}},
+    {{1, 1, -1}, {0, 0}},
+    {{-1, 1, -1}, {0, 0}},
+    {{-1, -1, 1}, {0, 0}},
+    {{1, -1, 1}, {0, 0}},
+    {{1, 1, 1}, {0, 0}},
+    {{-1, 1, 1}, {0, 0}}
+  };
+  IndexVector indices = {
+    0, 2, 1, /* -z */
+    0, 3, 2,
+
+    4, 5, 6, /* +z */
+    4, 6, 7,
+
+    0, 1, 5, /* -y */
+    0, 5, 4,
+
+    6, 3, 7, /* +y */
+    6, 2, 3,
+
+    0, 7, 3, /* -x */
+    0, 4, 7,
+
+    6, 5, 1, /* +x */
+    6, 1, 2
   };
 
   return new Mesh(vertices, indices);
