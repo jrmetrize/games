@@ -81,6 +81,22 @@ public:
   primitive_cube();
 };
 
+struct Camera
+{
+  float fovy;
+  float aspect_ratio;
+  float clip_near;
+  float clip_far;
+
+  Vec3 position;
+  Vec3 direction;
+
+  Camera();
+
+  Mat4
+  get_view_projection_matrix();
+};
+
 class GraphicsServer;
 
 class GraphicsLayer

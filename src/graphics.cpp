@@ -158,6 +158,21 @@ Mesh::primitive_cube()
   return new Mesh(vertices, indices);
 }
 
+Camera::Camera() :
+  fovy(3.14159f / 3.0f), aspect_ratio(16.0f / 9.0f), clip_near(0.1f), clip_far(100.0f),
+  position(), direction(Vec3(1, 0, 0))
+{
+
+}
+
+Mat4
+Camera::get_view_projection_matrix()
+{
+  Mat4 projection = Mat4::projection(fovy, aspect_ratio, clip_near, clip_far);
+  Mat4 view = Mat4::lookat(position, position + direction, Vec3(0, 1, 0));
+  return projection * view;
+}
+
 NoiseTexture::NoiseTexture(uint32_t _seed, float _frequency) :
   seed(_seed), noise(seed), frequency(_frequency)
 {

@@ -151,7 +151,7 @@ in vec2 uv;
 void
 main()
 {
-  frag_color = vec4(1);
+  frag_color = vec3(1);
 }
 
   )---";
@@ -424,6 +424,9 @@ GraphicsLayerOpenGL::bind_mesh(Mesh *mesh)
   set_mesh_binding(mesh, binding);
 }
 
+Camera c;
+Mesh *m;
+
 void
 GraphicsLayerOpenGL::begin_render()
 {
@@ -434,6 +437,22 @@ GraphicsLayerOpenGL::begin_render()
 
   // TODO: proper api for managing 3d renders
   target_3d->make_active();
+
+  {
+    // TODO: don't temporarily render random cubes!
+    if (m == nullptr)
+    {
+      m = Mesh::primitive_cube();
+      graphics_server->bind(m);
+
+      c.position = Vec3(-5, 0, 0);
+      c.direction = Vec3(1, 0, 0);
+    }
+
+    model_shader->bind_uniform(Mat4::identity(), "model");
+    model_shader->bind_uniform(c.get_view_projection_matrix(), "view_proj");
+    ((MeshBinding *)get_mesh_binding(m))->draw(model_shader);
+  }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glViewport(0, 0, 1280, 720);
