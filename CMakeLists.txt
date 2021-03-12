@@ -92,6 +92,7 @@ target_include_directories(fp2d
 
 add_executable(resource_importer
   src/linear_algebra.cpp
+  src/ofbx.cpp
   src/raster.cpp
   src/resource_importer.cpp
   src/resource.cpp
