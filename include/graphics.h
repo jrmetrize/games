@@ -7,6 +7,7 @@
 
 #include "linear_algebra.h"
 #include "FastNoiseLite.h"
+#include "resource.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -42,43 +43,12 @@ public:
   get_data() const;
 };
 
-struct Vertex
+struct BoundMesh
 {
-  Vec3 position;
-  Vec2 texture_coordinates;
+  const Mesh *mesh;
 
-  Vec3 normal;
-
-  Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates);
-};
-
-using VertexVector = std::vector<Vertex>;
-using IndexVector = std::vector<unsigned int>;
-
-class Mesh
-{
-  friend class GraphicsLayer;
-
-  VertexVector vertices;
-  IndexVector indices;
-
-  void *binding;
-public:
-  Mesh(const VertexVector &_vertices, const IndexVector &_indices);
-
-  ~Mesh();
-
-  const VertexVector &
-  get_vertices() const;
-
-  const IndexVector &
-  get_indices() const;
-
-  static Mesh *
-  primitive_quad();
-
-  static Mesh *
-  primitive_cube();
+  virtual
+  ~BoundMesh() = 0;
 };
 
 struct Camera
@@ -107,12 +77,6 @@ protected:
 
   void *
   get_texture_binding(const Texture *tex);
-
-  void
-  set_mesh_binding(Mesh *mesh, void *binding);
-
-  void *
-  get_mesh_binding(const Mesh *mesh);
 public:
   virtual
   ~GraphicsLayer() = 0;
@@ -123,7 +87,7 @@ public:
   virtual void
   bind_texture(Texture *tex) = 0;
 
-  virtual void
+  virtual BoundMesh *
   bind_mesh(Mesh *mesh) = 0;
 
   virtual void
@@ -278,7 +242,7 @@ class GraphicsServer
 
   GLFWwindow *window;
 
-  Mesh *quad;
+  BoundMesh *quad;
 
   Screen *current_screen;
 
@@ -298,10 +262,10 @@ public:
   void
   bind(Texture *tex);
 
-  void
+  BoundMesh *
   bind(Mesh *mesh);
 
-  Mesh *
+  BoundMesh *
   get_quad();
 
   void

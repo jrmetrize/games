@@ -19,6 +19,8 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
+#include "ofbx.h"
 #endif
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -927,6 +929,228 @@ AudioTrack::append_to(std::ostream &out) const
 }
 #endif
 
+Vertex::Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates) :
+  position(_position),
+  texture_coordinates(_texture_coordinates)
+{
+
+}
+
+Mesh *
+Mesh::primitive_quad()
+{
+  VertexVector vertices = {
+    Vertex(Vec3(0.0, 0.0, 0.0), Vec2(0.0, 1.0)),
+    Vertex(Vec3(1.0, 0.0, 0.0), Vec2(1.0, 1.0)),
+    Vertex(Vec3(0.0, 1.0, 0.0), Vec2(0.0, 0.0)),
+    Vertex(Vec3(1.0, 1.0, 0.0), Vec2(1.0, 0.0))
+  };
+  IndexVector indices = {
+    0, 1, 2,
+    1, 2, 3
+  };
+  return new Mesh(vertices, indices);
+}
+
+Mesh *
+Mesh::primitive_cube()
+{
+  VertexVector vertices = {
+    {{-1, -1, -1}, {0, 0}},
+    {{1, -1, -1}, {0, 0}},
+    {{1, 1, -1}, {0, 0}},
+    {{-1, 1, -1}, {0, 0}},
+    {{-1, -1, 1}, {0, 0}},
+    {{1, -1, 1}, {0, 0}},
+    {{1, 1, 1}, {0, 0}},
+    {{-1, 1, 1}, {0, 0}}
+  };
+  IndexVector indices = {
+    0, 2, 1, /* -z */
+    0, 3, 2,
+    4, 5, 6, /* +z */
+    4, 6, 7,
+    0, 1, 5, /* -y */
+    0, 5, 4,
+    6, 3, 7, /* +y */
+    6, 2, 3,
+    0, 7, 3, /* -x */
+    0, 4, 7,
+    6, 5, 1, /* +x */
+    6, 1, 2
+  };
+  return new Mesh(vertices, indices);
+}
+
+#ifdef RESOURCE_IMPORTER
+Scene::Scene(std::string path)
+  : data()
+{
+  std::ifstream file = std::ifstream(path, std::ios::binary);
+  file.seekg(0, std::ios_base::end);
+  uint32_t size = file.tellg();
+  file.seekg(0, std::ios_base::beg);
+
+  unsigned char *fbx_data = new unsigned char[size];
+  file.read(reinterpret_cast<char *>(fbx_data), size);
+
+  ofbx::IScene *fbx_scene = ofbx::load(fbx_data, size,
+    (ofbx::u64)ofbx::LoadFlags::TRIANGULATE);
+
+  // Loop through the meshes
+  uint32_t mesh_count = fbx_scene->getMeshCount();
+  for (uint32_t i = 0; i < mesh_count; ++i)
+  {
+    const ofbx::Mesh *mesh = fbx_scene->getMesh(i);
+    const ofbx::Geometry *geo = mesh->getGeometry();
+
+    uint32_t vertex_count = geo->getVertexCount();
+    for (uint32_t j = 0; j < vertex_count; ++j)
+    {
+      Vec3 pos = Vec3(geo->getVertices()[j].x, geo->getVertices()[j].y,
+        geo->getVertices()[j].z);
+      Vec2 uv = Vec2();
+      if (geo->getUVs() != nullptr)
+        uv = Vec2(geo->getUVs()[j].x, geo->getUVs()[j].y);
+      Vec3 normal = Vec3(geo->getNormals()[j].x, geo->getNormals()[j].y,
+        geo->getNormals()[j].z);
+
+      Vertex vert = Vertex(pos, uv);
+      vert.normal = normal;
+
+      data.vertices.push_back(vert);
+    }
+
+    /* Order the faces of the mesh such that the faces sharing a common material
+       are contiguous, so we can bind each material to the shader, draw a block
+       of faces, and repeat until done. */
+    uint32_t index_count = geo->getIndexCount();
+    uint32_t material_count = mesh->getMaterialCount();
+    for (uint32_t j = 0; j < material_count; ++j)
+    {
+      MaterialData mat;
+      mat.diffuse_color = Vec3(mesh->getMaterial(j)->getDiffuseColor().r,
+        mesh->getMaterial(j)->getDiffuseColor().g,
+        mesh->getMaterial(j)->getDiffuseColor().b);
+      mat.vertices = 0;
+
+      for (uint32_t k = 0; k < index_count; ++k)
+      {
+        /* Only add indices matching the current material. This will
+           automatically order it nicely. */
+        uint32_t face_index = k / 3;
+        if (geo->getMaterials()[face_index] == j)
+        {
+          int index = geo->getFaceIndices()[k];
+          unsigned int uindex = (index < 0) ? (-index - 1) : index;
+          data.indices.push_back(uindex);
+          mat.vertices += 1;
+        }
+      }
+      data.materials.push_back(mat);
+    }
+
+    break;
+  }
+
+  fbx_scene->destroy();
+
+  delete[] fbx_data;
+}
+#endif
+
+Scene::Scene()
+{
+
+}
+
+Scene::~Scene()
+{
+
+}
+
+Resource *
+Scene::duplicate() const
+{
+  Scene *s = new Scene();
+  s->data = data;
+  return s;
+}
+
+std::string
+Scene::get_type() const
+{
+  return "scene";
+}
+
+Scene *
+Scene::from_data(const char *data, uint32_t length)
+{
+  Scene *s = new Scene();
+
+  uint32_t vertex_count = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[0]));
+  uint32_t index_count = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[4]));
+  uint32_t mat_count = nbo_to_host(*reinterpret_cast<const uint32_t *>(&data[8]));
+
+  uint32_t offset = 12;
+
+  for (uint32_t i = 0; i < vertex_count; ++i)
+  {
+    s->data.vertices.push_back(*reinterpret_cast<const Vertex *>(&data[offset + (sizeof(Vertex) * i)]));
+  }
+  offset += sizeof(Vertex) * vertex_count;
+
+  for (uint32_t i = 0; i < index_count; ++i)
+  {
+    s->data.indices.push_back(*reinterpret_cast<const unsigned int *>(&data[offset + (sizeof(unsigned int) * i)]));
+  }
+  offset += sizeof(unsigned int) * index_count;
+
+  for (uint32_t i = 0; i < mat_count; ++i)
+  {
+    s->data.materials.push_back(*reinterpret_cast<const MaterialData *>(&data[offset + (sizeof(MaterialData) * i)]));
+  }
+
+  return s;
+}
+
+Mesh *
+Scene::get_mesh()
+{
+  return &data;
+}
+
+#ifdef RESOURCE_IMPORTER
+uint32_t
+Scene::append_to(std::ostream &out) const
+{
+  uint32_t total_bytes = 0;
+
+  // For each mesh, write down the # of vertices and indices, then the raw data.
+  uint32_t vertex_count_nbo = host_to_nbo(uint32_t(data.vertices.size()));
+  out.write(reinterpret_cast<char *>(&vertex_count_nbo), sizeof(vertex_count_nbo));
+
+  uint32_t index_count_nbo = host_to_nbo(uint32_t(data.indices.size()));
+  out.write(reinterpret_cast<char *>(&index_count_nbo), sizeof(index_count_nbo));
+
+  uint32_t mat_count_nbo = host_to_nbo(uint32_t(data.materials.size()));
+  out.write(reinterpret_cast<char *>(&mat_count_nbo), sizeof(mat_count_nbo));
+
+  total_bytes += 12;
+
+  out.write(reinterpret_cast<const char *>(data.vertices.data()), sizeof(Vertex) * data.vertices.size());
+  total_bytes += sizeof(Vertex) * data.vertices.size();
+
+  out.write(reinterpret_cast<const char *>(data.indices.data()), sizeof(unsigned int) * data.indices.size());
+  total_bytes += sizeof(unsigned int) * data.indices.size();
+
+  out.write(reinterpret_cast<const char *>(data.materials.data()), sizeof(MaterialData) * data.materials.size());
+  total_bytes += sizeof(MaterialData) * data.materials.size();
+
+  return total_bytes;
+}
+#endif
+
 ResourceBundle::ResourceBundle() :
   resources()
 {
@@ -1029,6 +1253,11 @@ ResourceBundle::ResourceBundle(std::string path) :
     {
       resources[header.entries[i].resource_name] =
         AudioTrack::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
+    }
+    else if (header.entries[i].resource_type == "scene")
+    {
+      resources[header.entries[i].resource_name] =
+        Scene::from_data(reinterpret_cast<char *>(uncompressed), header.entries[i].size);
     }
     else
     {

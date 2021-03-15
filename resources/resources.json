@@ -47,6 +47,11 @@
           "type" : "audio",
           "name" : "menu_music",
           "path" : "title_music.wav"
+        },
+        {
+          "type" : "scene",
+          "name" : "test_scene",
+          "path" : "dodgechallenger.fbx"
         }
       ],
       "include" : [

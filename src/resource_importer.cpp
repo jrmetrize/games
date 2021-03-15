@@ -114,6 +114,10 @@ add_resource_list_to_bundle(ResourceBundle *bundle, std::string bundle_name,
     {
       resource = new AudioTrack(resource_path);
     }
+    else if (resource_type == "scene")
+    {
+      resource = new Scene(resource_path);
+    }
     else
     {
       std::cout << "Skipping " + resource_name

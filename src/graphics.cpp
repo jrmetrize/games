@@ -49,6 +49,11 @@ Texture::get_data() const
   return data;
 }
 
+BoundMesh::~BoundMesh()
+{
+
+}
+
 void
 GraphicsLayer::set_texture_binding(Texture *tex, void *binding)
 {
@@ -59,103 +64,6 @@ void *
 GraphicsLayer::get_texture_binding(const Texture *tex)
 {
   return tex->binding;
-}
-
-void
-GraphicsLayer::set_mesh_binding(Mesh *mesh, void *binding)
-{
-  mesh->binding = binding;
-}
-
-void *
-GraphicsLayer::get_mesh_binding(const Mesh *mesh)
-{
-  return mesh->binding;
-}
-
-Vertex::Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates) :
-  position(_position),
-  texture_coordinates(_texture_coordinates)
-{
-
-}
-
-Mesh::Mesh(const VertexVector &_vertices, const IndexVector &_indices) :
-  vertices(_vertices),
-  indices(_indices)
-{
-
-}
-
-Mesh::~Mesh()
-{
-
-}
-
-const VertexVector &
-Mesh::get_vertices() const
-{
-  return vertices;
-}
-
-const IndexVector &
-Mesh::get_indices() const
-{
-  return indices;
-}
-
-Mesh *
-Mesh::primitive_quad()
-{
-  VertexVector vertices = {
-    Vertex(Vec3(0.0, 0.0, 0.0), Vec2(0.0, 1.0)),
-    Vertex(Vec3(1.0, 0.0, 0.0), Vec2(1.0, 1.0)),
-    Vertex(Vec3(0.0, 1.0, 0.0), Vec2(0.0, 0.0)),
-    Vertex(Vec3(1.0, 1.0, 0.0), Vec2(1.0, 0.0))
-  };
-
-  IndexVector indices = {
-    0, 1, 2,
-    1, 2, 3
-  };
-
-  return new Mesh(vertices, indices);
-}
-
-Mesh *
-Mesh::primitive_cube()
-{
-  VertexVector vertices = {
-    {{-1, -1, -1}, {0, 0}},
-    {{1, -1, -1}, {0, 0}},
-    {{1, 1, -1}, {0, 0}},
-    {{-1, 1, -1}, {0, 0}},
-    {{-1, -1, 1}, {0, 0}},
-    {{1, -1, 1}, {0, 0}},
-    {{1, 1, 1}, {0, 0}},
-    {{-1, 1, 1}, {0, 0}}
-  };
-  IndexVector indices = {
-    0, 2, 1, /* -z */
-    0, 3, 2,
-
-    4, 5, 6, /* +z */
-    4, 6, 7,
-
-    0, 1, 5, /* -y */
-    0, 5, 4,
-
-    6, 3, 7, /* +y */
-    6, 2, 3,
-
-    0, 7, 3, /* -x */
-    0, 4, 7,
-
-    6, 5, 1, /* +x */
-    6, 1, 2
-  };
-
-  return new Mesh(vertices, indices);
 }
 
 Camera::Camera() :
@@ -253,8 +161,7 @@ GraphicsServer::GraphicsServer(GLFWwindow *_window) :
   backend = new GraphicsLayerOpenGL();
   backend->set_graphics_server(this);
 
-  quad = Mesh::primitive_quad();
-  bind(quad);
+  quad = bind(Mesh::primitive_quad());
 
   // TODO: only use imgui in dev builds
   IMGUI_CHECKVERSION();
@@ -293,13 +200,13 @@ GraphicsServer::bind(Texture *tex)
   backend->bind_texture(tex);
 }
 
-void
+BoundMesh *
 GraphicsServer::bind(Mesh *mesh)
 {
-  backend->bind_mesh(mesh);
+  return backend->bind_mesh(mesh);
 }
 
-Mesh *
+BoundMesh *
 GraphicsServer::get_quad()
 {
   return quad;

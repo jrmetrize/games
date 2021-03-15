@@ -144,14 +144,16 @@ main()
   const std::string fragment = R"---(
 
 #version 330 core
-layout(location = 0) out vec3 frag_color;
+out vec4 frag_color;
+//layout(location = 0) out vec3 frag_color;
 
+uniform vec3 color;
 in vec2 uv;
 
 void
 main()
 {
-  frag_color = vec3(1);
+  frag_color = vec4(color, 1);
 }
 
   )---";
@@ -234,6 +236,8 @@ GraphicsLayerOpenGL::RenderTarget::make_active()
 {
   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
   glViewport(0, 0, 1280, 720);
+  glClearColor(0, 0, 0, 0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 GraphicsLayerOpenGL::Shader::Shader(const std::string &vertex_shader_source,
@@ -338,10 +342,8 @@ GraphicsLayerOpenGL::Shader::bind_uniform(const RenderTarget *x, std::string nam
 }
 
 GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
-  : mesh(_mesh)
 {
-  const VertexVector &vertices = mesh->get_vertices();
-  const IndexVector &indices = mesh->get_indices();
+  mesh = _mesh;
 
   glGenBuffers(1, &vbo);
   glGenBuffers(1, &ebo);
@@ -350,12 +352,12 @@ GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
   glBindVertexArray(vao);
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex),
-    vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, mesh->vertices.size() * sizeof(Vertex),
+    mesh->vertices.data(), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-    indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices.size() * sizeof(unsigned int),
+    mesh->indices.data(), GL_STATIC_DRAW);
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
   glEnableVertexAttribArray(0);
@@ -377,7 +379,26 @@ GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
 {
   shader->use();
   glBindVertexArray(vao);
-  glDrawElements(GL_TRIANGLES, mesh->get_indices().size(), GL_UNSIGNED_INT, 0);
+
+  if (mesh->materials.size() == 0)
+  {
+    glDrawElements(GL_TRIANGLES, mesh->indices.size(), GL_UNSIGNED_INT, 0);
+  }
+  else
+  {
+    glDepthFunc(GL_LESS);
+
+    // Loop through materials, drawing each as a contiguous block of faces
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < mesh->materials.size(); ++i)
+    {
+      if (mesh->materials[i].vertices == 0)
+        continue;
+      shader->bind_uniform(mesh->materials[i].diffuse_color, "color");
+      glDrawElements(GL_TRIANGLES, mesh->materials[i].vertices, GL_UNSIGNED_INT, (void *)(sizeof(GLuint) * offset));
+      offset += mesh->materials[i].vertices;
+    }
+  }
 }
 
 GraphicsLayerOpenGL::GraphicsLayerOpenGL()
@@ -417,15 +438,18 @@ GraphicsLayerOpenGL::bind_texture(Texture *tex)
   set_texture_binding(tex, binding);
 }
 
-void
+BoundMesh *
 GraphicsLayerOpenGL::bind_mesh(Mesh *mesh)
 {
   MeshBinding *binding = new MeshBinding(mesh);
-  set_mesh_binding(mesh, binding);
+  return binding;
 }
 
 Camera c;
-Mesh *m;
+BoundMesh *m;
+
+#include "state.h"
+#include "input.h"
 
 void
 GraphicsLayerOpenGL::begin_render()
@@ -433,37 +457,52 @@ GraphicsLayerOpenGL::begin_render()
   Vec2 viewport_size = graphics_server->get_framebuffer_size(false);
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // TODO: proper api for managing 3d renders
-  target_3d->make_active();
+  //target_3d->make_active();
+  glEnable(GL_DEPTH_TEST);
 
   {
     // TODO: don't temporarily render random cubes!
     if (m == nullptr)
     {
-      m = Mesh::primitive_cube();
-      graphics_server->bind(m);
-
-      c.position = Vec3(-5, 0, 0);
+      c.position = Vec3(-8, 0, 0);
       c.direction = Vec3(1, 0, 0);
+      c.clip_near = 0.1f;
+      c.clip_far = 100.0f;
+
+      ResourceBundle *globals = GameState::get()->get_globals();
+      Scene *sc = (Scene *)globals->get_resource("test_scene");
+      Mesh *d = sc->get_mesh();
+      m = graphics_server->bind(d);
     }
+    if (InputMonitor::get()->is_key_down(KeyW))
+      c.position += Vec3(0.01, 0, 0);
+    if (InputMonitor::get()->is_key_down(KeyS))
+      c.position += Vec3(-0.01, 0, 0);
+    if (InputMonitor::get()->is_key_down(KeyA))
+      c.position += Vec3(0, 0, -0.01);
+    if (InputMonitor::get()->is_key_down(KeyD))
+      c.position += Vec3(0, 0, 0.01);
 
     model_shader->bind_uniform(Mat4::identity(), "model");
     model_shader->bind_uniform(c.get_view_projection_matrix(), "view_proj");
-    ((MeshBinding *)get_mesh_binding(m))->draw(model_shader);
+    ((MeshBinding *)m)->draw(model_shader);
   }
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glViewport(0, 0, 1280, 720);
+  glDisable(GL_DEPTH_TEST);
 
-  glEnable(GL_BLEND);
+  //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  //glViewport(0, 0, 1280, 720);
+
+  /*glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
     * Mat3::translate(Vec2(0, 0))
     * Mat3::scale(Vec2(1280, 720)), "transform");
   texture_shader->bind_uniform(target_3d, "sampler");
-  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(texture_shader);
+  ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);*/
 }
 
 void
@@ -475,7 +514,7 @@ GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(color, "color");
-  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(color_shader);
+  ((MeshBinding *)graphics_server->get_quad())->draw(color_shader);
 }
 
 void
@@ -489,7 +528,7 @@ GraphicsLayerOpenGL::draw_texture_rect(Vec2 origin, Vec2 size,
     * Mat3::scale(size), "transform");
   texture_shader->bind_uniform((TextureBinding *)get_texture_binding(&texture),
     "sampler");
-  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(texture_shader);
+  ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);
 }
 
 void
@@ -503,7 +542,7 @@ GraphicsLayerOpenGL::draw_character(Vec2 origin, Vec2 size, Vec4 color,
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
   text_shader->bind_uniform((TextureBinding *)get_texture_binding(&sdf), "sdf");
-  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(text_shader);
+  ((MeshBinding *)graphics_server->get_quad())->draw(text_shader);
 }
 
 void
@@ -527,7 +566,7 @@ GraphicsLayerOpenGL::mask_rect(Vec2 origin, Vec2 size)
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
   color_shader->bind_uniform(Vec4(0), "color");
-  ((MeshBinding *)get_mesh_binding(graphics_server->get_quad()))->draw(color_shader);
+  ((MeshBinding *)graphics_server->get_quad())->draw(color_shader);
 
   glStencilMask(0x00);
   glStencilFunc(GL_EQUAL, 1, 0xFF);

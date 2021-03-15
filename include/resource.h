@@ -6,6 +6,8 @@
 #include <string>
 #include <fstream>
 
+#include "linear_algebra.h"
+
 // TODO: move these to a util file?
 uint32_t
 host_to_nbo(const uint32_t &x);
@@ -229,9 +231,67 @@ public:
 #endif
 };
 
-class Model3D : public Resource
+struct Vertex
 {
+  Vec3 position;
+  Vec2 texture_coordinates;
+
+  Vec3 normal;
+
+  Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates);
+};
+
+using VertexVector = std::vector<Vertex>;
+using IndexVector = std::vector<unsigned int>;
+
+struct MaterialData
+{
+  Vec3 diffuse_color;
+  uint32_t vertices;
+};
+
+struct Mesh
+{
+  VertexVector vertices;
+  IndexVector indices;
+
+  std::vector<MaterialData> materials;
+
+  static Mesh *
+  primitive_quad();
+
+  static Mesh *
+  primitive_cube();
+};
+
+class Scene : public Resource
+{
+  Mesh data;
 public:
+#ifdef RESOURCE_IMPORTER
+  Scene(std::string path);
+#endif
+
+  Scene();
+
+  ~Scene();
+
+  Resource *
+  duplicate() const;
+
+  std::string
+  get_type() const;
+
+  static Scene *
+  from_data(const char *data, uint32_t length);
+
+  Mesh *
+  get_mesh();
+
+#ifdef RESOURCE_IMPORTER
+  uint32_t
+  append_to(std::ostream &out) const;
+#endif
 };
 
 class ResourceBundle

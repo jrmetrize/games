@@ -72,10 +72,8 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     bind_uniform(const RenderTarget *x, std::string name);
   };
 
-  struct MeshBinding
+  struct MeshBinding : public BoundMesh
   {
-    Mesh *mesh;
-
     GLuint vbo;
     GLuint ebo;
 
@@ -108,7 +106,7 @@ public:
   void
   bind_texture(Texture *tex);
 
-  void
+  BoundMesh *
   bind_mesh(Mesh *mesh);
 
   void
