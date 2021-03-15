@@ -144,8 +144,7 @@ main()
   const std::string fragment = R"---(
 
 #version 330 core
-out vec4 frag_color;
-//layout(location = 0) out vec3 frag_color;
+layout(location = 0) out vec4 frag_color;
 
 uniform vec3 color;
 in vec2 uv;
@@ -460,7 +459,7 @@ GraphicsLayerOpenGL::begin_render()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // TODO: proper api for managing 3d renders
-  //target_3d->make_active();
+  target_3d->make_active();
   glEnable(GL_DEPTH_TEST);
 
   {
@@ -485,6 +484,10 @@ GraphicsLayerOpenGL::begin_render()
       c.position += Vec3(0, 0, -0.01);
     if (InputMonitor::get()->is_key_down(KeyD))
       c.position += Vec3(0, 0, 0.01);
+    if (InputMonitor::get()->is_key_down(KeySpace))
+      c.position += Vec3(0, 0.01, 0);
+    if (InputMonitor::get()->is_key_down(KeyN))
+      c.position += Vec3(0, -0.01, 0);
 
     model_shader->bind_uniform(Mat4::identity(), "model");
     model_shader->bind_uniform(c.get_view_projection_matrix(), "view_proj");
@@ -493,16 +496,16 @@ GraphicsLayerOpenGL::begin_render()
 
   glDisable(GL_DEPTH_TEST);
 
-  //glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  //glViewport(0, 0, 1280, 720);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, 1280, 720);
 
-  /*glEnable(GL_BLEND);
+  glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
     * Mat3::translate(Vec2(0, 0))
     * Mat3::scale(Vec2(1280, 720)), "transform");
   texture_shader->bind_uniform(target_3d, "sampler");
-  ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);*/
+  ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);
 }
 
 void
