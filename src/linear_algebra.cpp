@@ -260,6 +260,12 @@ Vec4::norm() const
   return sqrt((x * x) + (y * y) + (z * z) + (w * w));
 }
 
+Vec3
+Vec4::xyz() const
+{
+  return Vec3(x, y, z);
+}
+
 Vec4
 Vec4::normalized() const
 {

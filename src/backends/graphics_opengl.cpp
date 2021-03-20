@@ -381,6 +381,7 @@ GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
 
   if (mesh->materials.size() == 0)
   {
+    shader->bind_uniform(Vec3(1), "color");
     glDrawElements(GL_TRIANGLES, mesh->indices.size(), GL_UNSIGNED_INT, 0);
   }
   else

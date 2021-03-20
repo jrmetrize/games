@@ -20,7 +20,9 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#include "ofbx.h"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 #endif
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -986,76 +988,53 @@ Mesh::primitive_cube()
 Scene::Scene(std::string path)
   : data()
 {
-  std::ifstream file = std::ifstream(path, std::ios::binary);
-  file.seekg(0, std::ios_base::end);
-  uint32_t size = file.tellg();
-  file.seekg(0, std::ios_base::beg);
+  Assimp::Importer importer = Assimp::Importer();
+  const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate);
 
-  unsigned char *fbx_data = new unsigned char[size];
-  file.read(reinterpret_cast<char *>(fbx_data), size);
+  // FIXME: do something smarter than just grabbing the first mesh
+  const aiMesh *mesh = scene->mMeshes[0];
 
-  ofbx::IScene *fbx_scene = ofbx::load(fbx_data, size,
-    (ofbx::u64)ofbx::LoadFlags::TRIANGULATE);
+  data.vertices = VertexVector();
+  data.indices = IndexVector();
 
-  // Loop through the meshes
-  uint32_t mesh_count = fbx_scene->getMeshCount();
-  for (uint32_t i = 0; i < mesh_count; ++i)
+  Mat4 y_up = Mat4::rotation(Vec3(1, 0, 0), -3.14159 / 2);
+
+  for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
   {
-    const ofbx::Mesh *mesh = fbx_scene->getMesh(i);
-    const ofbx::Geometry *geo = mesh->getGeometry();
-
-    uint32_t vertex_count = geo->getVertexCount();
-    for (uint32_t j = 0; j < vertex_count; ++j)
+    Vec3 pos;
+    Vec3 normal;
+    Vec2 uv;
     {
-      Vec3 pos = Vec3(geo->getVertices()[j].x, geo->getVertices()[j].y,
-        geo->getVertices()[j].z);
-      Vec2 uv = Vec2();
-      if (geo->getUVs() != nullptr)
-        uv = Vec2(geo->getUVs()[j].x, geo->getUVs()[j].y);
-      Vec3 normal = Vec3(geo->getNormals()[j].x, geo->getNormals()[j].y,
-        geo->getNormals()[j].z);
+      aiVector3D _pos = mesh->mVertices[i];
+      pos = (y_up * Vec4(_pos.x, _pos.y, _pos.z, 0)).xyz();
 
-      Vertex vert = Vertex(pos, uv);
-      vert.normal = normal;
+      aiVector3D _normal = mesh->mNormals[i];
+      normal = (y_up * Vec4(_normal.x, _normal.y, _normal.z, 0)).xyz();
 
-      data.vertices.push_back(vert);
-    }
-
-    /* Order the faces of the mesh such that the faces sharing a common material
-       are contiguous, so we can bind each material to the shader, draw a block
-       of faces, and repeat until done. */
-    uint32_t index_count = geo->getIndexCount();
-    uint32_t material_count = mesh->getMaterialCount();
-    for (uint32_t j = 0; j < material_count; ++j)
-    {
-      MaterialData mat;
-      mat.diffuse_color = Vec3(mesh->getMaterial(j)->getDiffuseColor().r,
-        mesh->getMaterial(j)->getDiffuseColor().g,
-        mesh->getMaterial(j)->getDiffuseColor().b);
-      mat.vertices = 0;
-
-      for (uint32_t k = 0; k < index_count; ++k)
+      if (mesh->mTextureCoords[0] != nullptr)
       {
-        /* Only add indices matching the current material. This will
-           automatically order it nicely. */
-        uint32_t face_index = k / 3;
-        if (geo->getMaterials()[face_index] == j)
-        {
-          int index = geo->getFaceIndices()[k];
-          unsigned int uindex = (index < 0) ? (-index - 1) : index;
-          data.indices.push_back(uindex);
-          mat.vertices += 1;
-        }
+        aiVector3D _uv = mesh->mTextureCoords[0][i];
+        uv = Vec2(_uv.x, _uv.y);
       }
-      data.materials.push_back(mat);
     }
 
-    break;
+    Vertex vertex = Vertex(pos, uv);
+    vertex.normal = normal;
+
+    data.vertices.push_back(vertex);
   }
 
-  fbx_scene->destroy();
+  for (unsigned int i = 0; i < mesh->mNumFaces; ++i)
+  {
+    aiFace face = mesh->mFaces[i];
+    data.indices.push_back(face.mIndices[0]);
+    data.indices.push_back(face.mIndices[1]);
+    data.indices.push_back(face.mIndices[2]);
+  }
 
-  delete[] fbx_data;
+  std::cout << std::to_string(data.vertices.size()) << std::endl;
+  std::cout << std::to_string(data.indices.size()) << std::endl;
+  std::cout << std::to_string(data.materials.size()) << std::endl;
 }
 #endif
 

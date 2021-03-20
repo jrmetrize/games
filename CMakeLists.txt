@@ -92,7 +92,6 @@ target_include_directories(fp2d
 
 add_executable(resource_importer
   src/linear_algebra.cpp
-  src/ofbx.cpp
   src/raster.cpp
   src/resource_importer.cpp
   src/resource.cpp
@@ -130,5 +129,19 @@ else()
     ogg
     z
     samplerate
+    assimp
   )
 endif()
+
+add_executable(config
+  src/config.cpp
+)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+target_include_directories(config
+  PUBLIC ${GTK3_INCLUDE_DIRS}
+  PUBLIC include
+)
+target_link_libraries(config
+  ${GTK3_LIBRARIES}
+)

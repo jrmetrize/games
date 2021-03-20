@@ -78,13 +78,18 @@ def build_vorbis():
     print("Building dependency 'vorbis'")
     return build_cmake("vorbis")
 
+def build_assimp():
+    print("Building dependency 'assimp'")
+    return build_cmake("assimp")
+
 build_cmds = [
     build_freetype,
     build_glfw,
     build_libsamplerate,
     build_zlib,
     build_ogg,
-    build_vorbis
+    build_vorbis,
+    build_assimp
 ]
 for cmd in build_cmds:
     cmd_result = cmd()

@@ -125,6 +125,9 @@ struct Vec4
   float
   norm() const;
 
+  Vec3
+  xyz() const;
+
   Vec4
   normalized() const;
 
