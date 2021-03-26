@@ -51,6 +51,26 @@ struct BoundMesh
   ~BoundMesh() = 0;
 };
 
+class DirectionalLight
+{
+public:
+  // TODO: make accessors and stuff
+  Vec3 position;
+
+  Vec3 color;
+  float intensity;
+};
+
+class SpotLight
+{
+
+};
+
+class PointLight
+{
+
+};
+
 struct Camera
 {
   float fovy;

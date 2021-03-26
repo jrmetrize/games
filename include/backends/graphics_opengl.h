@@ -19,6 +19,22 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     ~TextureBinding();
   };
 
+  struct GBuffer
+  {
+    GLuint framebuffer;
+    GLuint position;
+    GLuint normal;
+    GLuint albedo;
+    GLuint depth_buffer;
+
+    GBuffer();
+
+    ~GBuffer();
+
+    void
+    make_active();
+  };
+
   struct RenderTarget
   {
     GLuint framebuffer;
@@ -70,6 +86,9 @@ class GraphicsLayerOpenGL : public GraphicsLayer
 
     void
     bind_uniform(const RenderTarget *x, std::string name);
+
+    void
+    bind_uniform(const GBuffer *x, std::string name);
   };
 
   struct MeshBinding : public BoundMesh
@@ -88,8 +107,12 @@ class GraphicsLayerOpenGL : public GraphicsLayer
   };
 
   // 3D
+  GBuffer *gbuffer;
   RenderTarget *target_3d;
   Shader *model_shader;
+  Shader *directional_light_shader;
+  Shader *point_light_shader;
+  Shader *spot_light_shader;
 
   // 2D
   Shader *color_shader;

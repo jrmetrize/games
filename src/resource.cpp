@@ -1019,7 +1019,7 @@ Scene::Scene(std::string path)
     }
 
     Vertex vertex = Vertex(pos, uv);
-    vertex.normal = normal;
+    vertex.normal = normal.normalized();
 
     data.vertices.push_back(vertex);
   }

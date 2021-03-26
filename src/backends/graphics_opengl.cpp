@@ -18,7 +18,7 @@ main()
   )---";
 
   const std::string fragment = R"---(
-
+drop a is
 #version 330 core
 out vec4 frag_color;
 
@@ -130,12 +130,16 @@ layout (location = 2) in vec3 normal;
 uniform mat4 model;
 uniform mat4 view_proj;
 
+out vec3 world_pos;
+out vec3 world_normal;
 out vec2 uv;
 
 void
 main()
 {
   gl_Position = view_proj * model * vec4(position, 1.0);
+  world_pos = (model * vec4(position, 1.0)).xyz;
+  world_normal = normal;
   uv = texture_coordinates;
 }
 
@@ -144,15 +148,165 @@ main()
   const std::string fragment = R"---(
 
 #version 330 core
-layout(location = 0) out vec4 frag_color;
+layout(location = 0) out vec4 position;
+layout(location = 1) out vec4 normal;
+layout(location = 2) out vec4 albedo;
 
 uniform vec3 color;
+
+in vec3 world_pos;
+in vec3 world_normal;
 in vec2 uv;
 
 void
 main()
 {
-  frag_color = vec4(color, 1);
+  position = vec4(world_pos, 1.0);
+  normal = vec4(world_normal, 1.0);
+  albedo = vec4(0.3, 0.4, 0.25, 1.0);
+}
+
+  )---";
+}
+
+namespace LightingShaderSources
+{
+  const std::string vertex = R"---(
+
+#version 330 core
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec2 texture_coordinates;
+
+uniform mat3 transform;
+
+out vec2 uv;
+
+void
+main()
+{
+  gl_Position = vec4(transform * vec3(position.xy, 1.0), 1.0);
+  uv = texture_coordinates;
+}
+
+  )---";
+
+  const std::string dir_fragment = R"---(
+
+#version 330 core
+out vec4 frag_color;
+
+in vec2 uv;
+
+uniform sampler2D position;
+uniform sampler2D normal_tex;
+uniform sampler2D albedo_tex;
+
+uniform vec3 light_dir;
+uniform vec3 light_color;
+
+uniform vec3 camera_pos;
+
+void
+main()
+{
+  vec3 pixel_pos = texture(position, uv).xyz;
+  vec3 normal = texture(normal_tex, uv).xyz;
+  vec3 albedo = texture(albedo_tex, uv).xyz;
+
+  vec3 camera_dir = normalize(camera_pos - pixel_pos);
+  vec3 halfway = normalize(light_dir + camera_dir);
+
+  float diffuse = max(dot(light_dir, normal), 0);
+  vec3 diffuse_color = light_color * diffuse;
+
+  float specular = pow(max(dot(halfway, normal), 0), 16);
+  vec3 specular_color = light_color * specular;
+
+  frag_color = vec4((diffuse_color + specular_color) * albedo, 1);
+}
+
+  )---";
+
+  const std::string point_fragment = R"---(
+
+#version 330 core
+out vec4 frag_color;
+
+in vec2 uv;
+
+uniform sampler2D position;
+uniform sampler2D normal_tex;
+uniform sampler2D albedo_tex;
+
+uniform vec3 light_pos;
+uniform vec3 light_color;
+
+uniform vec3 camera_pos;
+
+void
+main()
+{
+  vec3 pixel_pos = texture(position, uv).xyz;
+  vec3 normal = texture(normal_tex, uv).xyz;
+  vec3 albedo = texture(albedo_tex, uv).xyz;
+
+  vec3 light_dir = normalize(light_pos - pixel_pos);
+  vec3 camera_dir = normalize(camera_pos - pixel_pos);
+  vec3 halfway = normalize(light_dir + camera_dir);
+
+  float diffuse = max(dot(light_dir, normal), 0);
+  vec3 diffuse_color = light_color * diffuse;
+
+  float specular = pow(max(dot(halfway, normal), 0), 16);
+  vec3 specular_color = light_color * specular;
+
+  frag_color = vec4((diffuse_color + specular_color) * albedo, 1);
+}
+
+  )---";
+
+  const std::string spot_fragment = R"---(
+
+#version 330 core
+out vec4 frag_color;
+
+in vec2 uv;
+
+uniform sampler2D position;
+uniform sampler2D normal_tex;
+uniform sampler2D albedo_tex;
+
+uniform vec3 light_pos;
+uniform vec3 light_dir;
+uniform float light_angle; // the cosine of the angle of the light cone.
+uniform vec3 light_color;
+
+uniform vec3 camera_pos;
+
+void
+main()
+{
+  vec3 pixel_pos = texture(position, uv).xyz;
+  vec3 normal = texture(normal_tex, uv).xyz;
+  vec3 albedo = texture(albedo_tex, uv).xyz;
+
+  vec3 light_to_pixel_dir = normalize(light_pos - pixel_pos);
+  light_to_pixel_dir = normalize(vec3(0, 0, 0) - pixel_pos);
+  vec3 camera_dir = normalize(camera_pos - pixel_pos);
+  vec3 halfway = normalize(light_to_pixel_dir + camera_dir);
+
+  float visibility = dot(-light_dir, light_to_pixel_dir);
+  /*if (dot(-light_dir, light_to_pixel_dir) >= 0.95)
+    visibility = 1.0;*/
+
+  /*float diffuse = max(dot(light_to_pixel_dir, normal), 0);
+  vec3 diffuse_color = light_color * diffuse;
+
+  float specular = pow(max(dot(halfway, normal), 0), 16);
+  vec3 specular_color = light_color * specular;
+
+  frag_color = vec4((diffuse_color + specular_color) * albedo * visibility, 1);*/
+  frag_color = vec4(-light_to_pixel_dir.x * albedo, 1);
 }
 
   )---";
@@ -194,6 +348,71 @@ GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture_data)
 GraphicsLayerOpenGL::TextureBinding::~TextureBinding()
 {
   glDeleteTextures(1, &texture);
+}
+
+GraphicsLayerOpenGL::GBuffer::GBuffer()
+{
+  glGenFramebuffers(1, &framebuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+  glGenTextures(1, &position);
+  glBindTexture(GL_TEXTURE_2D, position);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, position, 0);
+
+  glGenTextures(1, &normal);
+  glBindTexture(GL_TEXTURE_2D, normal);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, normal, 0);
+
+  glGenTextures(1, &albedo);
+  glBindTexture(GL_TEXTURE_2D, albedo);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, albedo, 0);
+
+  glGenRenderbuffers(1, &depth_buffer);
+  glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer);
+
+  GLenum draw_buffers[] = {
+    GL_COLOR_ATTACHMENT0,
+    GL_COLOR_ATTACHMENT1,
+    GL_COLOR_ATTACHMENT2
+  };
+  glDrawBuffers(3, draw_buffers);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+GraphicsLayerOpenGL::GBuffer::~GBuffer()
+{
+  glDeleteTextures(1, &position);
+  glDeleteTextures(1, &normal);
+  glDeleteTextures(1, &albedo);
+  glDeleteRenderbuffers(1, &depth_buffer);
+  glDeleteFramebuffers(1, &framebuffer);
+}
+
+void
+GraphicsLayerOpenGL::GBuffer::make_active()
+{
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+  glViewport(0, 0, 1280, 720);
+  glClearColor(0, 0, 0, 0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 GraphicsLayerOpenGL::RenderTarget::RenderTarget()
@@ -340,6 +559,24 @@ GraphicsLayerOpenGL::Shader::bind_uniform(const RenderTarget *x, std::string nam
   glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
 }
 
+void
+GraphicsLayerOpenGL::Shader::bind_uniform(const GBuffer *x, std::string name)
+{
+  glUseProgram(program);
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, x->position);
+  glUniform1i(glGetUniformLocation(program, "position"), 0);
+
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, x->normal);
+  glUniform1i(glGetUniformLocation(program, "normal_tex"), 1);
+
+  glActiveTexture(GL_TEXTURE2);
+  glBindTexture(GL_TEXTURE_2D, x->albedo);
+  glUniform1i(glGetUniformLocation(program, "albedo_tex"), 2);
+}
+
 GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
 {
   mesh = _mesh;
@@ -363,6 +600,9 @@ GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
 
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)sizeof(Vec3));
   glEnableVertexAttribArray(1);
+
+  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
+  glEnableVertexAttribArray(2);
 }
 
 GraphicsLayerOpenGL::MeshBinding::~MeshBinding()
@@ -403,9 +643,16 @@ GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
 
 GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 {
+  gbuffer = new GBuffer();
   target_3d = new RenderTarget();
   model_shader = new Shader(ModelShaderSources::vertex,
     ModelShaderSources::fragment);
+  directional_light_shader = new Shader(LightingShaderSources::vertex,
+    LightingShaderSources::dir_fragment);
+  point_light_shader = new Shader(LightingShaderSources::vertex,
+    LightingShaderSources::point_fragment);
+  spot_light_shader = new Shader(LightingShaderSources::vertex,
+    LightingShaderSources::spot_fragment);
 
   color_shader = new Shader(ColorShaderSources::vertex,
     ColorShaderSources::fragment);
@@ -417,8 +664,12 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 
 GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
 {
+  delete gbuffer;
   delete target_3d;
   delete model_shader;
+  delete directional_light_shader;
+  delete point_light_shader;
+  delete spot_light_shader;
 
   delete color_shader;
   delete texture_shader;
@@ -455,12 +706,12 @@ void
 GraphicsLayerOpenGL::begin_render()
 {
   Vec2 viewport_size = graphics_server->get_framebuffer_size(false);
+
+  // TODO: proper api for managing 3d renders
+  gbuffer->make_active();
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  // TODO: proper api for managing 3d renders
-  target_3d->make_active();
   glEnable(GL_DEPTH_TEST);
 
   {
@@ -496,6 +747,52 @@ GraphicsLayerOpenGL::begin_render()
   }
 
   glDisable(GL_DEPTH_TEST);
+
+  /* Now that the gbuffer is full, do the lighting pass */
+  {
+    // TODO: proper api for managing 3d renders
+    target_3d->make_active();
+    glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+
+    point_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+      * Mat3::translate(Vec2(0, 0))
+      * Mat3::scale(Vec2(1280, 720)), "transform");
+    point_light_shader->bind_uniform(gbuffer, "x");
+    point_light_shader->bind_uniform(Vec3(0, 5, 0), "light_pos");
+    point_light_shader->bind_uniform(Vec3(1, 1, 1), "light_color");
+    point_light_shader->bind_uniform(c.position, "camera_pos");
+    ((MeshBinding *)graphics_server->get_quad())->draw(point_light_shader);
+
+    directional_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+      * Mat3::translate(Vec2(0, 0))
+      * Mat3::scale(Vec2(1280, 720)), "transform");
+    directional_light_shader->bind_uniform(gbuffer, "x");
+    directional_light_shader->bind_uniform(Vec3(3, -5, 0).normalized(), "light_dir");
+    directional_light_shader->bind_uniform(Vec3(1, 0, 0), "light_color");
+    directional_light_shader->bind_uniform(c.position, "camera_pos");
+    ((MeshBinding *)graphics_server->get_quad())->draw(directional_light_shader);
+
+    /*
+    spot_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+      * Mat3::translate(Vec2(0, 0))
+      * Mat3::scale(Vec2(1280, 720)), "transform");
+    spot_light_shader->bind_uniform(gbuffer, "x");
+    spot_light_shader->bind_uniform(Vec3(-5, 0, 0), "light_pos");
+    spot_light_shader->bind_uniform(Vec3(1, 0, 0).normalized(), "light_dir");
+    spot_light_shader->bind_uniform(0.98, "light_angle");
+    spot_light_shader->bind_uniform(Vec3(0, 0, 1), "light_color");
+    spot_light_shader->bind_uniform(c.position, "camera_pos");
+    ((MeshBinding *)graphics_server->get_quad())->draw(spot_light_shader);
+    */
+
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_BLEND);
+  }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glViewport(0, 0, 1280, 720);
