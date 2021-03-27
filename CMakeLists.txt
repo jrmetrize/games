@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Debug)
 
-find_package(glfw3 3.3 REQUIRED PATHS deps/build)
-find_package(Freetype REQUIRED PATHS deps/build)
+find_package(glfw3 3.3 REQUIRED PATHS ${CMAKE_CURRENT_SOURCE_DIR}/deps/build/lib)
+set(freetype_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/build/lib/cmake/freetype)
+find_package(Freetype REQUIRED)
 
 set(GAME_SOURCES
   src/backends/graphics_opengl.cpp
@@ -123,7 +124,7 @@ if(WIN32)
   )
 else()
   target_link_libraries(resource_importer
-    freetype
+    ${FREETYPE_LIBRARIES}
     vorbis
     vorbisenc
     ogg
@@ -136,12 +137,16 @@ endif()
 add_executable(config
   src/config.cpp
 )
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 target_include_directories(config
-  PUBLIC ${GTK3_INCLUDE_DIRS}
   PUBLIC include
 )
-target_link_libraries(config
-  ${GTK3_LIBRARIES}
-)
+if(UNIX AND NOT APPLE)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+  target_include_directories(config
+    PUBLIC ${GTK3_INCLUDE_DIRS}
+  )
+  target_link_libraries(config
+    ${GTK3_LIBRARIES}
+  )
+endif()

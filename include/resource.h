@@ -257,6 +257,10 @@ struct Mesh
 
   std::vector<MaterialData> materials;
 
+  Mesh();
+
+  Mesh(const VertexVector &_vertices, const IndexVector &_indices);
+
   static Mesh *
   primitive_quad();
 

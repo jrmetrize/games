@@ -68,3 +68,11 @@ main(int argc, char **argv)
 }
 
 #endif
+
+#ifdef __APPLE__
+int
+main(int argc, char **argv)
+{
+  return 0;
+}
+#endif

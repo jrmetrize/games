@@ -938,6 +938,18 @@ Vertex::Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates) :
 
 }
 
+Mesh::Mesh() :
+  vertices(), indices()
+{
+
+}
+
+Mesh::Mesh(const VertexVector &_vertices, const IndexVector &_indices) :
+  vertices(_vertices), indices(_indices)
+{
+
+}
+
 Mesh *
 Mesh::primitive_quad()
 {
