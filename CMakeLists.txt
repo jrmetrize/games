@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(fp2d)
+project(jrCollection)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -49,22 +49,22 @@ elseif(UNIX AND NOT APPLE)
     src/backends/audio_pulseaudio.cpp)
 endif()
 
-add_executable(fp2d ${GAME_SOURCES})
-target_link_directories(fp2d
+add_executable(jrCollection ${GAME_SOURCES})
+target_link_directories(jrCollection
   PUBLIC deps/build/lib
 )
-target_include_directories(fp2d
+target_include_directories(jrCollection
   PUBLIC deps/build/include
 )
 if(WIN32)
-  target_link_libraries(fp2d
+  target_link_libraries(jrCollection
     glfw
     zlibstaticd
     ogg
     vorbis
   )
 else()
-  target_link_libraries(fp2d
+  target_link_libraries(jrCollection
     dl
     glfw
     z
@@ -74,18 +74,18 @@ else()
   )
 endif()
 
-add_custom_command(TARGET fp2d POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:fp2d>/resources/"
+add_custom_command(TARGET jrCollection POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:jrCollection>/resources/"
   COMMAND ${CMAKE_COMMAND} -E copy_directory
     "resources/processed"
-    "$<TARGET_FILE_DIR:fp2d>/resources"
+    "$<TARGET_FILE_DIR:jrCollection>/resources"
 )
 
-target_compile_definitions(fp2d
+target_compile_definitions(jrCollection
   PUBLIC GAME
 )
 
-target_include_directories(fp2d
+target_include_directories(jrCollection
   PUBLIC include
   PUBLIC include/imgui
 )

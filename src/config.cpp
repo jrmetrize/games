@@ -31,16 +31,11 @@ init_config_file()
 /* For now, only bother with GTK */
 #include <gtk/gtk.h>
 
-static void
-activate (GtkApplication* app,
-          gpointer        user_data)
+int
+close_callback(GtkWidget *widget, gpointer data)
 {
-  GtkWidget *window;
-
-  window = gtk_application_window_new (app);
-  gtk_window_set_title (GTK_WINDOW (window), "Window");
-  gtk_window_set_default_size (GTK_WINDOW (window), 200, 200);
-  gtk_widget_show_all (window);
+  gtk_main_quit();
+  return false;
 }
 
 int
@@ -48,15 +43,28 @@ main(int argc, char **argv)
 {
   init_config_file();
 
-  GtkApplication *app;
-  int status;
+  gtk_init(&argc, &argv);
 
-  app = gtk_application_new ("org.gtk.example", G_APPLICATION_FLAGS_NONE);
-  g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
-  status = g_application_run (G_APPLICATION (app), argc, argv);
-  g_object_unref (app);
+  GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title(GTK_WINDOW(window), "Game Config");
+  g_signal_connect(window, "delete_event", G_CALLBACK(close_callback), nullptr);
+  gtk_window_set_default_size(GTK_WINDOW(window), 640, 480);
 
-  return status;
+  GtkWidget *grid = gtk_grid_new();
+  gtk_grid_set_row_spacing(GTK_GRID(grid), 16);
+  gtk_grid_set_column_spacing(GTK_GRID(grid), 16);
+  gtk_container_add(GTK_CONTAINER(window), grid);
+
+  GtkWidget *label = gtk_label_new("Window Mode: ");
+  gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
+
+  GtkWidget *button = gtk_button_new_with_label("Test");
+  gtk_grid_attach(GTK_GRID(grid), button, 1, 0, 1, 1);
+
+  gtk_widget_show_all(window);
+  gtk_main();
+
+  return 0;
 }
 
 #endif

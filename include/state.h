@@ -97,6 +97,18 @@ struct PropertyData
   }
 };
 
+class GameConfig
+{
+public:
+  GameConfig();
+
+  static GameConfig *
+  from_json(const json &data);
+
+  json
+  get_json() const;
+};
+
 class GameState
 {
   std::chrono::time_point<std::chrono::steady_clock> ref;

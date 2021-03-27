@@ -18,7 +18,9 @@ ZERO_CHECK.vcxproj.filters
 *.TMP
 imgui.ini
 fp2d
+jrCollection
 resource_importer
+config
 Makefile
 resource_importer.vcxproj
 resource_importer.vcxproj.filters
