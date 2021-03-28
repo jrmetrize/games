@@ -10,7 +10,6 @@
 #include "resource.h"
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 
 class GraphicsLayer;
 
@@ -88,6 +87,7 @@ struct Camera
 };
 
 class GraphicsServer;
+struct GLFWwindow;
 
 class GraphicsLayer
 {
@@ -100,6 +100,9 @@ protected:
 public:
   virtual
   ~GraphicsLayer() = 0;
+
+  virtual GLFWwindow *
+  get_window() = 0;
 
   virtual void
   set_graphics_server(GraphicsServer *_graphics_server) = 0;
@@ -260,8 +263,6 @@ class GraphicsServer
 
   GraphicsLayer *backend;
 
-  GLFWwindow *window;
-
   BoundMesh *quad;
 
   Screen *current_screen;
@@ -269,7 +270,7 @@ class GraphicsServer
   Vec4
   render_ray(RenderRequest to_render, RayInfo ray);
 public:
-  GraphicsServer(GLFWwindow *_window);
+  GraphicsServer();
 
   ~GraphicsServer();
 
@@ -278,6 +279,9 @@ public:
 
   static GraphicsServer *
   get();
+
+  GLFWwindow *
+  get_window();
 
   void
   bind(Texture *tex);

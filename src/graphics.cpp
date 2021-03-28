@@ -154,30 +154,17 @@ Segment::test_ray(RayInfo ray_info) const
 
 GraphicsServer * GraphicsServer::instance = nullptr;
 
-GraphicsServer::GraphicsServer(GLFWwindow *_window) :
-  window(_window),
+GraphicsServer::GraphicsServer() :
   current_screen(nullptr)
 {
   backend = new GraphicsLayerOpenGL();
   backend->set_graphics_server(this);
 
   quad = bind(Mesh::primitive_quad());
-
-  // TODO: only use imgui in dev builds
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO &io = ImGui::GetIO();
-  ImGui::StyleColorsDark();
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init("#version 330");
 }
 
 GraphicsServer::~GraphicsServer()
 {
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-
   delete quad;
 }
 
@@ -191,6 +178,12 @@ GraphicsServer *
 GraphicsServer::get()
 {
   return instance;
+}
+
+GLFWwindow *
+GraphicsServer::get_window()
+{
+  return backend->get_window();
 }
 
 void
@@ -215,6 +208,7 @@ GraphicsServer::get_quad()
 void
 GraphicsServer::set_fullscreen(bool fullscreen)
 {
+  GLFWwindow *window = backend->get_window();
   if (fullscreen)
   {
     int monitor_count;
@@ -234,6 +228,7 @@ GraphicsServer::set_fullscreen(bool fullscreen)
 Vec2
 GraphicsServer::get_scale() const
 {
+  GLFWwindow *window = backend->get_window();
   Vec2 scale;
   glfwGetWindowContentScale(window, &scale.x, &scale.y);
   return scale;
@@ -242,6 +237,7 @@ GraphicsServer::get_scale() const
 Vec2
 GraphicsServer::get_framebuffer_size(bool scaled) const
 {
+  GLFWwindow *window = backend->get_window();
   int width;
   int height;
   glfwGetFramebufferSize(window, &width, &height);
@@ -371,7 +367,7 @@ GraphicsServer::draw()
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-  glfwSwapBuffers(window);
+  glfwSwapBuffers(backend->get_window());
 }
 
 void

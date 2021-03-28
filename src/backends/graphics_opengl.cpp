@@ -1,5 +1,9 @@
 #include "backends/graphics_opengl.h"
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 namespace ColorShaderSources
 {
   const std::string vertex = R"---(
@@ -350,14 +354,14 @@ GraphicsLayerOpenGL::TextureBinding::~TextureBinding()
   glDeleteTextures(1, &texture);
 }
 
-GraphicsLayerOpenGL::GBuffer::GBuffer()
+GraphicsLayerOpenGL::GBuffer::GBuffer(int width, int height)
 {
   glGenFramebuffers(1, &framebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
   glGenTextures(1, &position);
   glBindTexture(GL_TEXTURE_2D, position);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -366,7 +370,7 @@ GraphicsLayerOpenGL::GBuffer::GBuffer()
 
   glGenTextures(1, &normal);
   glBindTexture(GL_TEXTURE_2D, normal);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -375,7 +379,7 @@ GraphicsLayerOpenGL::GBuffer::GBuffer()
 
   glGenTextures(1, &albedo);
   glBindTexture(GL_TEXTURE_2D, albedo);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -384,7 +388,7 @@ GraphicsLayerOpenGL::GBuffer::GBuffer()
 
   glGenRenderbuffers(1, &depth_buffer);
   glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer);
 
   GLenum draw_buffers[] = {
@@ -409,20 +413,22 @@ GraphicsLayerOpenGL::GBuffer::~GBuffer()
 void
 GraphicsLayerOpenGL::GBuffer::make_active()
 {
+  Vec2 viewport_size = GraphicsServer::get()->get_framebuffer_size(false);
+
   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-  glViewport(0, 0, 1280, 720);
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-GraphicsLayerOpenGL::RenderTarget::RenderTarget()
+GraphicsLayerOpenGL::RenderTarget::RenderTarget(int width, int height)
 {
   glGenFramebuffers(1, &framebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
   glGenTextures(1, &target_texture);
   glBindTexture(GL_TEXTURE_2D, target_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -430,7 +436,7 @@ GraphicsLayerOpenGL::RenderTarget::RenderTarget()
 
   glGenRenderbuffers(1, &depth_buffer);
   glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1280, 720);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer);
 
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target_texture, 0);
@@ -452,8 +458,10 @@ GraphicsLayerOpenGL::RenderTarget::~RenderTarget()
 void
 GraphicsLayerOpenGL::RenderTarget::make_active()
 {
+  Vec2 viewport_size = GraphicsServer::get()->get_framebuffer_size(false);
+
   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-  glViewport(0, 0, 1280, 720);
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -640,11 +648,51 @@ GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
     }
   }
 }
-
+#include <iostream>
 GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 {
-  gbuffer = new GBuffer();
-  target_3d = new RenderTarget();
+  if (glfwInit() != GLFW_TRUE)
+  {
+    //error_dialog("Couldn't initialize GLFW.");
+    //return 0;
+  }
+
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+  window = glfwCreateWindow(1280, 720, "jrCollection", nullptr, nullptr);
+  if (window == nullptr)
+  {
+    //error_dialog("Couldn't create window.");
+    glfwTerminate();
+    //return 0;
+  }
+
+  glfwMakeContextCurrent(window);
+
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+  {
+    //error_dialog("Couldn't initialize OpenGL.");
+    glfwTerminate();
+    //return 0;
+  }
+
+  int scaled_width;
+  int scaled_height;
+  glfwGetFramebufferSize(window, &scaled_width, &scaled_height);
+
+  // TODO: only use imgui in dev builds
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  ImGui::StyleColorsDark();
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplOpenGL3_Init("#version 330");
+
+  gbuffer = new GBuffer(scaled_width, scaled_height);
+  target_3d = new RenderTarget(scaled_width, scaled_height);
   model_shader = new Shader(ModelShaderSources::vertex,
     ModelShaderSources::fragment);
   directional_light_shader = new Shader(LightingShaderSources::vertex,
@@ -664,6 +712,10 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 
 GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
 {
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
   delete gbuffer;
   delete target_3d;
   delete model_shader;
@@ -674,6 +726,14 @@ GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
   delete color_shader;
   delete texture_shader;
   delete text_shader;
+
+  glfwTerminate();
+}
+
+GLFWwindow *
+GraphicsLayerOpenGL::get_window()
+{
+  return window;
 }
 
 void
@@ -701,11 +761,13 @@ BoundMesh *m;
 
 #include "state.h"
 #include "input.h"
+#include <iostream>
 
 void
 GraphicsLayerOpenGL::begin_render()
 {
   Vec2 viewport_size = graphics_server->get_framebuffer_size(false);
+  Vec2 viewport_size_scaled = graphics_server->get_framebuffer_size();
 
   // TODO: proper api for managing 3d renders
   gbuffer->make_active();
@@ -761,7 +823,7 @@ GraphicsLayerOpenGL::begin_render()
 
     point_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
       * Mat3::translate(Vec2(0, 0))
-      * Mat3::scale(Vec2(1280, 720)), "transform");
+      * Mat3::scale(viewport_size_scaled), "transform");
     point_light_shader->bind_uniform(gbuffer, "x");
     point_light_shader->bind_uniform(Vec3(0, 5, 0), "light_pos");
     point_light_shader->bind_uniform(Vec3(1, 1, 1), "light_color");
@@ -770,7 +832,7 @@ GraphicsLayerOpenGL::begin_render()
 
     directional_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
       * Mat3::translate(Vec2(0, 0))
-      * Mat3::scale(Vec2(1280, 720)), "transform");
+      * Mat3::scale(viewport_size_scaled), "transform");
     directional_light_shader->bind_uniform(gbuffer, "x");
     directional_light_shader->bind_uniform(Vec3(3, -5, 0).normalized(), "light_dir");
     directional_light_shader->bind_uniform(Vec3(1, 0, 0), "light_color");
@@ -795,13 +857,15 @@ GraphicsLayerOpenGL::begin_render()
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glViewport(0, 0, 1280, 720);
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
     * Mat3::translate(Vec2(0, 0))
-    * Mat3::scale(Vec2(1280, 720)), "transform");
+    * Mat3::scale(viewport_size_scaled), "transform");
   texture_shader->bind_uniform(target_3d, "sampler");
   ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);
 }

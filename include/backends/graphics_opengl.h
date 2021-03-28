@@ -4,6 +4,7 @@
 #include "graphics.h"
 #include "linear_algebra.h"
 #include <string>
+#include <GLFW/glfw3.h>
 
 class GraphicsLayerOpenGL : public GraphicsLayer
 {
@@ -27,7 +28,7 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     GLuint albedo;
     GLuint depth_buffer;
 
-    GBuffer();
+    GBuffer(int width, int height);
 
     ~GBuffer();
 
@@ -41,7 +42,7 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     GLuint target_texture;
     GLuint depth_buffer;
 
-    RenderTarget();
+    RenderTarget(int width, int height);
 
     ~RenderTarget();
 
@@ -106,6 +107,9 @@ class GraphicsLayerOpenGL : public GraphicsLayer
     draw(Shader *shader);
   };
 
+  // Window
+  GLFWwindow *window;
+
   // 3D
   GBuffer *gbuffer;
   RenderTarget *target_3d;
@@ -122,6 +126,9 @@ public:
   GraphicsLayerOpenGL();
 
   ~GraphicsLayerOpenGL();
+
+  GLFWwindow *
+  get_window();
 
   void
   set_graphics_server(GraphicsServer *_graphics_server);

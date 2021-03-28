@@ -1,5 +1,4 @@
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <string>
 #include <chrono>
 
@@ -42,6 +41,7 @@ error_dialog(std::string error_message)
 int
 main(int argc, const char **argv)
 {
+  /*
   GLFWwindow *window;
 
   if (glfwInit() != GLFW_TRUE)
@@ -71,19 +71,20 @@ main(int argc, const char **argv)
     glfwTerminate();
     return 0;
   }
+  */
 
   // TODO: we need to be much more careful about dependencies here. Ideally,
   // none of the singletons depend on each other in constructors, and
   // proper initialization with dependencies will happend after all singletons
   // have been created.
-  InputMonitor *input = new InputMonitor(window);
+  GraphicsServer *renderer = new GraphicsServer();
+  GraphicsServer::set_instance(renderer);
+
+  InputMonitor *input = new InputMonitor(renderer->get_window());
   InputMonitor::set_instance(input);
 
   GameState *state = new GameState();
   GameState::set_instance(state);
-
-  GraphicsServer *renderer = new GraphicsServer(window);
-  GraphicsServer::set_instance(renderer);
 
   AudioServer *audio = new AudioServer();
   AudioServer::set_instance(audio);
@@ -115,7 +116,7 @@ main(int argc, const char **argv)
   delete state;
   delete input;
 
-  glfwTerminate();
+  //glfwTerminate();
 
   return 0;
 }
