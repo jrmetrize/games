@@ -6,35 +6,9 @@
 #include "core/input.h"
 #include "core/state.h"
 
-void
-error_dialog(std::string error_message);
+#include "launcher/game_select.h"
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <Winuser.h>
-
-void
-error_dialog(std::string error_message)
-{
-  MessageBox(nullptr, error_message.c_str(), "Error", MB_OK);
-}
-#endif
-
-#ifdef __linux__
-void
-error_dialog(std::string error_message)
-{
-
-}
-#endif
-
-#ifdef __APPLE__
-void
-error_dialog(std::string error_message)
-{
-
-}
-#endif
+using namespace Launcher;
 
 int
 main(int argc, const char **argv)
@@ -52,15 +26,14 @@ main(int argc, const char **argv)
   GameState *state = new GameState();
   GameState::set_instance(state);
 
+  /*
   AudioServer *audio = new AudioServer();
   AudioServer::set_instance(audio);
   audio->start();
+  */
 
-  {
-    AudioTrack *menu = (AudioTrack *)GameState::get()->get_globals()->get_resource("menu_music");
-    AudioServer::get()->set_music(menu);
-    AudioServer::get()->start_music();
-  }
+  GameSelectScreen *select_screen = new GameSelectScreen();
+  state->switch_to_screen(select_screen);
 
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();
@@ -77,7 +50,9 @@ main(int argc, const char **argv)
     renderer->draw();
   }
 
-  delete audio;
+  delete select_screen;
+
+  //delete audio;
   delete renderer;
   delete state;
   delete input;

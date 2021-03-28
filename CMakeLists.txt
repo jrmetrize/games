@@ -22,6 +22,7 @@ set(GAME_SOURCES
   src/core/state.cpp
   src/core/util.cpp
 
+  src/launcher/game_select.cpp
   src/launcher/main.cpp
 )
 

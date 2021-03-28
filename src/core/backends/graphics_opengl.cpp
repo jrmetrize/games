@@ -18,7 +18,7 @@ main()
   )---";
 
   const std::string fragment = R"---(
-drop a is
+
 #version 330 core
 out vec4 frag_color;
 
@@ -739,13 +739,6 @@ GraphicsLayerOpenGL::bind_mesh(Mesh *mesh)
   MeshBinding *binding = new MeshBinding(mesh);
   return binding;
 }
-
-Camera c;
-BoundMesh *m;
-
-#include "core/state.h"
-#include "core/input.h"
-#include <iostream>
 
 void
 GraphicsLayerOpenGL::begin_render()

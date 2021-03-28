@@ -3,6 +3,7 @@
 #include "core/input.h"
 #include "core/resource.h"
 #include "core/util.h"
+#include "core/screen.h"
 /*
 #include "screens/level_editor_screen.h"
 #include "screens/level_screen.h"
@@ -161,7 +162,8 @@ GameState::update(float time_elapsed)
 {
   last_update = std::chrono::steady_clock::now();
   GraphicsServer::get()->set_current_screen(current_screen);
-  //current_screen->update(time_elapsed);
+  if (current_screen != nullptr)
+    current_screen->update(time_elapsed);
 }
 
 float
@@ -200,8 +202,9 @@ GameState::get_property(std::string name)
 void
 GameState::switch_to_screen(Screen *target_screen)
 {
-  //current_screen->to_disappear();
-  //target_screen->to_appear();
+  if (current_screen != nullptr)
+    current_screen->to_disappear();
+  target_screen->to_appear();
 
   GraphicsServer::get()->set_current_screen(target_screen);
   current_screen = target_screen;
