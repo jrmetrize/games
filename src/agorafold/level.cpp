@@ -1,0 +1,533 @@
+#include "level.h"
+#include "core/graphics.h"
+#include "core/input.h"
+#include "core/state.h"
+
+AABB::AABB(Vec2 _center, Vec2 _size) :
+  center(_center),
+  size(_size)
+{
+
+}
+
+AABBCollisionShape::AABBCollisionShape(Vec2 _center, Vec2 _size) :
+  center(_center),
+  size(_size)
+{
+
+}
+
+Vec2
+AABBCollisionShape::get_center() const
+{
+  return center;
+}
+
+void
+AABBCollisionShape::set_center(Vec2 _center)
+{
+  center = _center;
+}
+
+Vec2
+AABBCollisionShape::get_size() const
+{
+  return size;
+}
+
+void
+AABBCollisionShape::set_size(Vec2 _size)
+{
+  size = _size;
+}
+
+AABB
+AABBCollisionShape::get_bounding_aabb() const
+{
+  return AABB(center, size);
+}
+
+CollisionResult
+test_collision(AABBCollisionShape &a, AABBCollisionShape &b)
+{
+  CollisionResult r = {};
+
+  Vec2 a_min = a.get_center() - (0.5 * a.get_size());
+  Vec2 a_max = a.get_center() + (0.5 * a.get_size());
+  Vec2 b_min = b.get_center() - (0.5 * b.get_size());
+  Vec2 b_max = b.get_center() + (0.5 * b.get_size());
+
+  float distances[4] = {
+    a_max.x - b_min.x,
+    b_max.x - a_min.x,
+    a_max.y - b_min.y,
+    b_max.y - a_min.y
+  };
+
+  Vec2 normals[4] = {
+    Vec2(-1, 0),
+    Vec2(1, 0),
+    Vec2(0, -1),
+    Vec2(0, 1)
+  };
+
+  float epsilon = 0.001;
+
+  r.intersection = true;
+  for (unsigned int i = 0; i < 4; ++i)
+  {
+    if (distances[i] <= epsilon)
+      r.intersection = false;
+  }
+
+  unsigned int normal_index = 0;
+  for (unsigned int i = 1; i < 4; ++i)
+  {
+    if (distances[i] < distances[normal_index])
+      normal_index = i;
+  }
+  r.normal = normals[normal_index];
+  r.depth = distances[normal_index];
+
+  return r;
+}
+
+LevelGeometryBlock::LevelGeometryBlock(Vec2 _position, Vec2 _size, Material *material) :
+  position(_position),
+  size(_size),
+  left(position - (0.5 * size), position + (0.5 * Vec2(-size.x, size.y)), material),
+  top(position + (0.5 * Vec2(-size.x, size.y)), position + (0.5 * size), material),
+  right(position + (0.5 * size), position + (0.5 * Vec2(size.x, -size.y)), material),
+  bottom(position + (0.5 * Vec2(size.x, -size.y)), position - (0.5 * size), material)
+{
+
+}
+
+void
+LevelGeometryBlock::update_render_geometry()
+{
+  left = Segment(position - (0.5 * size),
+    position + (0.5 * Vec2(-size.x, size.y)));
+  top = Segment(position + (0.5 * Vec2(-size.x, size.y)),
+    position + (0.5 * size));
+  right = Segment(position + (0.5 * size),
+    position + (0.5 * Vec2(size.x, -size.y)));
+  bottom = Segment(position + (0.5 * Vec2(size.x, -size.y)),
+    position - (0.5 * size));
+}
+
+Vec2
+LevelGeometryBlock::get_position() const
+{
+  return position;
+}
+
+void
+LevelGeometryBlock::set_position(Vec2 _position)
+{
+  position = _position;
+  update_render_geometry();
+}
+
+Vec2
+LevelGeometryBlock::get_size() const
+{
+  return size;
+}
+
+void
+LevelGeometryBlock::set_size(Vec2 _size)
+{
+  size = _size;
+  update_render_geometry();
+}
+
+void
+LevelGeometryBlock::add_geometry_to_tree(RenderTree &tree)
+{
+  tree.objects.push_back(&top);
+  tree.objects.push_back(&bottom);
+  tree.objects.push_back(&left);
+  tree.objects.push_back(&right);
+}
+
+Tilemap::Tilemap(int _origin_x, int _origin_y,
+  unsigned int _width, unsigned int _height) :
+  origin_x(_origin_x), origin_y(_origin_y),
+  width(_width), height(_height),
+  tiles(width * height)
+{
+
+}
+
+Tilemap::~Tilemap()
+{
+
+}
+
+void
+Tilemap::set_tile(unsigned int x, unsigned int y, const Tile &tile)
+{
+  // TODO: check that (x, y) is in [0, width - 1] x [0, height - 1]
+  tiles[(y * width) + x] = tile;
+}
+
+void
+Tilemap::set_material(std::string name, Material *material)
+{
+  material_library[name] = material;
+}
+
+void
+Tilemap::add_geometry(std::vector<LevelGeometryBlock *> &out)
+{
+  for (unsigned int i = 0; i < width; ++i)
+  {
+    for (unsigned int j = 0; j < height; ++j)
+    {
+      int idx = (j * width) + i;
+      const Tile &t = tiles[idx];
+      if (t.tile != "")
+      {
+        Material *m = material_library[t.tile];
+        LevelGeometryBlock *block =
+          new LevelGeometryBlock(Vec2(origin_x + int(i), origin_y + int(j)), Vec2(1, 1), m);
+        out.push_back(block);
+      }
+    }
+  }
+}
+
+Level::Level() :
+  name(""),
+  gravity(0),
+  player_speed(1),
+  camera_mode(Vertical),
+  sun_angle(1.6 * 3.14159),
+  tilemap(nullptr),
+  geometry()
+{
+
+}
+
+Level::Level(Tilemap *_tilemap) :
+  name(""),
+  gravity(0),
+  player_speed(1),
+  camera_mode(Vertical),
+  sun_angle(1.6 * 3.14159),
+  tilemap(_tilemap),
+  geometry()
+{
+
+}
+
+Level::~Level()
+{
+  for (unsigned int i = 0; i < geometry.size(); ++i)
+    delete geometry[i];
+}
+
+std::string
+Level::get_name() const
+{
+  return name;
+}
+
+void
+Level::set_name(std::string _name)
+{
+  name = _name;
+}
+
+float
+Level::get_gravity() const
+{
+  return gravity;
+}
+
+void
+Level::set_gravity(float _gravity)
+{
+  gravity = _gravity;
+}
+
+float
+Level::get_player_speed() const
+{
+  return player_speed;
+}
+
+void
+Level::set_player_speed(float _player_speed)
+{
+  player_speed = _player_speed;
+}
+
+CameraMode
+Level::get_camera_mode() const
+{
+  return camera_mode;
+}
+
+void
+Level::set_camera_mode(CameraMode _camera_mode)
+{
+  camera_mode = _camera_mode;
+}
+
+float
+Level::get_sun_angle() const
+{
+  return sun_angle;
+}
+
+void
+Level::set_sun_angle(float _sun_angle)
+{
+  sun_angle = _sun_angle;
+}
+
+const std::vector<LevelGeometryBlock *> &
+Level::get_geometry()
+{
+  if (geometry.size() == 0)
+    tilemap->add_geometry(geometry);
+  return geometry;
+}
+
+LevelState::LevelState(Level *_level) :
+  level(_level),
+  player_position(),
+  player_velocity(),
+  player_camera_angle(),
+  player_health(1),
+  current_dialogue(nullptr)
+{
+  for (unsigned int i = 0; i < 6; ++i)
+  {
+    dialogue_choices[i] = new Button(Vec2(0), Vec2(0),
+      std::bind(&LevelState::dialogue_choice_callback, this, std::placeholders::_1),
+      reinterpret_cast<void *>(i));
+    dialogue_choices[i]->set_enabled(false);
+  }
+}
+
+LevelState::~LevelState()
+{
+  for (unsigned int i = 0; i < 6; ++i)
+    delete dialogue_choices[i];
+}
+
+void
+LevelState::dialogue_choice_callback(void *userdata)
+{
+  /*unsigned int i = reinterpret_cast<unsigned int>(userdata);
+  current_dialogue->set_current(
+    current_dialogue->get_current_point().get_choices()[i].next);*/
+}
+
+void
+LevelState::update(float time_elapsed)
+{
+  Vec2 next_velocity = player_velocity
+    + (time_elapsed * Vec2(0, -level->get_gravity()));
+  Vec2 next_position = player_position
+    + (time_elapsed * next_velocity);
+
+  AABBCollisionShape player_collider = AABBCollisionShape(next_position + Vec2(0, -0.9),
+    Vec2(1, 2));
+  CollisionResult collision;
+  for (unsigned int i = 0; i < level->get_geometry().size(); ++i)
+  {
+    LevelGeometryBlock *block = level->get_geometry()[i];
+    AABBCollisionShape tile_collider = AABBCollisionShape(block->get_position(),
+      block->get_size());
+    collision = test_collision(player_collider, tile_collider);
+    if (collision.intersection)
+      break;
+  }
+  if (!collision.intersection)
+  {
+    player_velocity = next_velocity;
+    player_position = next_position;
+  }
+  else
+  {
+    player_velocity = Vec2();
+    player_position = next_position + (collision.depth * collision.normal);
+  }
+  bool on_ground = false;
+  if (collision.intersection && player_velocity.y <= 0)
+    on_ground = true;
+
+  if (on_ground && InputMonitor::get()->get_jump_input())
+  {
+    player_velocity += Vec2(0, 10);
+  }
+
+  if (InputMonitor::get()->is_key_down(KeyW))
+    player_position += time_elapsed * level->get_player_speed() * Vec2(1, 0);
+  else if (InputMonitor::get()->is_key_down(KeyS))
+    player_position += time_elapsed * level->get_player_speed() * Vec2(-1, 0);
+  player_position += -InputMonitor::get()->gamepad_left_stick().y * time_elapsed
+    * level->get_player_speed() * Vec2(1, 0);
+
+  if (InputMonitor::get()->is_key_down(KeyUp))
+    player_camera_angle += time_elapsed * 1;
+  else if (InputMonitor::get()->is_key_down(KeyDown))
+    player_camera_angle += time_elapsed * -1;
+  player_camera_angle += -InputMonitor::get()->gamepad_right_stick().y * time_elapsed * 1;
+}
+
+Vec2
+LevelState::get_player_position() const
+{
+  return player_position;
+}
+
+Vec2
+LevelState::get_player_camera_direction() const
+{
+  return Vec2(cos(player_camera_angle), sin(player_camera_angle));
+}
+
+RenderTree
+LevelState::get_render_tree()
+{
+  const std::vector<LevelGeometryBlock *> &geometry =
+    level->get_geometry();
+
+  RenderTree tree = {};
+  tree.sun_direction = Vec2(cos(level->get_sun_angle()),
+    sin(level->get_sun_angle()));
+  tree.objects = std::vector<RenderObject *>();
+  for (unsigned int i = 0; i < geometry.size(); ++i)
+    geometry[i]->add_geometry_to_tree(tree);
+
+  return tree;
+}
+
+void
+LevelState::set_player_position(Vec2 _position)
+{
+  player_position = _position;
+}
+
+void
+LevelState::set_current_dialogue(DialogueTree *_current_dialogue)
+{
+  current_dialogue = _current_dialogue;
+}
+
+void
+LevelState::draw_background_in_rect(Vec2 origin, Vec2 size)
+{
+  float x = sin(GameState::get()->get_time());
+  x = x * x;
+  Vec4 color = Vec4(x, x, x, 1);
+  GraphicsServer::get()->draw_color_rect(origin, size, color);
+}
+
+void
+LevelState::draw_stats_in_rect(Vec2 origin, Vec2 size)
+{
+  draw_side_view_in_rect(origin, Vec2(size.x, size.x));
+}
+
+void
+LevelState::draw_side_view_in_rect(Vec2 origin, Vec2 size)
+{
+  // Border and background
+  const float margin = 4;
+  GraphicsServer::get()->draw_color_rect(origin, size, Vec4(1, 1, 1, 1));
+  GraphicsServer::get()->draw_color_rect(origin + Vec2(margin),
+    size - (2.0f * Vec2(margin)), Vec4(0.2, 0.2, 0.2, 1));
+
+  // Use 16 pixels = 1 meter
+  // Draw the player
+  GraphicsServer::get()->draw_color_rect(origin + Vec2(margin) + ((1.0 / 2.0) * size)
+    - Vec2(8, 32), Vec2(16, 32), Vec4(0.8, 0.2, 0.1, 1));
+
+  // Draw the level
+  const std::vector<LevelGeometryBlock *> &geometry =
+    level->get_geometry();
+  Mat3 world_to_screen_transform = Mat3::translate(origin + Vec2(margin) + ((1.0 / 2.0) * size))
+    * Mat3::scale(Vec2(16, 16)) * Mat3::translate(-player_position);
+
+  // Clip the geometry to the viewing window by applying a stencil
+  GraphicsServer::get()->clear_stencil_buffer();
+  GraphicsServer::get()->draw_stencil_rect(origin + Vec2(margin), size - (2.0f * Vec2(margin)));
+
+  for (unsigned int i = 0; i < geometry.size(); ++i)
+  {
+    Vec2 block_origin = geometry[i]->get_position()
+      - ((1.0 / 2.0) * geometry[i]->get_size());
+    Vec2 block_size = geometry[i]->get_size();
+    Vec3 screen_origin = world_to_screen_transform
+      * Vec3(block_origin.x, block_origin.y, 1);
+    GraphicsServer::get()->draw_color_rect(Vec2(screen_origin.x, screen_origin.y),
+      16.0 * block_size, Vec4(0, 1, 0, 1));
+  }
+
+  GraphicsServer::get()->clear_stencil_buffer();
+}
+
+void
+LevelState::draw_dialogue_box_in_rect(Vec2 origin, Vec2 size)
+{
+  // Border and background
+  const float margin = 10;
+  const float option_height = 40;
+  GraphicsServer::get()->draw_color_rect(origin - Vec2(margin, margin),
+    size + (2 * Vec2(margin, margin)), Vec4(1, 1, 1, 1));
+  GraphicsServer::get()->draw_color_rect(origin,
+    size, Vec4(0.2, 0.2, 0.2, 1));
+
+  if (current_dialogue != nullptr)
+  {
+    TextRenderRequest req = {};
+    req.bounding_box_origin = origin + Vec2(margin);
+    req.bounding_box_size = size - Vec2(margin);
+    req.text = current_dialogue->get_current_point().get_text();
+    req.color = Vec4(1);
+    req.size = 20;
+    req.font = GameState::get()->get_sans();
+    req.center = false;
+    GraphicsServer::get()->draw_text(req);
+
+    const std::vector<DialogueChoice> &choices =
+      current_dialogue->get_current_point().get_choices();
+    for (unsigned int i = 0; i < choices.size(); ++i)
+    {
+      Vec2 origin2 = Vec2(margin, (margin * (i + 1)) + (option_height * i));
+      Vec2 size2 = Vec2(size.x - (2 * margin), option_height);
+      bool cursor_in = InputMonitor::get()->get_mouse_position().inside_rect(origin + origin2,
+        size2);
+      bool selected = cursor_in && InputMonitor::get()->is_left_mouse_down();
+      if (selected)
+      {
+        GraphicsServer::get()->draw_color_rect(origin + origin2,
+          size2, Vec4(0.4, 0.2, 0.9, 1));
+      }
+      else if (cursor_in)
+      {
+        GraphicsServer::get()->draw_color_rect(origin + origin2,
+          size2, Vec4(0.4, 0.2, 0.6, 1));
+      }
+      else
+      {
+        GraphicsServer::get()->draw_color_rect(origin + origin2,
+          size2, Vec4(0.4, 0.4, 0.4, 1));
+      }
+      req.bounding_box_origin = origin + origin2 + Vec2(margin);
+      req.bounding_box_size = size2 - Vec2(margin);
+      req.text = choices[i].text;
+      GraphicsServer::get()->draw_text(req);
+
+      dialogue_choices[i]->set_origin(origin + origin2);
+      dialogue_choices[i]->set_size(size2);
+      dialogue_choices[i]->set_enabled(true);
+    }
+  }
+}
