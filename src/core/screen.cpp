@@ -442,6 +442,12 @@ Screen::Screen()
 }
 
 void
+Screen::resize(Vec2 size)
+{
+
+}
+
+void
 Screen::to_appear()
 {
 

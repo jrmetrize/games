@@ -63,11 +63,22 @@ GameEntry::get_game_list()
   return games;
 }
 
-GameEntryCard::GameEntryCard(GameEntry &_entry, Vec2 _origin, Vec2 _size) :
-  entry(_entry), origin(_origin), size(_size), highlighted(false),
-  pressed(false)
+GameEntryCard::GameEntryCard(GameEntry &_entry) :
+  entry(_entry), highlighted(false), pressed(false)
 {
 
+}
+
+void
+GameEntryCard::set_origin(Vec2 _origin)
+{
+  origin = _origin;
+}
+
+void
+GameEntryCard::set_size(Vec2 _size)
+{
+  size = _size;
 }
 
 void
@@ -88,12 +99,12 @@ GameEntryCard::update()
 }
 
 void
-GameEntryCard::draw(Vec2 offset, Vec2 size)
+GameEntryCard::draw(Vec2 offset)
 {
-  GraphicsServer::get()->draw_color_rect(offset, size, LAUNCHER_UI_GRAY);
+  GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_GRAY);
 
   TextRenderRequest req = {};
-  req.bounding_box_origin = offset;
+  req.bounding_box_origin = origin + offset;
   req.bounding_box_size = Vec2(size.x, 20);
   req.text = entry.get_title();
   req.color = Vec4(0, 0, 0, 1);
@@ -109,7 +120,7 @@ GameSelectScreen::GameSelectScreen() :
   scroll_offset(0.0), content_height(0.0f)
 {
   for (GameEntry &entry : games)
-    cards.push_back(GameEntryCard(entry, Vec2(), Vec2()));
+    cards.push_back(GameEntryCard(entry));
 
   listener.mouse_button_handle = std::bind(&GameSelectScreen::mouse_pressed, this,
     std::placeholders::_1, std::placeholders::_2);
@@ -120,6 +131,42 @@ GameSelectScreen::GameSelectScreen() :
 GameSelectScreen::~GameSelectScreen()
 {
 
+}
+
+void
+GameSelectScreen::resize(Vec2 window_size)
+{
+  float cell_width = floor((window_size.x
+    - (2.0 * LAUNCHER_UI_MARGIN)
+    - (float(LAUNCHER_GRID_COLUMNS - 1) * LAUNCHER_UI_SPACING))
+    / float(LAUNCHER_GRID_COLUMNS));
+  float cell_height = floor(cell_width / float(LAUNCHER_CELL_IMG_ASPECT_RATIO));
+
+  /* Now that all the relevant metrics are known, draw the cells in a grid. */
+  /* TODO: Cache the grid coordinates of each cell? I doubt the launcher would
+     ever need optimization, but try this just in case. */
+  for (uint32_t i = 0; i < cards.size(); ++i)
+  {
+    uint32_t row = i / LAUNCHER_GRID_COLUMNS;
+    uint32_t col = i % LAUNCHER_GRID_COLUMNS;
+
+    Vec2 cell_pos = Vec2(
+      LAUNCHER_UI_MARGIN + (float(col) * cell_width) + (float(col) * LAUNCHER_UI_SPACING),
+      window_size.y - LAUNCHER_UI_MARGIN - (float(row + 1) * cell_height) - (float(row) * LAUNCHER_UI_SPACING));
+    cards[i].set_origin(cell_pos);
+    cards[i].set_size(Vec2(cell_width, cell_height));
+  }
+
+  /* Calculate the total number of rows. */
+  uint32_t rows = cards.size() / LAUNCHER_GRID_COLUMNS;
+  if (cards.size() % LAUNCHER_GRID_COLUMNS > 0)
+    rows += 1;
+
+  if (rows > 0)
+    content_height = (2.0f * LAUNCHER_UI_MARGIN) + (float(rows) * cell_height)
+      + (float(rows - 1) * LAUNCHER_UI_SPACING);
+  else
+    content_height = 0.0f;
 }
 
 void
@@ -163,40 +210,10 @@ GameSelectScreen::update(float time_elapsed)
 }
 
 void
-GameSelectScreen::draw_custom()
+GameSelectScreen::draw()
 {
-  Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
-
-  float cell_width = floor((window_size.x
-    - (2.0 * LAUNCHER_UI_MARGIN)
-    - (float(LAUNCHER_GRID_COLUMNS - 1) * LAUNCHER_UI_SPACING))
-    / float(LAUNCHER_GRID_COLUMNS));
-  float cell_height = floor(cell_width / float(LAUNCHER_CELL_IMG_ASPECT_RATIO));
-
-  /* Now that all the relevant metrics are known, draw the cells in a grid. */
-  /* TODO: Cache the grid coordinates of each cell? I doubt the launcher would
-     ever need optimization, but try this just in case. */
   for (uint32_t i = 0; i < cards.size(); ++i)
-  {
-    uint32_t row = i / LAUNCHER_GRID_COLUMNS;
-    uint32_t col = i % LAUNCHER_GRID_COLUMNS;
-
-    Vec2 cell_pos = Vec2(
-      LAUNCHER_UI_MARGIN + (float(col) * cell_width) + (float(col) * LAUNCHER_UI_SPACING),
-      window_size.y - LAUNCHER_UI_MARGIN - (float(row + 1) * cell_height) - (float(row) * LAUNCHER_UI_SPACING) + scroll_offset);
-    cards[i].draw(cell_pos, Vec2(cell_width, cell_height));
-  }
-
-  /* Calculate the total number of rows. */
-  uint32_t rows = cards.size() / LAUNCHER_GRID_COLUMNS;
-  if (cards.size() % LAUNCHER_GRID_COLUMNS > 0)
-    rows += 1;
-
-  if (rows > 0)
-    content_height = (2.0f * LAUNCHER_UI_MARGIN) + (float(rows) * cell_height)
-      + (float(rows - 1) * LAUNCHER_UI_SPACING);
-  else
-    content_height = 0.0f;
+    cards[i].draw(Vec2(0, scroll_offset));
 }
 
 }

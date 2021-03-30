@@ -52,13 +52,19 @@ class GameEntryCard
   bool highlighted;
   bool pressed;
 public:
-  GameEntryCard(GameEntry &_entry, Vec2 _origin, Vec2 _size);
+  GameEntryCard(GameEntry &_entry);
+
+  void
+  set_origin(Vec2 _origin);
+
+  void
+  set_size(Vec2 _size);
 
   void
   update();
 
   void
-  draw(Vec2 offset, Vec2 size);
+  draw(Vec2 offset);
 };
 
 class GameSelectScreen : public Screen
@@ -76,13 +82,16 @@ public:
   ~GameSelectScreen();
 
   void
+  resize(Vec2 window_size);
+
+  void
   to_appear();
 
   void
   to_disappear();
 
   void
-  mouse_pressed(MouseButton button, bool pressed)
+  mouse_pressed(MouseButton button, bool pressed);
 
   void
   mouse_scrolled(Vec2 scroll);
@@ -91,7 +100,7 @@ public:
   update(float time_elapsed);
 
   void
-  draw_custom();
+  draw();
 };
 
 }

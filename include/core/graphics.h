@@ -12,6 +12,10 @@
 #include "core/glad/glad.h"
 
 class GraphicsLayer;
+class GraphicsServer;
+class FontFace;
+class Screen;
+struct GLFWwindow;
 
 class Texture
 {
@@ -86,9 +90,6 @@ struct Camera
   get_view_projection_matrix();
 };
 
-class GraphicsServer;
-struct GLFWwindow;
-
 class GraphicsLayer
 {
 protected:
@@ -134,114 +135,6 @@ public:
   mask_rect(Vec2 origin, Vec2 size) = 0;
 };
 
-class FontFace;
-
-struct RayResult
-{
-  bool intersection;
-  float distance;
-  Vec2 location;
-};
-
-struct RayInfo
-{
-  Vec2 origin;
-  Vec2 direction; // must be normalized
-};
-
-class ComputedTexture
-{
-public:
-  virtual Vec4
-  value_at(Vec2 x) = 0;
-
-  virtual Vec4
-  value_at(Vec3 x) = 0;
-};
-
-class NoiseTexture : public ComputedTexture
-{
-  FastNoiseLite noise;
-  uint32_t seed;
-  float frequency;
-public:
-  NoiseTexture(uint32_t _seed = 0, float _frequency = 1);
-
-  Vec4
-  value_at(Vec2 x);
-
-  Vec4
-  value_at(Vec3 x);
-
-  void
-  set_frequency(float _frequency);
-};
-
-class RenderObject;
-
-class Material
-{
-public:
-  virtual Vec4
-  light(Vec2 ray_dir, Vec2 hit_location, RenderObject *obj) = 0;
-};
-
-// TODO: make it possible to generalize this interface to shapes other than
-// segments, like circles, isosurfaces, etc.
-class RenderObject
-{
-public:
-  virtual RayResult
-  test_ray(RayInfo ray_info) const = 0;
-
-  virtual Material *
-  get_material() const = 0;
-
-  virtual Vec2
-  get_normal() const = 0;
-};
-
-class Segment : public RenderObject
-{
-  Vec2 p1;
-  Vec2 p2;
-
-  Material *material;
-public:
-  Segment(Vec2 _p1, Vec2 _p2, Material *_material = nullptr);
-
-  RayResult
-  test_ray(RayInfo ray_info) const;
-
-  Material *
-  get_material() const;
-
-  Vec2
-  get_normal() const;
-};
-
-struct RenderTree
-{
-  std::vector<RenderObject *> objects;
-  Vec2 sun_direction;
-};
-
-class Screen;
-
-enum CameraMode
-{
-  Vertical = 0,
-  Horizontal
-};
-
-struct RenderRequest
-{
-  CameraMode camera_mode;
-  Vec2 camera_pos;
-  Vec2 camera_dir;
-  RenderTree tree;
-};
-
 struct TextRenderRequest
 {
   Vec2 bounding_box_origin;
@@ -266,9 +159,6 @@ class GraphicsServer
   BoundMesh *quad;
 
   Screen *current_screen;
-
-  Vec4
-  render_ray(RenderRequest to_render, RayInfo ray);
 public:
   GraphicsServer();
 
@@ -301,6 +191,9 @@ public:
   Vec2
   get_framebuffer_size(bool scaled = true) const;
 
+  void
+  window_resize(Vec2 size);
+
   Mat3
   get_pixel_to_screen_transform() const;
 
@@ -330,9 +223,6 @@ public:
 
   void
   draw_stencil_rect(Vec2 origin, Vec2 size);
-
-  void
-  render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render);
 };
 
 #endif

@@ -312,6 +312,12 @@ main()
   )---";
 }
 
+static void
+window_resize_callback(GLFWwindow *window, int width, int height)
+{
+  GraphicsServer::get()->window_resize(Vec2(width, height));
+}
+
 GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture_data)
   : texture_data(_texture_data)
 {
@@ -674,6 +680,8 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
     glfwTerminate();
     //return 0;
   }
+
+  glfwSetWindowSizeCallback(window, window_resize_callback);
 
   int scaled_width;
   int scaled_height;

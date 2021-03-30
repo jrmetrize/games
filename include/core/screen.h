@@ -118,7 +118,10 @@ public:
   update(float time_elapsed) = 0;
 
   virtual void
-  draw_custom() = 0;
+  draw() = 0;
+
+  virtual void
+  resize(Vec2 size);
 
   virtual void
   to_appear();

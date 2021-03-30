@@ -4,11 +4,6 @@
 #include "core/backends/graphics_opengl.h"
 #include "core/backends/graphics_vulkan.h"
 
-GraphicsLayer::~GraphicsLayer()
-{
-
-}
-
 Texture::Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
   const unsigned char *_data) :
   width(_width), height(_height), channels(_channels), data(_data)
@@ -62,6 +57,11 @@ GraphicsLayer::get_texture_binding(const Texture *tex)
   return tex->binding;
 }
 
+GraphicsLayer::~GraphicsLayer()
+{
+
+}
+
 Camera::Camera() :
   fovy(3.14159f / 3.0f), aspect_ratio(16.0f / 9.0f), clip_near(0.1f), clip_far(100.0f),
   position(), direction(Vec3(1, 0, 0))
@@ -75,77 +75,6 @@ Camera::get_view_projection_matrix()
   Mat4 projection = Mat4::projection(fovy, aspect_ratio, clip_near, clip_far);
   Mat4 view = Mat4::lookat(position, position + direction, Vec3(0, 1, 0));
   return projection * view;
-}
-
-NoiseTexture::NoiseTexture(uint32_t _seed, float _frequency) :
-  seed(_seed), noise(seed), frequency(_frequency)
-{
-  noise.SetFrequency(frequency);
-}
-
-Vec4
-NoiseTexture::value_at(Vec2 x)
-{
-  return Vec4(noise.GetNoise(x.x, x.y));
-}
-
-Vec4
-NoiseTexture::value_at(Vec3 x)
-{
-  return Vec4(noise.GetNoise(x.x, x.y, x.z));
-}
-
-void
-NoiseTexture::set_frequency(float _frequency)
-{
-  frequency = _frequency;
-  noise.SetFrequency(frequency);
-}
-
-Segment::Segment(Vec2 _p1, Vec2 _p2, Material *_material) :
-  p1(_p1),
-  p2(_p2),
-  material(_material)
-{
-
-}
-
-Material *
-Segment::get_material() const
-{
-  return material;
-}
-
-Vec2
-Segment::get_normal() const
-{
-  Vec2 dir = p2 - p1;
-  Vec2 normal = Vec2(-dir.y, dir.x);
-  return normal.normalized();
-}
-
-RayResult
-Segment::test_ray(RayInfo ray_info) const
-{
-  RayResult result = {};
-
-  Vec2 d = ray_info.direction;
-  Vec2 o = ray_info.origin;
-  Vec2 v = p2 - p1;
-
-  float q = v * Vec2(d.y, -d.x);
-
-  float t1 = (v * Vec2(p1.y - o.y, o.x - p1.x)) / q;
-  float t2 = (d * Vec2(p1.y - o.y, o.x - p1.x)) / q;
-
-  if (t1 >= 0 && (t2 >= 0 && t2 <= 1))
-  {
-    result.intersection = true;
-    result.distance = t1;
-    result.location = ray_info.origin + (t1 * ray_info.direction);
-  }
-
-  return result;
 }
 
 GraphicsServer * GraphicsServer::instance = nullptr;
@@ -230,6 +159,13 @@ GraphicsServer::get_scale() const
   return scale;
 }
 
+void
+GraphicsServer::window_resize(Vec2 size)
+{
+  if (current_screen != nullptr)
+    current_screen->resize(size);
+}
+
 Vec2
 GraphicsServer::get_framebuffer_size(bool scaled) const
 {
@@ -271,79 +207,8 @@ void
 GraphicsServer::set_current_screen(Screen *screen)
 {
   current_screen = screen;
-}
-
-Vec4
-GraphicsServer::render_ray(RenderRequest to_render, RayInfo ray)
-{
-  RayResult nearest;
-  nearest.distance = -1;
-  RenderObject *hit = nullptr;
-  Vec4 color = Vec4(0, 0, 0, 1);
-  for (unsigned int i = 0; i < to_render.tree.objects.size(); ++i)
-  {
-    RayResult r = to_render.tree.objects[i]->test_ray(ray);
-    if (r.intersection)
-    {
-      if (nearest.distance < 0 || r.distance < nearest.distance)
-      {
-        nearest = r;
-        hit = to_render.tree.objects[i];
-      }
-    }
-  }
-  if (hit != nullptr)
-  {
-    /*
-    Vec3 obj_color = hit->get_color();
-    color += Vec4(0.2 * obj_color.x, 0.2 * obj_color.y, 0.2 * obj_color.z, 0);
-    // Now do lighting calculations!
-    if (to_render.tree.sun_direction != Vec2())
-    {
-      RayInfo sun_ray = {};
-      sun_ray.origin = nearest.location;
-      sun_ray.direction = -to_render.tree.sun_direction;
-      bool shadowed = false;
-      for (unsigned int i = 0; i < to_render.tree.objects.size(); ++i)
-      {
-        if (to_render.tree.objects[i] == hit)
-          continue;
-        RayResult r = to_render.tree.objects[i]->test_ray(sun_ray);
-        if (r.intersection)
-        {
-          shadowed = true;
-          break;
-        }
-      }
-      if (!shadowed)
-      {
-        // Calculate diffuse (using Blinn-Phong for now)
-        // TODO: PBR for 2D?
-        Vec2 normal = hit->get_normal();
-        Vec2 light_dir = (-to_render.tree.sun_direction).normalized();
-        float diffuse = std::max(normal * light_dir, 0.0f);
-        color += Vec4(diffuse * obj_color.x, diffuse * obj_color.y,
-          diffuse * obj_color.y, 0);
-
-        // Calculate specular
-        Vec2 view_dir = (to_render.camera_pos - nearest.location).normalized();
-        Vec2 halfway = (view_dir + light_dir).normalized();
-        int shininess = 16;
-        float specular = pow(std::max(normal * halfway, 0.0f), shininess);
-        color += Vec4(specular * 1, specular * 1, specular * 1, 0);
-      }
-    }
-    */
-    Vec2 hit_location = nearest.location;
-    if (hit->get_material() != nullptr)
-      return hit->get_material()->light(ray.direction, hit_location, hit);
-    else
-      return Vec4(1);
-  }
-  else
-  {
-    return Vec4(0.1, 0.1, 0.1, 1);
-  }
+  if (current_screen != nullptr)
+    current_screen->resize(get_framebuffer_size());
 }
 
 void
@@ -354,7 +219,7 @@ GraphicsServer::draw()
   backend->begin_render();
 
   if (current_screen != nullptr)
-    current_screen->draw_custom();
+    current_screen->draw();
 
   glfwSwapBuffers(backend->get_window());
 }
@@ -541,51 +406,4 @@ void
 GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
 {
   backend->mask_rect(origin, size);
-}
-
-void
-GraphicsServer::render_to_rect(Vec2 origin, Vec2 size, RenderRequest to_render)
-{
-  if (to_render.camera_mode == Vertical)
-  {
-    Vec2 unit_direction = to_render.camera_dir.normalized();
-    Vec2 unit_perp = Vec2(-unit_direction.y, unit_direction.x);
-
-    float row_height = size.y / 224.0;
-
-    for (unsigned int i = 0; i < 224; ++i)
-    {
-      Vec2 ray_dir = unit_direction + (((float(i) - 112.0) / 112.0) * 0.5f * unit_perp);
-      ray_dir = ray_dir.normalized();
-
-      RayInfo cast = {};
-      cast.origin = to_render.camera_pos;
-      cast.direction = ray_dir;
-
-      Vec4 color = render_ray(to_render, cast);
-      draw_color_rect(Vec2(origin.x, origin.y + (float(i) * row_height)),
-        Vec2(size.x, row_height), color);
-    }
-  }
-  else if (to_render.camera_mode == Horizontal)
-  {
-    Vec2 unit_direction = to_render.camera_dir.normalized();
-    Vec2 unit_perp = Vec2(-unit_direction.y, unit_direction.x);
-
-    float column_width = size.x / 256.0;
-
-    for (unsigned int i = 0; i < 256; ++i)
-    {
-      Vec2 ray_dir = unit_direction + (((float(i) - 128.0) / 128.0) * 0.5f * unit_perp);
-      ray_dir = ray_dir.normalized();
-
-      RayInfo cast = {};
-      cast.origin = to_render.camera_pos;
-      cast.direction = ray_dir;
-
-      Vec4 color = render_ray(to_render, cast);
-      draw_color_rect(Vec2(origin.x + (float(i) * column_width), origin.y),
-        Vec2(column_width, size.y), color);
-    }
-  }
 }
