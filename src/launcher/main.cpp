@@ -7,9 +7,48 @@
 #include <core/state.h>
 
 #include "launcher/game_select.h"
+#include "launcher/launcher.h"
 #include "launcher/title.h"
 
 using namespace Launcher;
+
+class LauncherStateImpl : public LauncherState
+{
+  TitleScreen *title_screen;
+  GameSelectScreen *select_screen;
+public:
+  LauncherStateImpl()
+  {
+    select_screen = new GameSelectScreen(this);
+    title_screen = new TitleScreen(this);
+  }
+
+  ~LauncherStateImpl()
+  {
+    delete select_screen;
+    delete title_screen;
+  }
+
+  void
+  show_title_screen()
+  {
+    GameState::get()->switch_to_screen(title_screen);
+  }
+
+  void
+  show_game_select_screen()
+  {
+    GameState::get()->switch_to_screen(select_screen);
+  }
+
+  void
+  launch_game(std::string game)
+  {
+    /* For now, just launch the game instead of going to a detail page. */
+    /* TODO: Instead of a dumb if statement, do this smarter... maybe
+       have a 'launch' function in each entry. */
+  }
+};
 
 int
 main(int argc, const char **argv)
@@ -33,9 +72,8 @@ main(int argc, const char **argv)
   audio->start();
   */
 
-  GameSelectScreen *select_screen = new GameSelectScreen();
-  TitleScreen *title_screen = new TitleScreen();
-  state->switch_to_screen(title_screen);
+  LauncherStateImpl *launcher = new LauncherStateImpl();
+  launcher->show_title_screen();
 
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();
@@ -52,7 +90,7 @@ main(int argc, const char **argv)
     renderer->draw();
   }
 
-  delete select_screen;
+  delete launcher;
 
   //delete audio;
   delete renderer;

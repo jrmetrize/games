@@ -102,6 +102,11 @@ Camera::get_view_projection_matrix() const
   return projection * view;
 }
 
+SceneObject::SceneObject()
+{
+  transform = Mat4::identity();
+}
+
 Scene3D::Scene3D(Camera *_camera) :
   camera(_camera), ambient_color(), objects(), lights()
 {

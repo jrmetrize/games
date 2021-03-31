@@ -216,10 +216,10 @@ main()
   vec3 camera_dir = normalize(camera_pos - pixel_pos);
   vec3 halfway = normalize(-light_dir + camera_dir);
 
-  float diffuse = max(dot(-light_dir, normal), 0);
+  float diffuse = max(dot(-light_dir, normal), 0.0);
   vec3 diffuse_color = light_color * diffuse;
 
-  float specular = pow(max(dot(halfway, normal), 0), 256);
+  float specular = pow(max(dot(halfway, normal), 0.0), 16.0);
   vec3 specular_color = light_color * specular;
 
   frag_color = vec4((diffuse_color + specular_color) * albedo, 1);
@@ -899,7 +899,7 @@ GraphicsLayerOpenGL::draw_3d(const Render3DRequest &scene_request)
 
   for (const SceneObject *obj : scene_request.scene->get_objects())
   {
-    model_shader->bind_uniform(Mat4::identity(), "model");
+    model_shader->bind_uniform(obj->transform, "model");
     ((MeshBinding *)obj->mesh)->draw(model_shader);
   }
 

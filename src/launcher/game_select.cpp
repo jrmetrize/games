@@ -6,12 +6,18 @@
 namespace Launcher
 {
 
-GameEntry::GameEntry(std::string _title, std::string _subtitle, std::string _description,
-  const std::vector<std::string> &_tags, bool _favorite) :
-  title(_title), subtitle(_subtitle), description(_description), tags(_tags),
+GameEntry::GameEntry(std::string _id, std::string _title, std::string _subtitle,
+  std::string _description, const std::vector<std::string> &_tags, bool _favorite) :
+  id(_id), title(_title), subtitle(_subtitle), description(_description), tags(_tags),
   favorite(_favorite)
 {
 
+}
+
+std::string
+GameEntry::get_id() const
+{
+  return id;
 }
 
 std::string
@@ -54,10 +60,10 @@ std::vector<GameEntry>
 GameEntry::get_game_list()
 {
   std::vector<GameEntry> games = {
-    GameEntry("Agorafold", "First-person 2D adventure game", ""),
-    GameEntry("2", "", ""),
-    GameEntry("3", "", ""),
-    GameEntry("4", "", "")
+    GameEntry("fp2d", "Agorafold", "First-person 2D adventure game", ""),
+    GameEntry("2dz", "2D Zeldalike (WIP Title)", "", ""),
+    GameEntry("ps1h", "PS1 Horror (WIP Title)", "", ""),
+    GameEntry("space_energy", "Space Energy (WIP Title)", "", "")
   };
 
   return games;
@@ -145,8 +151,8 @@ GameEntryCard::draw()
   GraphicsServer::get()->draw_text(req);
 }
 
-GameSelectScreen::GameSelectScreen() :
-  games(GameEntry::get_game_list()), cards(), listener(),
+GameSelectScreen::GameSelectScreen(LauncherState *_launcher) :
+  launcher(_launcher), games(GameEntry::get_game_list()), cards(), listener(),
   scroll_offset(0.0), content_height(0.0f)
 {
   for (GameEntry &entry : games)
@@ -168,9 +174,7 @@ GameSelectScreen::~GameSelectScreen()
 void
 GameSelectScreen::entry_selected(GameEntry &entry)
 {
-  /* For now, just launch the game instead of going to a detail page. */
-  /* TODO: Instead of a dumb if statement, do this smarter... maybe
-     have a 'launch' function in each entry. */
+  launcher->launch_game(entry.get_id());
 }
 
 void

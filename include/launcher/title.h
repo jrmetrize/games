@@ -4,19 +4,32 @@
 #include <core/screen.h>
 #include <core/graphics.h>
 
+#include "launcher/launcher.h"
+
 namespace Launcher
 {
 
 class TitleScreen : public Screen
 {
+  LauncherState *launcher;
+
   Listener listener;
+
+  struct Cubelet
+  {
+    SceneObject *object;
+    Vec3 position;
+  };
 
   Camera camera;
   DirectionalLight *light;
-  SceneObject *obj;
+  std::vector<Cubelet> cubes;
   Scene3D *scene;
+
+  void
+  key_pressed(Key key, bool pressed);
 public:
-  TitleScreen();
+  TitleScreen(LauncherState *_launcher);
 
   ~TitleScreen();
 

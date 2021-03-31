@@ -3,13 +3,16 @@
 namespace Launcher
 {
 
-TitleScreen::TitleScreen() :
-  listener(), camera()
+TitleScreen::TitleScreen(LauncherState *_launcher) :
+  launcher(_launcher), listener(), camera(), cubes()
 {
-  obj = new SceneObject();
+  //obj = new SceneObject();
   Mesh *_cube = Mesh::primitive_cube();
   BoundMesh *cube = GraphicsServer::get()->bind(_cube);
-  obj->mesh = cube;
+  //obj->mesh = cube;
+
+  listener.key_handle = std::bind(&TitleScreen::key_pressed, this,
+    std::placeholders::_1, std::placeholders::_2);
 
   light = new DirectionalLight();
   light->direction = Vec3(1, -0.5, 2).normalized();
@@ -17,15 +20,51 @@ TitleScreen::TitleScreen() :
 
   scene = new Scene3D(&camera);
   scene->set_ambient_color(Vec3(0.1f));
-  scene->get_objects().push_back(obj);
   scene->get_lights().push_back(light);
+
+  float edge_width = 2.0f / float((2 * LAUNCHER_TITLE_CUBE_EDGE_SIZE) - 1);
+  Vec3 base_offset = Vec3(-1) + (0.5f * Vec3(edge_width));
+
+  for (uint32_t i = 0; i < LAUNCHER_TITLE_CUBE_EDGE_SIZE; ++i)
+  {
+    for (uint32_t j = 0; j < LAUNCHER_TITLE_CUBE_EDGE_SIZE; ++j)
+    {
+      for (uint32_t k = 0; k < LAUNCHER_TITLE_CUBE_EDGE_SIZE; ++k)
+      {
+        Cubelet cubelet = {};
+
+        Vec3 center = base_offset + (2.0f * edge_width * Vec3(i, j, k));
+        if (center.norm() > 1)
+          continue;
+
+        SceneObject *obj = new SceneObject();
+        obj->mesh = cube;
+        obj->transform = Mat4::translation(center)
+          * Mat4::scale(Vec3(0.5f * edge_width));
+
+        cubelet.object = obj;
+        scene->get_objects().push_back(obj);
+
+        cubes.push_back(cubelet);
+      }
+    }
+  }
 }
 
 TitleScreen::~TitleScreen()
 {
   delete scene;
-  delete obj;
   delete light;
+
+  for (Cubelet &cube : cubes)
+    delete cube.object;
+}
+
+void
+TitleScreen::key_pressed(Key key, bool pressed)
+{
+  // TODO: should probably play a sound here
+  launcher->show_game_select_screen();
 }
 
 void
@@ -55,6 +94,8 @@ TitleScreen::update(float time_elapsed)
 void
 TitleScreen::draw()
 {
+  Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
+
   /* Draw funky little hydrogen atom thing. */
 
   /* Have the camera orbit at a fixed distance. */
@@ -70,12 +111,29 @@ TitleScreen::draw()
   camera.set_position(pos);
   camera.set_direction(-pos.normalized());
 
+  //obj->transform = Mat4::scale(Vec3(0.75f + (0.25f * sin(1.5f * GameState::get()->get_time()))));
+
   Render3DRequest req = {};
   req.scene = scene;
   req.quad_origin = Vec2(0.0f, 0.0f);
-  req.quad_size = GraphicsServer::get()->get_framebuffer_size();
+  req.quad_size = window_size;
 
   GraphicsServer::get()->draw_3d(req);
+
+  /* Also a little text prompt */
+  TextRenderRequest treq = {};
+  treq.bounding_box_origin = Vec2(0, 50.0f);
+  treq.bounding_box_size = Vec2(window_size.x, 50.0f);
+  treq.text = "Press Any Key";
+  {
+    float x = 0.75f + (0.25f * sin(1.5f * GameState::get()->get_time()));
+    treq.color = Vec4(x, x, x, 1.0f);
+  }
+  treq.size = 24.0f;
+  treq.font = GameState::get()->get_serif();
+  treq.center = true;
+  treq.center_vertical = false;
+  GraphicsServer::get()->draw_text(treq);
 }
 
 }

@@ -5,11 +5,14 @@
 #include <string>
 #include <vector>
 
+#include "launcher/launcher.h"
+
 namespace Launcher
 {
 
 class GameEntry
 {
+  std::string id;
   std::string title;
   std::string subtitle;
   std::string description;
@@ -17,8 +20,12 @@ class GameEntry
 
   bool favorite;
 public:
-  GameEntry(std::string _title, std::string _subtitle, std::string _description,
-    const std::vector<std::string> &_tags = {}, bool _favorite = false);
+  GameEntry(std::string _id, std::string _title, std::string _subtitle,
+    std::string _description, const std::vector<std::string> &_tags = {},
+    bool _favorite = false);
+
+  std::string
+  get_id() const;
 
   std::string
   get_title() const;
@@ -78,6 +85,8 @@ public:
 
 class GameSelectScreen : public Screen
 {
+  LauncherState *launcher;
+
   std::vector<GameEntry> games;
 
   std::vector<GameEntryCard> cards;
@@ -89,7 +98,7 @@ class GameSelectScreen : public Screen
   void
   entry_selected(GameEntry &entry);
 public:
-  GameSelectScreen();
+  GameSelectScreen(LauncherState *_launcher);
 
   ~GameSelectScreen();
 

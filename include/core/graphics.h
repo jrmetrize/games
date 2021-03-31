@@ -94,7 +94,11 @@ public:
 class SceneObject
 {
 public:
+  SceneObject();
+
   BoundMesh *mesh;
+
+  Mat4 transform;
 };
 
 class DirectionalLight
