@@ -239,6 +239,8 @@ struct Vertex
   Vec3 normal;
 
   Vertex(const Vec3 &_position, const Vec2 &_texture_coordinates);
+
+  Vertex(Vec3 _position, Vec2 _texture_coordinates, Vec3 _normal);
 };
 
 using VertexVector = std::vector<Vertex>;

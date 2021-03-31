@@ -1,12 +1,13 @@
 #include <string>
 #include <chrono>
 
-#include "core/audio.h"
-#include "core/graphics.h"
-#include "core/input.h"
-#include "core/state.h"
+#include <core/audio.h>
+#include <core/graphics.h>
+#include <core/input.h>
+#include <core/state.h>
 
 #include "launcher/game_select.h"
+#include "launcher/title.h"
 
 using namespace Launcher;
 
@@ -33,7 +34,8 @@ main(int argc, const char **argv)
   */
 
   GameSelectScreen *select_screen = new GameSelectScreen();
-  state->switch_to_screen(select_screen);
+  TitleScreen *title_screen = new TitleScreen();
+  state->switch_to_screen(title_screen);
 
   std::chrono::time_point<std::chrono::steady_clock> last_frame =
     std::chrono::steady_clock::now();

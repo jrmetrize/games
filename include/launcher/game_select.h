@@ -1,7 +1,7 @@
 #ifndef GAME_SELECT_H
 #define GAME_SELECT_H
 
-#include "core/screen.h"
+#include <core/screen.h>
 #include <string>
 #include <vector>
 
@@ -47,24 +47,33 @@ class GameEntryCard
   GameEntry &entry;
 
   Vec2 origin;
+  Vec2 offset;
   Vec2 size;
 
   bool highlighted;
   bool pressed;
+
+  std::function<void(GameEntry &)> target;
 public:
-  GameEntryCard(GameEntry &_entry);
+  GameEntryCard(GameEntry &_entry, std::function<void(GameEntry &)> _target);
 
   void
   set_origin(Vec2 _origin);
 
   void
+  set_offset(Vec2 _offset);
+
+  void
   set_size(Vec2 _size);
+
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
 
   void
   update();
 
   void
-  draw(Vec2 offset);
+  draw();
 };
 
 class GameSelectScreen : public Screen
@@ -76,6 +85,9 @@ class GameSelectScreen : public Screen
   Listener listener;
   float scroll_offset;
   float content_height;
+
+  void
+  entry_selected(GameEntry &entry);
 public:
   GameSelectScreen();
 

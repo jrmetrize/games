@@ -54,11 +54,54 @@ struct BoundMesh
   ~BoundMesh() = 0;
 };
 
+class Camera
+{
+  float fovy;
+  float aspect_ratio;
+  float clip_near;
+  float clip_far;
+
+  Vec3 position;
+  Vec3 direction;
+public:
+  Camera();
+
+  void
+  set_fovy(float _fovy);
+
+  void
+  set_aspect_ratio(float _aspect_ratio);
+
+  void
+  set_clip_near(float _clip_near);
+
+  void
+  set_clip_far(float _clip_far);
+
+  Vec3
+  get_position() const;
+
+  void
+  set_position(Vec3 _position);
+
+  void
+  set_direction(Vec3 _direction);
+
+  Mat4
+  get_view_projection_matrix() const;
+};
+
+class SceneObject
+{
+public:
+  BoundMesh *mesh;
+};
+
 class DirectionalLight
 {
 public:
   // TODO: make accessors and stuff
-  Vec3 position;
+  Vec3 direction;
 
   Vec3 color;
   float intensity;
@@ -74,20 +117,47 @@ class PointLight
 
 };
 
-struct Camera
+class Scene3D
 {
-  float fovy;
-  float aspect_ratio;
-  float clip_near;
-  float clip_far;
+  Camera *camera;
 
-  Vec3 position;
-  Vec3 direction;
+  Vec3 ambient_color;
 
-  Camera();
+  std::vector<SceneObject *> objects;
+  std::vector<DirectionalLight *> lights;
+public:
+  Scene3D(Camera *_camera);
 
-  Mat4
-  get_view_projection_matrix();
+  ~Scene3D();
+
+  const Camera *
+  get_camera() const;
+
+  Vec3
+  get_ambient_color() const;
+
+  void
+  set_ambient_color(Vec3 _ambient_color);
+
+  std::vector<SceneObject *> &
+  get_objects();
+
+  const std::vector<SceneObject *> &
+  get_objects() const;
+
+  std::vector<DirectionalLight *> &
+  get_lights();
+
+  const std::vector<DirectionalLight *> &
+  get_lights() const;
+};
+
+struct Render3DRequest
+{
+  Vec2 quad_origin;
+  Vec2 quad_size;
+
+  Scene3D *scene;
 };
 
 class GraphicsLayer
@@ -112,7 +182,7 @@ public:
   bind_texture(Texture *tex) = 0;
 
   virtual BoundMesh *
-  bind_mesh(Mesh *mesh) = 0;
+  bind_mesh(Mesh *mesh, uint32_t instances = 1) = 0;
 
   virtual void
   begin_render() = 0;
@@ -133,6 +203,9 @@ public:
 
   virtual void
   mask_rect(Vec2 origin, Vec2 size) = 0;
+
+  virtual void
+  draw_3d(const Render3DRequest &scene_request) = 0;
 };
 
 struct TextRenderRequest
@@ -223,6 +296,9 @@ public:
 
   void
   draw_stencil_rect(Vec2 origin, Vec2 size);
+
+  void
+  draw_3d(const Render3DRequest &scene_request);
 };
 
 #endif

@@ -24,6 +24,7 @@ set(GAME_SOURCES
 
   src/launcher/game_select.cpp
   src/launcher/main.cpp
+  src/launcher/title.cpp
 )
 
 if(WIN32)

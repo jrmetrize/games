@@ -45,6 +45,116 @@ BoundMesh::~BoundMesh()
 
 }
 
+Camera::Camera() :
+  fovy(3.14159f / 3.0f), aspect_ratio(16.0f / 9.0f), clip_near(0.1f), clip_far(100.0f),
+  position(), direction(Vec3(1, 0, 0))
+{
+
+}
+
+void
+Camera::set_fovy(float _fovy)
+{
+  fovy = _fovy;
+}
+
+void
+Camera::set_aspect_ratio(float _aspect_ratio)
+{
+  aspect_ratio = _aspect_ratio;
+}
+
+void
+Camera::set_clip_near(float _clip_near)
+{
+  clip_near = _clip_near;
+}
+
+void
+Camera::set_clip_far(float _clip_far)
+{
+  clip_far = _clip_far;
+}
+
+Vec3
+Camera::get_position() const
+{
+  return position;
+}
+
+void
+Camera::set_position(Vec3 _position)
+{
+  position = _position;
+}
+
+void
+Camera::set_direction(Vec3 _direction)
+{
+  direction = _direction;
+}
+
+Mat4
+Camera::get_view_projection_matrix() const
+{
+  Mat4 projection = Mat4::projection(fovy, aspect_ratio, clip_near, clip_far);
+  Mat4 view = Mat4::lookat(position, position + direction, Vec3(0, 1, 0));
+  return projection * view;
+}
+
+Scene3D::Scene3D(Camera *_camera) :
+  camera(_camera), ambient_color(), objects(), lights()
+{
+
+}
+
+Scene3D::~Scene3D()
+{
+
+}
+
+const Camera *
+Scene3D::get_camera() const
+{
+  return camera;
+}
+
+Vec3
+Scene3D::get_ambient_color() const
+{
+  return ambient_color;
+}
+
+void
+Scene3D::set_ambient_color(Vec3 _ambient_color)
+{
+  ambient_color = _ambient_color;
+}
+
+std::vector<SceneObject *> &
+Scene3D::get_objects()
+{
+  return objects;
+}
+
+const std::vector<SceneObject *> &
+Scene3D::get_objects() const
+{
+  return objects;
+}
+
+std::vector<DirectionalLight *> &
+Scene3D::get_lights()
+{
+  return lights;
+}
+
+const std::vector<DirectionalLight *> &
+Scene3D::get_lights() const
+{
+  return lights;
+}
+
 void
 GraphicsLayer::set_texture_binding(Texture *tex, void *binding)
 {
@@ -60,21 +170,6 @@ GraphicsLayer::get_texture_binding(const Texture *tex)
 GraphicsLayer::~GraphicsLayer()
 {
 
-}
-
-Camera::Camera() :
-  fovy(3.14159f / 3.0f), aspect_ratio(16.0f / 9.0f), clip_near(0.1f), clip_far(100.0f),
-  position(), direction(Vec3(1, 0, 0))
-{
-
-}
-
-Mat4
-Camera::get_view_projection_matrix()
-{
-  Mat4 projection = Mat4::projection(fovy, aspect_ratio, clip_near, clip_far);
-  Mat4 view = Mat4::lookat(position, position + direction, Vec3(0, 1, 0));
-  return projection * view;
 }
 
 GraphicsServer * GraphicsServer::instance = nullptr;
@@ -406,4 +501,10 @@ void
 GraphicsServer::draw_stencil_rect(Vec2 origin, Vec2 size)
 {
   backend->mask_rect(origin, size);
+}
+
+void
+GraphicsServer::draw_3d(const Render3DRequest &scene_request)
+{
+  backend->draw_3d(scene_request);
 }

@@ -63,8 +63,10 @@ GameEntry::get_game_list()
   return games;
 }
 
-GameEntryCard::GameEntryCard(GameEntry &_entry) :
-  entry(_entry), highlighted(false), pressed(false)
+GameEntryCard::GameEntryCard(GameEntry &_entry,
+  std::function<void(GameEntry &)> _target) :
+  entry(_entry), target(_target), highlighted(false), pressed(false), origin(),
+  offset(), size()
 {
 
 }
@@ -76,32 +78,60 @@ GameEntryCard::set_origin(Vec2 _origin)
 }
 
 void
+GameEntryCard::set_offset(Vec2 _offset)
+{
+  offset = _offset;
+}
+
+void
 GameEntryCard::set_size(Vec2 _size)
 {
   size = _size;
 }
 
 void
+GameEntryCard::mouse_pressed(MouseButton button, bool button_pressed)
+{
+  if (highlighted && button_pressed)
+    pressed = true;
+
+  {
+    bool contains_mouse = InputMonitor::get()->get_mouse_position().inside_rect(
+      origin + offset, size);
+    if (pressed && !button_pressed && contains_mouse)
+    {
+      target(entry);
+    }
+  }
+
+  if (!button_pressed)
+    pressed = false;
+}
+
+void
 GameEntryCard::update()
 {
-  /*
   if (!InputMonitor::get()->is_left_mouse_down())
   {
     bool prev_highlighted = highlighted;
     highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin, size);
+      origin + offset, size);
     if (prev_highlighted == false && highlighted)
     {
-      play_highlight_sound();
+      //play_highlight_sound();
     }
   }
-  */
 }
 
 void
-GameEntryCard::draw(Vec2 offset)
+GameEntryCard::draw()
 {
-  GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_GRAY);
+  if (pressed)
+    GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_SELECT);
+  else if (highlighted)
+    GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_HIGHLIGHT);
+  else
+    GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_GRAY);
 
   TextRenderRequest req = {};
   req.bounding_box_origin = origin + offset;
@@ -120,7 +150,9 @@ GameSelectScreen::GameSelectScreen() :
   scroll_offset(0.0), content_height(0.0f)
 {
   for (GameEntry &entry : games)
-    cards.push_back(GameEntryCard(entry));
+    cards.push_back(GameEntryCard(entry,
+      std::bind(&GameSelectScreen::entry_selected, this,
+      std::placeholders::_1)));
 
   listener.mouse_button_handle = std::bind(&GameSelectScreen::mouse_pressed, this,
     std::placeholders::_1, std::placeholders::_2);
@@ -131,6 +163,14 @@ GameSelectScreen::GameSelectScreen() :
 GameSelectScreen::~GameSelectScreen()
 {
 
+}
+
+void
+GameSelectScreen::entry_selected(GameEntry &entry)
+{
+  /* For now, just launch the game instead of going to a detail page. */
+  /* TODO: Instead of a dumb if statement, do this smarter... maybe
+     have a 'launch' function in each entry. */
 }
 
 void
@@ -184,8 +224,8 @@ GameSelectScreen::to_disappear()
 void
 GameSelectScreen::mouse_pressed(MouseButton button, bool pressed)
 {
-  /*root.mouse_pressed(button, pressed);
-  back_button->mouse_pressed(button, pressed);*/
+  for (GameEntryCard &card : cards)
+    card.mouse_pressed(button, pressed);
 }
 
 void
@@ -200,6 +240,9 @@ GameSelectScreen::mouse_scrolled(Vec2 scroll)
     scroll_offset = 0.0f;
   else if (scroll_offset > content_height - window_size.y)
     scroll_offset = content_height - window_size.y;
+
+  for (GameEntryCard &card : cards)
+    card.set_offset(Vec2(0, scroll_offset));
 }
 
 void
@@ -213,7 +256,7 @@ void
 GameSelectScreen::draw()
 {
   for (uint32_t i = 0; i < cards.size(); ++i)
-    cards[i].draw(Vec2(0, scroll_offset));
+    cards[i].draw();
 }
 
 }

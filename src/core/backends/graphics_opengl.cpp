@@ -214,12 +214,12 @@ main()
   vec3 albedo = texture(albedo_tex, uv).xyz;
 
   vec3 camera_dir = normalize(camera_pos - pixel_pos);
-  vec3 halfway = normalize(light_dir + camera_dir);
+  vec3 halfway = normalize(-light_dir + camera_dir);
 
-  float diffuse = max(dot(light_dir, normal), 0);
+  float diffuse = max(dot(-light_dir, normal), 0);
   vec3 diffuse_color = light_color * diffuse;
 
-  float specular = pow(max(dot(halfway, normal), 0), 16);
+  float specular = pow(max(dot(halfway, normal), 0), 256);
   vec3 specular_color = light_color * specular;
 
   frag_color = vec4((diffuse_color + specular_color) * albedo, 1);
@@ -310,6 +310,28 @@ main()
 }
 
   )---";
+
+  const std::string ambient_fragment = R"---(
+
+#version 330 core
+out vec4 frag_color;
+
+in vec2 uv;
+
+uniform sampler2D position;
+uniform sampler2D normal_tex;
+uniform sampler2D albedo_tex;
+
+uniform vec3 light_color;
+
+void
+main()
+{
+  vec3 albedo = texture(albedo_tex, uv).xyz;
+  frag_color = vec4(light_color * albedo, 1);
+}
+
+  )---";
 }
 
 static void
@@ -372,7 +394,7 @@ GraphicsLayerOpenGL::GBuffer::GBuffer(int width, int height)
 
   glGenTextures(1, &normal);
   glBindTexture(GL_TEXTURE_2D, normal);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -587,15 +609,23 @@ GraphicsLayerOpenGL::Shader::bind_uniform(const GBuffer *x, std::string name)
   glUniform1i(glGetUniformLocation(program, "albedo_tex"), 2);
 }
 
-GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
+GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh,
+  uint32_t instances)
 {
   mesh = _mesh;
 
   glGenBuffers(1, &vbo);
+  glGenBuffers(1, &instance_vbo);
   glGenBuffers(1, &ebo);
   glGenVertexArrays(1, &vao);
 
   glBindVertexArray(vao);
+
+#if 0
+  glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+  glBufferData(GL_ARRAY_BUFFER, instances * sizeof(Mat4),
+    nullptr, GL_DYNAMIC_DRAW);
+#endif
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, mesh->vertices.size() * sizeof(Vertex),
@@ -613,6 +643,27 @@ GraphicsLayerOpenGL::MeshBinding::MeshBinding(Mesh *_mesh)
 
   glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
   glEnableVertexAttribArray(2);
+
+#if 0
+  /* We need to bind the 4x4 instance transform as four separate 4 vectors. */
+  glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+
+  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(Mat4), (void *)0);
+  glEnableVertexAttribArray(4);
+  glVertexAttribDivisor(4, 1);
+
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Mat4), (void *)4);
+  glEnableVertexAttribArray(5);
+  glVertexAttribDivisor(5, 1);
+
+  glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Mat4), (void *)8);
+  glEnableVertexAttribArray(6);
+  glVertexAttribDivisor(6, 1);
+
+  glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Mat4), (void *)12);
+  glEnableVertexAttribArray(7);
+  glVertexAttribDivisor(7, 1);
+#endif
 }
 
 GraphicsLayerOpenGL::MeshBinding::~MeshBinding()
@@ -650,7 +701,7 @@ GraphicsLayerOpenGL::MeshBinding::draw(Shader *shader)
     }
   }
 }
-#include <iostream>
+
 GraphicsLayerOpenGL::GraphicsLayerOpenGL()
 {
   if (glfwInit() != GLFW_TRUE)
@@ -697,6 +748,8 @@ GraphicsLayerOpenGL::GraphicsLayerOpenGL()
     LightingShaderSources::point_fragment);
   spot_light_shader = new Shader(LightingShaderSources::vertex,
     LightingShaderSources::spot_fragment);
+  ambient_light_shader = new Shader(LightingShaderSources::vertex,
+    LightingShaderSources::ambient_fragment);
 
   color_shader = new Shader(ColorShaderSources::vertex,
     ColorShaderSources::fragment);
@@ -714,6 +767,7 @@ GraphicsLayerOpenGL::~GraphicsLayerOpenGL()
   delete directional_light_shader;
   delete point_light_shader;
   delete spot_light_shader;
+  delete ambient_light_shader;
 
   delete color_shader;
   delete texture_shader;
@@ -742,9 +796,9 @@ GraphicsLayerOpenGL::bind_texture(Texture *tex)
 }
 
 BoundMesh *
-GraphicsLayerOpenGL::bind_mesh(Mesh *mesh)
+GraphicsLayerOpenGL::bind_mesh(Mesh *mesh, uint32_t instances)
 {
-  MeshBinding *binding = new MeshBinding(mesh);
+  MeshBinding *binding = new MeshBinding(mesh, instances);
   return binding;
 }
 
@@ -752,111 +806,11 @@ void
 GraphicsLayerOpenGL::begin_render()
 {
   Vec2 viewport_size = graphics_server->get_framebuffer_size(false);
-  Vec2 viewport_size_scaled = graphics_server->get_framebuffer_size();
-
-  // TODO: proper api for managing 3d renders
-#if 0
-  gbuffer->make_active();
-  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
-  glClearColor(0, 0, 0, 1);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glEnable(GL_DEPTH_TEST);
-
-  {
-    // TODO: don't temporarily render random cubes!
-    if (m == nullptr)
-    {
-      c.position = Vec3(-8, 0, 0);
-      c.direction = Vec3(1, 0, 0);
-      c.clip_near = 0.1f;
-      c.clip_far = 100.0f;
-
-      ResourceBundle *globals = GameState::get()->get_globals();
-      Scene *sc = (Scene *)globals->get_resource("test_scene");
-      Mesh *d = sc->get_mesh();
-      m = graphics_server->bind(d);
-    }
-    if (InputMonitor::get()->is_key_down(KeyW))
-      c.position += Vec3(0.01, 0, 0);
-    if (InputMonitor::get()->is_key_down(KeyS))
-      c.position += Vec3(-0.01, 0, 0);
-    if (InputMonitor::get()->is_key_down(KeyA))
-      c.position += Vec3(0, 0, -0.01);
-    if (InputMonitor::get()->is_key_down(KeyD))
-      c.position += Vec3(0, 0, 0.01);
-    if (InputMonitor::get()->is_key_down(KeySpace))
-      c.position += Vec3(0, 0.01, 0);
-    if (InputMonitor::get()->is_key_down(KeyN))
-      c.position += Vec3(0, -0.01, 0);
-
-    model_shader->bind_uniform(Mat4::identity(), "model");
-    model_shader->bind_uniform(c.get_view_projection_matrix(), "view_proj");
-    ((MeshBinding *)m)->draw(model_shader);
-  }
-
-  glDisable(GL_DEPTH_TEST);
-
-  /* Now that the gbuffer is full, do the lighting pass */
-  {
-    // TODO: proper api for managing 3d renders
-    target_3d->make_active();
-    glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
-    glClearColor(0, 0, 0, 1);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE);
-
-    point_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
-      * Mat3::translate(Vec2(0, 0))
-      * Mat3::scale(viewport_size_scaled), "transform");
-    point_light_shader->bind_uniform(gbuffer, "x");
-    point_light_shader->bind_uniform(Vec3(0, 5, 0), "light_pos");
-    point_light_shader->bind_uniform(Vec3(1, 1, 1), "light_color");
-    point_light_shader->bind_uniform(c.position, "camera_pos");
-    ((MeshBinding *)graphics_server->get_quad())->draw(point_light_shader);
-
-    directional_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
-      * Mat3::translate(Vec2(0, 0))
-      * Mat3::scale(viewport_size_scaled), "transform");
-    directional_light_shader->bind_uniform(gbuffer, "x");
-    directional_light_shader->bind_uniform(Vec3(3, -5, 0).normalized(), "light_dir");
-    directional_light_shader->bind_uniform(Vec3(1, 0, 0), "light_color");
-    directional_light_shader->bind_uniform(c.position, "camera_pos");
-    ((MeshBinding *)graphics_server->get_quad())->draw(directional_light_shader);
-
-    /*
-    spot_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
-      * Mat3::translate(Vec2(0, 0))
-      * Mat3::scale(Vec2(1280, 720)), "transform");
-    spot_light_shader->bind_uniform(gbuffer, "x");
-    spot_light_shader->bind_uniform(Vec3(-5, 0, 0), "light_pos");
-    spot_light_shader->bind_uniform(Vec3(1, 0, 0).normalized(), "light_dir");
-    spot_light_shader->bind_uniform(0.98, "light_angle");
-    spot_light_shader->bind_uniform(Vec3(0, 0, 1), "light_color");
-    spot_light_shader->bind_uniform(c.position, "camera_pos");
-    ((MeshBinding *)graphics_server->get_quad())->draw(spot_light_shader);
-    */
-
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_BLEND);
-  }
-#endif
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-/*
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
-    * Mat3::translate(Vec2(0, 0))
-    * Mat3::scale(viewport_size_scaled), "transform");
-  texture_shader->bind_uniform(target_3d, "sampler");
-  ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);
-  */
 }
 
 void
@@ -924,4 +878,96 @@ GraphicsLayerOpenGL::mask_rect(Vec2 origin, Vec2 size)
 
   glStencilMask(0x00);
   glStencilFunc(GL_EQUAL, 1, 0xFF);
+}
+
+void
+GraphicsLayerOpenGL::draw_3d(const Render3DRequest &scene_request)
+{
+  Vec2 viewport_size = graphics_server->get_framebuffer_size(false);
+  Vec2 viewport_size_scaled = graphics_server->get_framebuffer_size();
+
+  /* Setup the gbuffer and bind it */
+  gbuffer->make_active();
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+
+  /* Render geometry */
+  model_shader->bind_uniform(scene_request.scene->get_camera()->get_view_projection_matrix(),
+    "view_proj");
+
+  for (const SceneObject *obj : scene_request.scene->get_objects())
+  {
+    model_shader->bind_uniform(Mat4::identity(), "model");
+    ((MeshBinding *)obj->mesh)->draw(model_shader);
+  }
+
+  glDisable(GL_DEPTH_TEST);
+
+  /* Now that the gbuffer is full, do the lighting pass */
+  target_3d->make_active();
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_ONE, GL_ONE);
+
+  for (const DirectionalLight *light : scene_request.scene->get_lights())
+  {
+    directional_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+      * Mat3::translate(Vec2(0, 0))
+      * Mat3::scale(viewport_size_scaled), "transform");
+    directional_light_shader->bind_uniform(gbuffer, "x");
+    directional_light_shader->bind_uniform(light->direction, "light_dir");
+    directional_light_shader->bind_uniform(light->color, "light_color");
+    directional_light_shader->bind_uniform(scene_request.scene->get_camera()->get_position(),
+      "camera_pos");
+    ((MeshBinding *)graphics_server->get_quad())->draw(directional_light_shader);
+  }
+
+  ambient_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(Vec2(0, 0))
+    * Mat3::scale(viewport_size_scaled), "transform");
+  ambient_light_shader->bind_uniform(gbuffer, "x");
+  ambient_light_shader->bind_uniform(scene_request.scene->get_ambient_color(), "light_color");
+  ((MeshBinding *)graphics_server->get_quad())->draw(ambient_light_shader);
+
+#if 0
+  point_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(Vec2(0, 0))
+    * Mat3::scale(viewport_size_scaled), "transform");
+  point_light_shader->bind_uniform(gbuffer, "x");
+  point_light_shader->bind_uniform(Vec3(0, 5, 0), "light_pos");
+  point_light_shader->bind_uniform(Vec3(1, 1, 1), "light_color");
+  point_light_shader->bind_uniform(c.position, "camera_pos");
+  ((MeshBinding *)graphics_server->get_quad())->draw(point_light_shader);
+
+  /*
+  spot_light_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(Vec2(0, 0))
+    * Mat3::scale(Vec2(1280, 720)), "transform");
+  spot_light_shader->bind_uniform(gbuffer, "x");
+  spot_light_shader->bind_uniform(Vec3(-5, 0, 0), "light_pos");
+  spot_light_shader->bind_uniform(Vec3(1, 0, 0).normalized(), "light_dir");
+  spot_light_shader->bind_uniform(0.98, "light_angle");
+  spot_light_shader->bind_uniform(Vec3(0, 0, 1), "light_color");
+  spot_light_shader->bind_uniform(c.position, "camera_pos");
+  ((MeshBinding *)graphics_server->get_quad())->draw(spot_light_shader);
+  */
+#endif
+
+  /* Finally, render to the screen */
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
+
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  glDisable(GL_BLEND);
+
+  texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
+    * Mat3::translate(Vec2(0, 0))
+    * Mat3::scale(viewport_size_scaled), "transform");
+  texture_shader->bind_uniform(target_3d, "sampler");
+  ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);
 }

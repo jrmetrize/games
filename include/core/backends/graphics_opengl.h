@@ -95,11 +95,12 @@ class GraphicsLayerOpenGL : public GraphicsLayer
   struct MeshBinding : public BoundMesh
   {
     GLuint vbo;
+    GLuint instance_vbo;
     GLuint ebo;
 
     GLuint vao;
 
-    MeshBinding(Mesh *_mesh);
+    MeshBinding(Mesh *_mesh, uint32_t instances);
 
     ~MeshBinding();
 
@@ -117,6 +118,7 @@ class GraphicsLayerOpenGL : public GraphicsLayer
   Shader *directional_light_shader;
   Shader *point_light_shader;
   Shader *spot_light_shader;
+  Shader *ambient_light_shader;
 
   // 2D
   Shader *color_shader;
@@ -137,7 +139,7 @@ public:
   bind_texture(Texture *tex);
 
   BoundMesh *
-  bind_mesh(Mesh *mesh);
+  bind_mesh(Mesh *mesh, uint32_t instances = 1);
 
   void
   begin_render();
@@ -157,6 +159,9 @@ public:
 
   void
   mask_rect(Vec2 origin, Vec2 size);
+
+  void
+  draw_3d(const Render3DRequest &scene_request);
 };
 
 #endif
