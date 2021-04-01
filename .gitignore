@@ -28,3 +28,5 @@ resource_importer.vcxproj.user
 timestamp_cache.json
 deps/build
 *.blend1
+raw
+*.rbz
