@@ -10,10 +10,19 @@
 #include "launcher/launcher.h"
 #include "launcher/title.h"
 
+#include "z2d/z2d.hh"
+
 using namespace Launcher;
+
+LauncherGame::~LauncherGame()
+{
+
+}
 
 class LauncherStateImpl : public LauncherState
 {
+  LauncherGame *current_game;
+
   TitleScreen *title_screen;
   GameSelectScreen *select_screen;
 public:
@@ -47,6 +56,12 @@ public:
     /* For now, just launch the game instead of going to a detail page. */
     /* TODO: Instead of a dumb if statement, do this smarter... maybe
        have a 'launch' function in each entry. */
+    if (game == "z2d")
+    {
+      current_game = new Z2D::Z2DState();
+    }
+    current_game->load();
+    current_game->start();
   }
 };
 

@@ -29,6 +29,22 @@ namespace Launcher
     virtual void
     launch_game(std::string game) = 0;
   };
+
+  class LauncherGame
+  {
+  public:
+    virtual
+    ~LauncherGame() = 0;
+
+    virtual void
+    load() = 0;
+
+    virtual void
+    start() = 0;
+
+    virtual void
+    close() = 0;
+  };
 }
 
 #endif

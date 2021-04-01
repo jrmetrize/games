@@ -61,7 +61,7 @@ GameEntry::get_game_list()
 {
   std::vector<GameEntry> games = {
     GameEntry("fp2d", "Agorafold", "First-person 2D adventure game", ""),
-    GameEntry("2dz", "2D Zeldalike (WIP Title)", "", ""),
+    GameEntry("z2d", "2D Zeldalike (WIP Title)", "", ""),
     GameEntry("ps1h", "PS1 Horror (WIP Title)", "", ""),
     GameEntry("space_energy", "Space Energy (WIP Title)", "", "")
   };

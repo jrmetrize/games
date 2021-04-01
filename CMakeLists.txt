@@ -25,6 +25,8 @@ set(GAME_SOURCES
   src/launcher/game_select.cpp
   src/launcher/main.cpp
   src/launcher/title.cpp
+
+  src/z2d/z2d.cc
 )
 
 if(WIN32)
