@@ -34,6 +34,9 @@ class GraphicsLayerOpenGL : public GraphicsLayer
 
     void
     make_active();
+
+    void
+    resize(int width, int height);
   };
 
   struct RenderTarget
@@ -48,6 +51,9 @@ class GraphicsLayerOpenGL : public GraphicsLayer
 
     void
     make_active();
+
+    void
+    resize(int width, int height);
   };
 
   struct Shader
@@ -131,6 +137,9 @@ public:
 
   GLFWwindow *
   get_window();
+
+  void
+  window_resize(Vec2 size);
 
   void
   set_graphics_server(GraphicsServer *_graphics_server);

@@ -445,6 +445,22 @@ GraphicsLayerOpenGL::GBuffer::make_active()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+void
+GraphicsLayerOpenGL::GBuffer::resize(int width, int height)
+{
+  glBindTexture(GL_TEXTURE_2D, position);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+  glBindTexture(GL_TEXTURE_2D, normal);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+
+  glBindTexture(GL_TEXTURE_2D, albedo);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+  glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+}
+
 GraphicsLayerOpenGL::RenderTarget::RenderTarget(int width, int height)
 {
   glGenFramebuffers(1, &framebuffer);
@@ -488,6 +504,16 @@ GraphicsLayerOpenGL::RenderTarget::make_active()
   glViewport(0, 0, int(viewport_size.x), int(viewport_size.y));
   glClearColor(0, 0, 0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void
+GraphicsLayerOpenGL::RenderTarget::resize(int width, int height)
+{
+  glBindTexture(GL_TEXTURE_2D, target_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+  glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
 }
 
 GraphicsLayerOpenGL::Shader::Shader(const std::string &vertex_shader_source,
@@ -780,6 +806,16 @@ GLFWwindow *
 GraphicsLayerOpenGL::get_window()
 {
   return window;
+}
+
+void
+GraphicsLayerOpenGL::window_resize(Vec2 size)
+{
+  int scaled_width;
+  int scaled_height;
+  glfwGetFramebufferSize(window, &scaled_width, &scaled_height);
+  gbuffer->resize(scaled_width, scaled_height);
+  target_3d->resize(scaled_width, scaled_height);
 }
 
 void

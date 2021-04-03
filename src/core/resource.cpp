@@ -243,12 +243,12 @@ FontFace::FontFace(std::string path) :
     // we need to convert these to 8 bit gray values
     if (true)
     {
-      for (unsigned int i = 0; i < glyph.bitmap_width; ++i)
+      for (unsigned int x = 0; x < glyph.bitmap_width; ++x)
       {
         for (unsigned int j = 0; j < glyph.bitmap_height; ++j)
         {
-          int16_t gray_16 = reinterpret_cast<uint16_t *>(font_face->glyph->bitmap.buffer)[i + (glyph.bitmap_width * j)];
-          glyph.bitmap_data[i + (glyph.bitmap_width * j)] = (gray_16 + 32768) >> 8;
+          int16_t gray_16 = reinterpret_cast<uint16_t *>(font_face->glyph->bitmap.buffer)[x + (glyph.bitmap_width * j)];
+          glyph.bitmap_data[x + (glyph.bitmap_width * j)] = (gray_16 + 32768) >> 8;
         }
       }
     }

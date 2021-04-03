@@ -10,6 +10,8 @@
 #include "launcher/launcher.h"
 #include "launcher/title.h"
 
+#include "img_editor/img_editor.hh"
+
 #include "z2d/z2d.hh"
 
 using namespace Launcher;
@@ -56,7 +58,11 @@ public:
     /* For now, just launch the game instead of going to a detail page. */
     /* TODO: Instead of a dumb if statement, do this smarter... maybe
        have a 'launch' function in each entry. */
-    if (game == "z2d")
+    if (game == "img_editor")
+    {
+      current_game = new ImgEditor::ImgEditorState();
+    }
+    else if (game == "z2d")
     {
       current_game = new Z2D::Z2DState();
     }

@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Debug)
 
 find_package(glfw3 3.3 REQUIRED PATHS ${CMAKE_CURRENT_SOURCE_DIR}/deps/build/lib)
-set(freetype_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/build/lib/cmake/freetype)
-find_package(Freetype REQUIRED)
 
 set(GAME_SOURCES
   src/core/backends/graphics_opengl.cpp
@@ -25,6 +23,8 @@ set(GAME_SOURCES
   src/launcher/game_select.cpp
   src/launcher/main.cpp
   src/launcher/title.cpp
+
+  src/img_editor/img_editor.cc
 
   src/z2d/z2d.cc
 )
@@ -114,7 +114,11 @@ if(WIN32)
   )
 else()
   target_link_libraries(resource_importer
-    ${FREETYPE_LIBRARIES}
+    png
+    harfbuzz
+    bz2
+    brotlidec
+    freetype
     vorbis
     vorbisenc
     ogg

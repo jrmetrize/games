@@ -262,6 +262,7 @@ GraphicsServer::get_scale() const
 void
 GraphicsServer::window_resize(Vec2 size)
 {
+  backend->window_resize(size);
   if (current_screen != nullptr)
     current_screen->resize(size);
 }

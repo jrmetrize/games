@@ -180,6 +180,9 @@ public:
   get_window() = 0;
 
   virtual void
+  window_resize(Vec2 size) = 0;
+
+  virtual void
   set_graphics_server(GraphicsServer *_graphics_server) = 0;
 
   virtual void

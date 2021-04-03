@@ -41,3 +41,9 @@ At the moment, the code for all games will be included in the executable for the
 - Some tools (which ones?)
 - Fold machine
 - Outline story and progression
+
+## Image Editor
+A single screen image editor for pixel art.
+
+### Design
+The editor should work in terms of "buffers" like vim. The left side of the screen will display the image/workspace, and the right side will show the color palette. The bottom will show the file info, which is the file name of the resource bundle to save/load and the name of the resource within the bundle.
