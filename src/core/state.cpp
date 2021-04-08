@@ -4,13 +4,6 @@
 #include "core/resource.h"
 #include "core/util.h"
 #include "core/screen.h"
-/*
-#include "screens/level_editor_screen.h"
-#include "screens/level_screen.h"
-#include "screens/options_screen.h"
-#include "screens/splash_screen.h"
-#include "screens/title_screen.h"
-*/
 
 DialoguePoint::DialoguePoint()
 {
@@ -106,6 +99,40 @@ PropertyData::from_json(const json &spec)
   return data;
 }
 
+BoundFont::BoundFont(FontFace *_face) :
+  face(_face), textures()
+{
+  face->generate_textures();
+  std::string chars = face->get_chars();
+  for (char c : chars)
+  {
+    Texture *t = face->get_texture(c);
+    BoundTexture *bound = GraphicsServer::get()->bind(t);
+    textures[c] = bound;
+  }
+}
+
+BoundFont::~BoundFont()
+{
+  std::string chars = face->get_chars();
+  for (char c : chars)
+  {
+    delete textures[c];
+  }
+}
+
+FontFace *
+BoundFont::get_font()
+{
+  return face;
+}
+
+BoundTexture *
+BoundFont::get_bound_texture(char c)
+{
+  return textures[c];
+}
+
 GameState * GameState::instance = nullptr;
 
 GameState::GameState() :
@@ -117,6 +144,9 @@ GameState::GameState() :
 {
   font_bundle = new ResourceBundle(local_to_absolute_path("resources/fonts.rbz"));
   global_bundle = new ResourceBundle(local_to_absolute_path("resources/global.rbz"));
+
+  serif = new BoundFont(reinterpret_cast<FontFace *>(font_bundle->get_resource("serif")));
+  sans = new BoundFont(reinterpret_cast<FontFace *>(font_bundle->get_resource("sans")));
 
   {
     json settings_data =
@@ -137,6 +167,10 @@ GameState::GameState() :
 GameState::~GameState()
 {
   delete font_bundle;
+  delete global_bundle;
+
+  delete serif;
+  delete sans;
 }
 
 void
@@ -175,16 +209,16 @@ GameState::get_time() const
   return float(milliseconds) / 1000.0f;
 }
 
-FontFace *
+BoundFont *
 GameState::get_sans()
 {
-  return reinterpret_cast<FontFace *>(font_bundle->get_resource("sans"));
+  return sans;
 }
 
-FontFace *
+BoundFont *
 GameState::get_serif()
 {
-  return reinterpret_cast<FontFace *>(font_bundle->get_resource("serif"));
+  return serif;
 }
 
 ResourceBundle *

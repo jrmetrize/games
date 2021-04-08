@@ -3,6 +3,7 @@
 
 #include <launcher/launcher.h>
 #include <core/screen.h>
+#include <core/graphics.h>
 
 namespace ImgEditor
 {
@@ -29,6 +30,7 @@ public:
 
 class ImgEditorScreen : public Screen
 {
+  Texture *palette;
 public:
   ImgEditorScreen();
 

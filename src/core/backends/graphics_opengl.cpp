@@ -340,13 +340,13 @@ window_resize_callback(GLFWwindow *window, int width, int height)
   GraphicsServer::get()->window_resize(Vec2(width, height));
 }
 
-GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture_data)
-  : texture_data(_texture_data)
+GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture)
+  : BoundTexture(_texture)
 {
-  unsigned int width = texture_data->get_width();
-  unsigned int height = texture_data->get_height();
-  unsigned int channels = texture_data->get_channels();
-  const unsigned char *data = texture_data->get_data();
+  unsigned int width = _texture->get_width();
+  unsigned int height = _texture->get_height();
+  unsigned int channels = _texture->get_channels();
+  const unsigned char *data = _texture->get_data();
 
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
@@ -376,6 +376,18 @@ GraphicsLayerOpenGL::TextureBinding::TextureBinding(Texture *_texture_data)
 GraphicsLayerOpenGL::TextureBinding::~TextureBinding()
 {
   glDeleteTextures(1, &texture);
+}
+
+void
+GraphicsLayerOpenGL::TextureBinding::set_filtering(Texture::Filtering _filtering)
+{
+  filtering = _filtering;
+}
+
+void
+GraphicsLayerOpenGL::TextureBinding::make_active() const
+{
+  glBindTexture(GL_TEXTURE_2D, texture);
 }
 
 GraphicsLayerOpenGL::GBuffer::GBuffer(int width, int height)
@@ -604,7 +616,7 @@ GraphicsLayerOpenGL::Shader::bind_uniform(const TextureBinding *x, std::string n
 {
   glUseProgram(program);
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, x->texture);
+  x->make_active();
   glUniform1i(glGetUniformLocation(program, name.c_str()), 0);
 }
 
@@ -824,11 +836,11 @@ GraphicsLayerOpenGL::set_graphics_server(GraphicsServer *_graphics_server)
   graphics_server = _graphics_server;
 }
 
-void
+BoundTexture *
 GraphicsLayerOpenGL::bind_texture(Texture *tex)
 {
   TextureBinding *binding = new TextureBinding(tex);
-  set_texture_binding(tex, binding);
+  return binding;
 }
 
 BoundMesh *
@@ -863,21 +875,21 @@ GraphicsLayerOpenGL::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 
 void
 GraphicsLayerOpenGL::draw_texture_rect(Vec2 origin, Vec2 size,
-    const Texture &texture)
+    const BoundTexture &texture)
 {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   texture_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
-  texture_shader->bind_uniform((TextureBinding *)get_texture_binding(&texture),
+  texture_shader->bind_uniform((TextureBinding *)(&texture),
     "sampler");
   ((MeshBinding *)graphics_server->get_quad())->draw(texture_shader);
 }
 
 void
 GraphicsLayerOpenGL::draw_character(Vec2 origin, Vec2 size, Vec4 color,
-  const Texture &sdf)
+  const BoundTexture &sdf)
 {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -885,7 +897,7 @@ GraphicsLayerOpenGL::draw_character(Vec2 origin, Vec2 size, Vec4 color,
   text_shader->bind_uniform(graphics_server->get_pixel_to_screen_transform()
     * Mat3::translate(origin)
     * Mat3::scale(size), "transform");
-  text_shader->bind_uniform((TextureBinding *)get_texture_binding(&sdf), "sdf");
+  text_shader->bind_uniform((TextureBinding *)(&sdf), "sdf");
   ((MeshBinding *)graphics_server->get_quad())->draw(text_shader);
 }
 

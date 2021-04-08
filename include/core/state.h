@@ -103,6 +103,24 @@ public:
   get_json() const;
 };
 
+class BoundTexture;
+
+class BoundFont
+{
+  FontFace *face;
+  std::map<char, BoundTexture *> textures;
+public:
+  BoundFont(FontFace *_face);
+
+  ~BoundFont();
+
+  FontFace *
+  get_font();
+
+  BoundTexture *
+  get_bound_texture(char c);
+};
+
 class GameState
 {
   std::chrono::time_point<std::chrono::steady_clock> ref;
@@ -116,6 +134,9 @@ class GameState
 
   ResourceBundle *font_bundle;
   ResourceBundle *global_bundle;
+
+  BoundFont *serif;
+  BoundFont *sans;
 
   std::map<std::string, PropertyData> properties;
 
@@ -138,10 +159,10 @@ public:
   float
   get_time() const;
 
-  FontFace *
+  BoundFont *
   get_sans();
 
-  FontFace *
+  BoundFont *
   get_serif();
 
   ResourceBundle *

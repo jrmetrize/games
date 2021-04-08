@@ -144,9 +144,12 @@ public:
   void
   generate_textures();
 
-  const Texture *
+  Texture *
   get_texture(char c);
 #endif
+
+  std::string
+  get_chars() const;
 
   Resource *
   duplicate() const;

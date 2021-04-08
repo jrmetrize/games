@@ -40,6 +40,29 @@ Texture::get_data() const
   return data;
 }
 
+BoundTexture::BoundTexture(const Texture *_texture) :
+  texture(_texture), filtering(Texture::Filtering::Linear)
+{
+
+}
+
+BoundTexture::~BoundTexture()
+{
+
+}
+
+const Texture *
+BoundTexture::get_texture()
+{
+  return texture;
+}
+
+Texture::Filtering
+BoundTexture::get_filtering()
+{
+  return filtering;
+}
+
 BoundMesh::~BoundMesh()
 {
 
@@ -160,18 +183,6 @@ Scene3D::get_lights() const
   return lights;
 }
 
-void
-GraphicsLayer::set_texture_binding(Texture *tex, void *binding)
-{
-  tex->binding = binding;
-}
-
-void *
-GraphicsLayer::get_texture_binding(const Texture *tex)
-{
-  return tex->binding;
-}
-
 GraphicsLayer::~GraphicsLayer()
 {
 
@@ -211,11 +222,11 @@ GraphicsServer::get_window()
   return backend->get_window();
 }
 
-void
+BoundTexture *
 GraphicsServer::bind(Texture *tex)
 {
   // Bind the texture to the backend.
-  backend->bind_texture(tex);
+  return backend->bind_texture(tex);
 }
 
 BoundMesh *
@@ -332,7 +343,7 @@ GraphicsServer::draw_color_rect(Vec2 origin, Vec2 size, Vec4 color)
 }
 
 void
-GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture)
+GraphicsServer::draw_texture_rect(Vec2 origin, Vec2 size, const BoundTexture &texture)
 {
   backend->draw_texture_rect(origin, size, texture);
 }
@@ -346,12 +357,13 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
   float scale_factor = text_request.size / (64.0f * 64.0f);
   float texture_padding = 8; // 'spread' value in SDF generation
 
-  text_request.font->generate_textures();
+  //text_request.font->generate_textures();
+  FontFace *face = text_request.font->get_font();
   Vec2 current_pos = text_request.bounding_box_origin;
 
   if (text_request.center_vertical)
   {
-    const Glyph &glyph = text_request.font->get_glyph('B');
+    const Glyph &glyph = face->get_glyph('B');
     float g_height = (scale_factor * glyph.height);
 
     // We want the vertical center of the text to be the same as the vertical
@@ -367,7 +379,7 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
     for (unsigned int i = 0; i < text_request.text.length(); ++i)
     {
       char c = text_request.text[i];
-      const Glyph &glyph = text_request.font->get_glyph(c);
+      const Glyph &glyph = face->get_glyph(c);
       width += scale_factor * glyph.horizontal_advance;
     }
     current_pos += Vec2((1.0f / 2.0f) * (text_request.bounding_box_size.x - width), 0);
@@ -376,8 +388,8 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
   for (unsigned int i = 0; i < text_request.text.length(); ++i)
   {
     char c = text_request.text[i];
-    const Glyph &glyph = text_request.font->get_glyph(c);
-    const Texture *tex = text_request.font->get_texture(c);
+    const Glyph &glyph = face->get_glyph(c);
+    const BoundTexture *tex = text_request.font->get_bound_texture(c);
 
     // We are scaling (glyph.bitmap_height - (2 * texture_padding)) bitmap pixels
     // to be scale_factor * glyph.height visible pixels tall
@@ -389,7 +401,7 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
     // We also have to displace the origin of the quad by (-8, -8) bitmap pixels
     FontFace::Kerning kern = {};
     if (i > 0)
-      kern = text_request.font->get_kerning(text_request.text[i - 1], c);
+      kern = face->get_kerning(text_request.text[i - 1], c);
     Vec2 adjustment = scale_factor * Vec2(glyph.horizontal_bearing_x + kern.x,
       -glyph.height + glyph.horizontal_bearing_y + kern.y);
     adjustment += -scale_factor * Vec2(texture_padding * (float(glyph.width) / float(glyph.bitmap_width)),
@@ -408,6 +420,8 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
   // TODO: this should be calculated by the font face object
   float scale_factor = text_request.size / (64.0f * 64.0f);
   float texture_padding = 8; // 'spread' value in SDF generation
+
+  FontFace *face = text_request.font->get_font();
 
   // TODO: there should be a mechanism to cache and/or precompute the calculations below
   // In order to arrange the lines, break the string into words (separated
@@ -436,13 +450,13 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
     for (unsigned int j = 0; j < words[i].length(); ++j)
     {
       char c = words[i][j];
-      const Glyph &glyph = text_request.font->get_glyph(c);
+      const Glyph &glyph = face->get_glyph(c);
       width += scale_factor * glyph.horizontal_advance;
     }
     widths.push_back(width);
   }
   float space_width =
-    scale_factor * text_request.font->get_glyph(' ').horizontal_advance;
+    scale_factor * face->get_glyph(' ').horizontal_advance;
   std::vector<std::string> lines;
   std::vector<float> line_widths;
   std::string current_line = "";

@@ -19,14 +19,19 @@ struct GLFWwindow;
 
 class Texture
 {
+public:
+  enum Filtering
+  {
+    Nearest,
+    Linear
+  };
+private:
   friend class GraphicsLayer;
 
   unsigned int width;
   unsigned int height;
   unsigned int channels;
   const unsigned char *data;
-
-  void *binding;
 public:
   Texture(unsigned int _width, unsigned int _height, unsigned int _channels,
     const unsigned char *_data);
@@ -44,6 +49,27 @@ public:
 
   const unsigned char *
   get_data() const;
+};
+
+class BoundTexture
+{
+  const Texture *texture;
+protected:
+  Texture::Filtering filtering;
+public:
+  BoundTexture(const Texture *_texture);
+
+  virtual
+  ~BoundTexture() = 0;
+
+  const Texture *
+  get_texture();
+
+  Texture::Filtering
+  get_filtering();
+
+  virtual void
+  set_filtering(Texture::Filtering _filtering) = 0;
 };
 
 struct BoundMesh
@@ -166,12 +192,6 @@ struct Render3DRequest
 
 class GraphicsLayer
 {
-protected:
-  void
-  set_texture_binding(Texture *tex, void *binding);
-
-  void *
-  get_texture_binding(const Texture *tex);
 public:
   virtual
   ~GraphicsLayer() = 0;
@@ -185,7 +205,7 @@ public:
   virtual void
   set_graphics_server(GraphicsServer *_graphics_server) = 0;
 
-  virtual void
+  virtual BoundTexture *
   bind_texture(Texture *tex) = 0;
 
   virtual BoundMesh *
@@ -198,11 +218,11 @@ public:
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color) = 0;
 
   virtual void
-  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture) = 0;
+  draw_texture_rect(Vec2 origin, Vec2 size, const BoundTexture &texture) = 0;
 
   virtual void
   draw_character(Vec2 origin, Vec2 size, Vec4 color,
-    const Texture &sdf) = 0;
+    const BoundTexture &sdf) = 0;
 
   // TODO: When it's needed, make a more robust API for masking
   virtual void
@@ -215,6 +235,8 @@ public:
   draw_3d(const Render3DRequest &scene_request) = 0;
 };
 
+class BoundFont;
+
 struct TextRenderRequest
 {
   Vec2 bounding_box_origin;
@@ -223,7 +245,7 @@ struct TextRenderRequest
   std::string text;
   float size;
   Vec4 color;
-  FontFace *font;
+  BoundFont *font;
 
   // TODO: do we need more text alignment options besides 'top left' and 'top center'?
   bool center;
@@ -253,7 +275,7 @@ public:
   GLFWwindow *
   get_window();
 
-  void
+  BoundTexture *
   bind(Texture *tex);
 
   BoundMesh *
@@ -290,7 +312,7 @@ public:
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
 
   void
-  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);
+  draw_texture_rect(Vec2 origin, Vec2 size, const BoundTexture &texture);
 
   void
   draw_text_line(const TextRenderRequest &text_request);

@@ -345,7 +345,7 @@ FontFace::generate_textures()
   }
 }
 
-const Texture *
+Texture *
 FontFace::get_texture(char c)
 {
   return texture_map[c];
@@ -361,6 +361,12 @@ FontFace::add_glyph(const char &c, const Glyph &glyph)
   memcpy(g.bitmap_data, glyph.bitmap_data,
     sizeof(unsigned char) * g.bitmap_width * g.bitmap_height);
   glyph_map[c] = g;
+}
+
+std::string
+FontFace::get_chars() const
+{
+  return chars;
 }
 
 Resource *

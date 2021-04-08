@@ -10,14 +10,19 @@ class GraphicsLayerOpenGL : public GraphicsLayer
 {
   GraphicsServer *graphics_server;
 
-  struct TextureBinding
+  class TextureBinding : public BoundTexture
   {
-    Texture *texture_data;
     GLuint texture;
-
-    TextureBinding(Texture *_texture_data);
+  public:
+    TextureBinding(Texture *_texture);
 
     ~TextureBinding();
+
+    void
+    set_filtering(Texture::Filtering _filtering);
+
+    void
+    make_active() const;
   };
 
   struct GBuffer
@@ -144,7 +149,7 @@ public:
   void
   set_graphics_server(GraphicsServer *_graphics_server);
 
-  void
+  BoundTexture *
   bind_texture(Texture *tex);
 
   BoundMesh *
@@ -157,11 +162,11 @@ public:
   draw_color_rect(Vec2 origin, Vec2 size, Vec4 color);
 
   void
-  draw_texture_rect(Vec2 origin, Vec2 size, const Texture &texture);
+  draw_texture_rect(Vec2 origin, Vec2 size, const BoundTexture &texture);
 
   void
   draw_character(Vec2 origin, Vec2 size, Vec4 color,
-    const Texture &sdf);
+    const BoundTexture &sdf);
 
   void
   clear_mask();
