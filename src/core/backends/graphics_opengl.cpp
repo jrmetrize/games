@@ -381,6 +381,18 @@ GraphicsLayerOpenGL::TextureBinding::~TextureBinding()
 void
 GraphicsLayerOpenGL::TextureBinding::set_filtering(Texture::Filtering _filtering)
 {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  if (_filtering == Texture::Filtering::Nearest)
+  {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+  else if (_filtering == Texture::Filtering::Linear)
+  {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  }
+
   filtering = _filtering;
 }
 
