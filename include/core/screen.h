@@ -109,6 +109,11 @@ struct MenuSelector : public MenuControl
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
+struct ColorSelector : public MenuControl
+{
+
+};
+
 class Screen
 {
 public:

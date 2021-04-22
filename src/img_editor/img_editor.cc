@@ -128,11 +128,44 @@ ImgEditorState::close()
 
 }
 
-ImgEditorScreen::ImgEditorScreen()
+IVec2::IVec2(uint32_t _x, uint32_t _y) :
+  x(_x), y(_y)
 {
+
+}
+
+RawSprite::RawSprite(ColorPalette *_palette, IVec2 _size) :
+  palette(_palette), size(_size)
+{
+  colors = new int32_t[size.x * size.y];
+  for (uint32_t i = 0; i < size.x * size.y; ++i)
+    colors[i] = 0; /* -1 indicates clear, non-negative values are for colors */
+}
+
+RawSprite::~RawSprite()
+{
+  delete colors;
+}
+
+IVec2
+RawSprite::get_size() const
+{
+  return size;
+}
+
+void
+RawSprite::set_size(IVec2 _size)
+{
+  size = _size;
+}
+
+ImgEditorScreen::ImgEditorScreen() :
+  listener(), cursor_pos(0, 0), sprite(nullptr)
+{
+  ColorPalette *palette_32 = ColorPalette::make_32_palette();
+
   {
     unsigned char *palette_data = new unsigned char[8 * 4 * 4];
-    ColorPalette *palette_32 = ColorPalette::make_32_palette();
 
     for (uint32_t i = 0; i < 32; ++i)
     {
@@ -149,11 +182,59 @@ ImgEditorScreen::ImgEditorScreen()
 
     delete palette_data;
   }
+
+  listener.key_handle = std::bind(&ImgEditorScreen::key_pressed, this,
+    std::placeholders::_1, std::placeholders::_2);
+
+  sprite = new RawSprite(palette_32, IVec2(32, 32));
 }
 
 ImgEditorScreen::~ImgEditorScreen()
 {
 
+}
+
+void
+ImgEditorScreen::key_pressed(Key key, bool pressed)
+{
+  if (pressed)
+  {
+    /* Handle released keys. These should probably be their own methods. */
+    /* Maybe do some stuff with modifier keys... e.g. holding control makes
+       move keys work in increments of 4? */
+    if (key == Key::KeyLeft)
+    {
+      if (cursor_pos.x > 0)
+        cursor_pos.x -= 1;
+    }
+    else if (key == Key::KeyRight)
+    {
+      if (cursor_pos.x < sprite->get_size().x - 1)
+        cursor_pos.x += 1;
+    }
+    else if (key == Key::KeyDown)
+    {
+      if (cursor_pos.y > 0)
+        cursor_pos.y -= 1;
+    }
+    else if (key == Key::KeyUp)
+    {
+      if (cursor_pos.y < sprite->get_size().y - 1)
+        cursor_pos.y += 1;
+    }
+  }
+}
+
+void
+ImgEditorScreen::to_appear()
+{
+  InputMonitor::get()->install_listener(&listener);
+}
+
+void
+ImgEditorScreen::to_disappear()
+{
+  InputMonitor::get()->remove_listener(&listener);
 }
 
 void
@@ -167,12 +248,16 @@ ImgEditorScreen::draw()
 {
   Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
 
+  GraphicsServer::get()->draw_color_rect(Vec2(), window_size, IMG_EDITOR_BG_COLOR);
+
   GraphicsServer::get()->draw_texture_rect(Vec2(0, 32), Vec2(128), *b_pal);
 
   /* Draw the info bar */
   std::string infobar_text = "";
-  infobar_text += "Image Size: (32, 32), ";
-  infobar_text += "Cursor Pos: (-, -).";
+  infobar_text += "Image Size: (" + std::to_string(sprite->get_size().x) + ", " +
+    std::to_string(sprite->get_size().y) + "), ";
+  infobar_text += "Cursor Pos: (" + std::to_string(cursor_pos.x) + ", " +
+    std::to_string(cursor_pos.y) + ").";
 
   TextRenderRequest info_text = {};
   info_text.bounding_box_origin = Vec2(0, 0);
@@ -184,6 +269,37 @@ ImgEditorScreen::draw()
   info_text.center = false;
   info_text.center_vertical = false;
   GraphicsServer::get()->draw_text(info_text);
+
+  /* Draw the image in the rectangle */
+  Vec2 margin_size = Vec2(512, 512) + Vec2(32, 32);
+  GraphicsServer::get()->draw_color_rect((0.5 * window_size) - (0.5 * margin_size),
+    margin_size, IMG_EDITOR_IMG_BG);
+
+  Vec2 canvas_size = Vec2(512, 512);
+  GraphicsServer::get()->draw_color_rect((0.5 * window_size) - (0.5 * canvas_size)
+    + Vec2(float(cursor_pos.x) * (canvas_size.x / sprite->get_size().x),
+      float(cursor_pos.y) * (canvas_size.y / sprite->get_size().y)),
+    Vec2(canvas_size.x / sprite->get_size().x, canvas_size.y / sprite->get_size().y),
+    Vec4(1));
+  /*
+  GraphicsServer::get()->draw_texture_rect((0.5 * window_size) - (0.5 * canvas_size),
+    canvas_size, b_sprite);
+  */
+
+  /* Draw the usage guide. */
+  {
+    /* TODO: put this string in a resource bundle so localization is possible */
+    TextRenderRequest usage_text = {};
+    usage_text.bounding_box_origin = Vec2(0, 128.0f);
+    usage_text.bounding_box_size = Vec2(320.0f, window_size.y - 128.0f);
+    usage_text.text = "Arrow Keys: position cursor on canvas\nWASD: position cursor on palette\nX: clear pixel\nSpace: set pixel color";
+    usage_text.color = Vec4(1);
+    usage_text.size = 12.0f;
+    usage_text.font = GameState::get()->get_serif();
+    usage_text.center = false;
+    usage_text.center_vertical = false;
+    GraphicsServer::get()->draw_text(usage_text);
+  }
 }
 
 }

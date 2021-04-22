@@ -435,6 +435,10 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
     {
       words.push_back(current_token);
       current_token = "";
+
+      /* If we have a newline, just encode it as a word. */
+      if (c == '\n')
+        words.push_back("\n");
     }
     else
     {
@@ -471,7 +475,16 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
     }
     else
     {
-      if (current_line_width + space_width + widths[i] > text_request.bounding_box_size.x)
+      if (words[i] == "\n")
+      {
+        /* If the current word is a newline '\n', automatically go to the
+           next line. */
+        lines.push_back(current_line);
+        line_widths.push_back(current_line_width);
+        current_line = "";
+        current_line_width = 0;
+      }
+      else if (current_line_width + space_width + widths[i] > text_request.bounding_box_size.x)
       {
         // We can't add another word to this line, so add it to the list and start the next
         lines.push_back(current_line);
