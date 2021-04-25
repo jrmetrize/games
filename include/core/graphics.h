@@ -250,6 +250,10 @@ struct TextRenderRequest
   // TODO: do we need more text alignment options besides 'top left' and 'top center'?
   bool center;
   bool center_vertical;
+
+  bool cursor;
+  uint32_t cursor_pos;
+  Vec4 cursor_color;
 };
 
 class GraphicsServer

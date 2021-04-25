@@ -133,9 +133,9 @@ BoundFont::get_bound_texture(char c)
   return textures[c];
 }
 
-GameState * GameState::instance = nullptr;
+EngineState * EngineState::instance = nullptr;
 
-GameState::GameState() :
+EngineState::EngineState() :
   should_close(false),
   current_screen(nullptr),
   ref(std::chrono::steady_clock::now()),
@@ -160,11 +160,11 @@ GameState::GameState() :
     }
 
     properties["is_fullscreen"].changed_callback =
-      std::bind(&GameState::fullscreen_changed, this, std::placeholders::_1);
+      std::bind(&EngineState::fullscreen_changed, this, std::placeholders::_1);
   }
 }
 
-GameState::~GameState()
+EngineState::~EngineState()
 {
   delete font_bundle;
   delete global_bundle;
@@ -174,25 +174,25 @@ GameState::~GameState()
 }
 
 void
-GameState::fullscreen_changed(PropertyData *prop)
+EngineState::fullscreen_changed(PropertyData *prop)
 {
   GraphicsServer::get()->set_fullscreen(std::get<bool>(prop->data));
 }
 
 void
-GameState::set_instance(GameState *_instance)
+EngineState::set_instance(EngineState *_instance)
 {
   instance = _instance;
 }
 
-GameState *
-GameState::get()
+EngineState *
+EngineState::get()
 {
   return instance;
 }
 
 void
-GameState::update(float time_elapsed)
+EngineState::update(float time_elapsed)
 {
   last_update = std::chrono::steady_clock::now();
   GraphicsServer::get()->set_current_screen(current_screen);
@@ -201,7 +201,7 @@ GameState::update(float time_elapsed)
 }
 
 float
-GameState::get_time() const
+EngineState::get_time() const
 {
   uint32_t milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
     last_update - ref
@@ -210,48 +210,52 @@ GameState::get_time() const
 }
 
 BoundFont *
-GameState::get_sans()
+EngineState::get_sans()
 {
   return sans;
 }
 
 BoundFont *
-GameState::get_serif()
+EngineState::get_serif()
 {
   return serif;
 }
 
 ResourceBundle *
-GameState::get_globals()
+EngineState::get_globals()
 {
   return global_bundle;
 }
 
 PropertyData &
-GameState::get_property(std::string name)
+EngineState::get_property(std::string name)
 {
   return properties[name];
 }
 
 void
-GameState::switch_to_screen(Screen *target_screen)
+EngineState::switch_to_screen(Screen *target_screen)
 {
   if (current_screen != nullptr)
+  {
+    current_screen->remove_listener();
     current_screen->to_disappear();
+  }
   target_screen->to_appear();
+  target_screen->install_listener();
 
   GraphicsServer::get()->set_current_screen(target_screen);
   current_screen = target_screen;
 }
 
 void
-GameState::close_game()
+EngineState::close_game()
 {
   should_close = true;
 }
 
 bool
-GameState::game_open() const
+EngineState::game_open() const
 {
   return !should_close;
 }

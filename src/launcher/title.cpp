@@ -4,15 +4,12 @@ namespace Launcher
 {
 
 TitleScreen::TitleScreen(LauncherState *_launcher) :
-  launcher(_launcher), listener(), camera(), cubes()
+  launcher(_launcher), camera(), cubes()
 {
   //obj = new SceneObject();
   Mesh *_cube = Mesh::primitive_cube();
   BoundMesh *cube = GraphicsServer::get()->bind(_cube);
   //obj->mesh = cube;
-
-  listener.key_handle = std::bind(&TitleScreen::key_pressed, this,
-    std::placeholders::_1, std::placeholders::_2);
 
   light = new DirectionalLight();
   light->direction = Vec3(1, -0.5, 2).normalized();
@@ -61,7 +58,7 @@ TitleScreen::~TitleScreen()
 }
 
 void
-TitleScreen::key_pressed(Key key, bool pressed)
+TitleScreen::key_update(Key key, bool pressed)
 {
   // TODO: should probably play a sound here
   launcher->show_game_select_screen();
@@ -76,13 +73,13 @@ TitleScreen::resize(Vec2 window_size)
 void
 TitleScreen::to_appear()
 {
-  InputMonitor::get()->install_listener(&listener);
+
 }
 
 void
 TitleScreen::to_disappear()
 {
-  InputMonitor::get()->remove_listener(&listener);
+
 }
 
 void
@@ -100,8 +97,8 @@ TitleScreen::draw()
 
   /* Have the camera orbit at a fixed distance. */
   float r = 5.0f;
-  float theta = 0.5f * GameState::get()->get_time();
-  float phi = (3.14159f / 2.0f) + (0.2f * sin(0.2f * GameState::get()->get_time()));
+  float theta = 0.5f * EngineState::get()->get_time();
+  float phi = (3.14159f / 2.0f) + (0.2f * sin(0.2f * EngineState::get()->get_time()));
   /* TODO: write Cartesian <-> spherical conversion functions. */
   Vec3 pos = Vec3(
     r * cos(theta) * sin(phi),
@@ -111,7 +108,7 @@ TitleScreen::draw()
   camera.set_position(pos);
   camera.set_direction(-pos.normalized());
 
-  //obj->transform = Mat4::scale(Vec3(0.75f + (0.25f * sin(1.5f * GameState::get()->get_time()))));
+  //obj->transform = Mat4::scale(Vec3(0.75f + (0.25f * sin(1.5f * EngineState::get()->get_time()))));
 
   Render3DRequest req = {};
   req.scene = scene;
@@ -126,11 +123,11 @@ TitleScreen::draw()
   treq.bounding_box_size = Vec2(window_size.x, 50.0f);
   treq.text = "Press Any Key";
   {
-    float x = 0.75f + (0.25f * sin(1.5f * GameState::get()->get_time()));
+    float x = 0.75f + (0.25f * sin(1.5f * EngineState::get()->get_time()));
     treq.color = Vec4(x, x, x, 1.0f);
   }
   treq.size = 24.0f;
-  treq.font = GameState::get()->get_serif();
+  treq.font = EngineState::get()->get_serif();
   treq.center = true;
   treq.center_vertical = false;
   GraphicsServer::get()->draw_text(treq);

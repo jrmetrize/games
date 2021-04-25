@@ -13,8 +13,6 @@ class TitleScreen : public Screen
 {
   LauncherState *launcher;
 
-  Listener listener;
-
   struct Cubelet
   {
     SceneObject *object;
@@ -25,9 +23,9 @@ class TitleScreen : public Screen
   DirectionalLight *light;
   std::vector<Cubelet> cubes;
   Scene3D *scene;
-
+protected:
   void
-  key_pressed(Key key, bool pressed);
+  key_update(Key key, bool pressed);
 public:
   TitleScreen(LauncherState *_launcher);
 

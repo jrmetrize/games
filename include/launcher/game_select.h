@@ -91,12 +91,17 @@ class GameSelectScreen : public Screen
 
   std::vector<GameEntryCard> cards;
 
-  Listener listener;
   float scroll_offset;
   float content_height;
 
   void
   entry_selected(GameEntry &entry);
+protected:
+  void
+  mouse_button_update(MouseButton button, bool pressed);
+
+  void
+  scroll_update(Vec2 scroll);
 public:
   GameSelectScreen(LauncherState *_launcher);
 
@@ -110,12 +115,6 @@ public:
 
   void
   to_disappear();
-
-  void
-  mouse_pressed(MouseButton button, bool pressed);
-
-  void
-  mouse_scrolled(Vec2 scroll);
 
   void
   update(float time_elapsed);

@@ -146,25 +146,20 @@ GameEntryCard::draw()
   req.text = entry.get_title();
   req.color = Vec4(0, 0, 0, 1);
   req.size = 12;
-  req.font = GameState::get()->get_serif();
+  req.font = EngineState::get()->get_serif();
   req.center = false;
   req.center_vertical = false;
   GraphicsServer::get()->draw_text(req);
 }
 
 GameSelectScreen::GameSelectScreen(LauncherState *_launcher) :
-  launcher(_launcher), games(GameEntry::get_game_list()), cards(), listener(),
+  launcher(_launcher), games(GameEntry::get_game_list()), cards(),
   scroll_offset(0.0), content_height(0.0f)
 {
   for (GameEntry &entry : games)
     cards.push_back(GameEntryCard(entry,
       std::bind(&GameSelectScreen::entry_selected, this,
       std::placeholders::_1)));
-
-  listener.mouse_button_handle = std::bind(&GameSelectScreen::mouse_pressed, this,
-    std::placeholders::_1, std::placeholders::_2);
-  listener.scroll_handle = std::bind(&GameSelectScreen::mouse_scrolled, this,
-    std::placeholders::_1);
 }
 
 GameSelectScreen::~GameSelectScreen()
@@ -217,24 +212,24 @@ GameSelectScreen::resize(Vec2 window_size)
 void
 GameSelectScreen::to_appear()
 {
-  InputMonitor::get()->install_listener(&listener);
+
 }
 
 void
 GameSelectScreen::to_disappear()
 {
-  InputMonitor::get()->remove_listener(&listener);
+
 }
 
 void
-GameSelectScreen::mouse_pressed(MouseButton button, bool pressed)
+GameSelectScreen::mouse_button_update(MouseButton button, bool pressed)
 {
   for (GameEntryCard &card : cards)
     card.mouse_pressed(button, pressed);
 }
 
 void
-GameSelectScreen::mouse_scrolled(Vec2 scroll)
+GameSelectScreen::scroll_update(Vec2 scroll)
 {
   Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
   scroll_offset += -1.0f * 3.0f * scroll.y;

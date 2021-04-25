@@ -115,12 +115,12 @@ class ImgEditorScreen : public Screen
   RawSprite *sprite;
   BoundTexture *b_sprite;
 
-  Listener listener;
-
   IVec2 cursor_pos;
 
+  TextLine *input_test;
+protected:
   void
-  key_pressed(Key key, bool pressed);
+  key_update(Key key, bool pressed);
 public:
   ImgEditorScreen();
 

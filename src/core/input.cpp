@@ -196,7 +196,7 @@ key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 static void
 char_callback(GLFWwindow *window, unsigned int codepoint)
 {
-
+  InputMonitor::get()->char_in(codepoint);
 }
 
 static void
@@ -288,7 +288,7 @@ InputMonitor::remove_listener(Listener *listener)
 void
 InputMonitor::close_window_pressed()
 {
-  GameState::get()->close_game();
+  EngineState::get()->close_game();
 }
 
 void
@@ -319,6 +319,12 @@ InputMonitor::key_changed(Key key, bool press)
     if (listeners[i]->key_handle)
       listeners[i]->key_handle.value()(key, press);
   }
+}
+
+void
+InputMonitor::char_in(unsigned int codepoint)
+{
+
 }
 
 bool

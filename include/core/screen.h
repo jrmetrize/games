@@ -27,6 +27,53 @@ struct MenuControl
   play_confirm_sound();
 };
 
+class Screen
+{
+  Listener *listener;
+protected:
+  /* User input callbacks */
+  virtual void
+  mouse_button_update(MouseButton button, bool pressed);
+
+  virtual void
+  scroll_update(Vec2 scroll);
+
+  virtual void
+  key_update(Key key, bool pressed);
+
+  virtual void
+  gamepad_button_update(GamepadButton button, bool presed);
+
+  virtual void
+  char_update(unsigned int codepoint);
+public:
+  Screen();
+
+  virtual
+  ~Screen();
+
+  virtual void
+  update(float time_elapsed) = 0;
+
+  virtual void
+  draw() = 0;
+
+  virtual void
+  resize(Vec2 size);
+
+  void
+  install_listener();
+
+  void
+  remove_listener();
+
+  virtual void
+  to_appear();
+
+  virtual void
+  to_disappear();
+};
+
 struct MenuButton : public MenuControl
 {
   std::string text;
@@ -109,30 +156,36 @@ struct MenuSelector : public MenuControl
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct ColorSelector : public MenuControl
+struct TextLine : public MenuControl
 {
+  std::string text;
+  uint32_t cursor_pos;
 
+  bool highlighted;
+  bool pressed;
+
+  TextLine(Vec2 _origin, Vec2 _size, std::string _text);
+
+  void
+  update();
+
+  void
+  draw();
+
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-class Screen
+struct ColorSelector : public MenuControl
 {
-public:
-  Screen();
+  void
+  update();
 
-  virtual void
-  update(float time_elapsed) = 0;
+  void
+  draw();
 
-  virtual void
-  draw() = 0;
-
-  virtual void
-  resize(Vec2 size);
-
-  virtual void
-  to_appear();
-
-  virtual void
-  to_disappear();
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
 };
 
 #endif

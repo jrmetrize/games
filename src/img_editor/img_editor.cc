@@ -119,7 +119,7 @@ ImgEditorState::load()
 void
 ImgEditorState::start()
 {
-  GameState::get()->switch_to_screen(screen);
+  EngineState::get()->switch_to_screen(screen);
 }
 
 void
@@ -160,7 +160,7 @@ RawSprite::set_size(IVec2 _size)
 }
 
 ImgEditorScreen::ImgEditorScreen() :
-  listener(), cursor_pos(0, 0), sprite(nullptr)
+  cursor_pos(0, 0), sprite(nullptr)
 {
   ColorPalette *palette_32 = ColorPalette::make_32_palette();
 
@@ -183,10 +183,9 @@ ImgEditorScreen::ImgEditorScreen() :
     delete palette_data;
   }
 
-  listener.key_handle = std::bind(&ImgEditorScreen::key_pressed, this,
-    std::placeholders::_1, std::placeholders::_2);
-
   sprite = new RawSprite(palette_32, IVec2(32, 32));
+
+  input_test = new TextLine(Vec2(150, 100), Vec2(128, 24), "test");
 }
 
 ImgEditorScreen::~ImgEditorScreen()
@@ -195,7 +194,7 @@ ImgEditorScreen::~ImgEditorScreen()
 }
 
 void
-ImgEditorScreen::key_pressed(Key key, bool pressed)
+ImgEditorScreen::key_update(Key key, bool pressed)
 {
   if (pressed)
   {
@@ -228,19 +227,19 @@ ImgEditorScreen::key_pressed(Key key, bool pressed)
 void
 ImgEditorScreen::to_appear()
 {
-  InputMonitor::get()->install_listener(&listener);
+
 }
 
 void
 ImgEditorScreen::to_disappear()
 {
-  InputMonitor::get()->remove_listener(&listener);
+
 }
 
 void
 ImgEditorScreen::update(float time_elapsed)
 {
-
+  input_test->update();
 }
 
 void
@@ -265,7 +264,7 @@ ImgEditorScreen::draw()
   info_text.text = infobar_text;
   info_text.color = Vec4(1);
   info_text.size = 12.0f;
-  info_text.font = GameState::get()->get_serif();
+  info_text.font = EngineState::get()->get_serif();
   info_text.center = false;
   info_text.center_vertical = false;
   GraphicsServer::get()->draw_text(info_text);
@@ -295,11 +294,13 @@ ImgEditorScreen::draw()
     usage_text.text = "Arrow Keys: position cursor on canvas\nWASD: position cursor on palette\nX: clear pixel\nSpace: set pixel color";
     usage_text.color = Vec4(1);
     usage_text.size = 12.0f;
-    usage_text.font = GameState::get()->get_serif();
+    usage_text.font = EngineState::get()->get_serif();
     usage_text.center = false;
     usage_text.center_vertical = false;
     GraphicsServer::get()->draw_text(usage_text);
   }
+
+  input_test->draw();
 }
 
 }

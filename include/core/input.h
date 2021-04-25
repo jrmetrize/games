@@ -114,6 +114,7 @@ struct Listener
   std::optional<std::function<void(Vec2)>> scroll_handle;
   std::optional<std::function<void(Key, bool)>> key_handle;
   std::optional<std::function<void(GamepadButton, bool)>> gamepad_button_handle;
+  std::optional<std::function<void(unsigned char)>> char_handle;
 };
 
 class InputMonitor
@@ -154,6 +155,9 @@ public:
 
   void
   key_changed(Key key, bool press);
+
+  void
+  char_in(unsigned int codepoint);
 
   void
   close_window_pressed();

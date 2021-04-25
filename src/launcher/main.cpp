@@ -43,13 +43,13 @@ public:
   void
   show_title_screen()
   {
-    GameState::get()->switch_to_screen(title_screen);
+    EngineState::get()->switch_to_screen(title_screen);
   }
 
   void
   show_game_select_screen()
   {
-    GameState::get()->switch_to_screen(select_screen);
+    EngineState::get()->switch_to_screen(select_screen);
   }
 
   void
@@ -84,8 +84,8 @@ main(int argc, const char **argv)
   InputMonitor *input = new InputMonitor(renderer->get_window());
   InputMonitor::set_instance(input);
 
-  GameState *state = new GameState();
-  GameState::set_instance(state);
+  EngineState *state = new EngineState();
+  EngineState::set_instance(state);
 
   /*
   AudioServer *audio = new AudioServer();

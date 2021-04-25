@@ -13,15 +13,96 @@ MenuControl::MenuControl(Vec2 _origin, Vec2 _size) :
 void
 MenuControl::play_highlight_sound()
 {
-  AudioTrack *cursor = (AudioTrack *)GameState::get()->get_globals()->get_resource("menu_cursor");
+  AudioTrack *cursor = (AudioTrack *)EngineState::get()->get_globals()->get_resource("menu_cursor");
   AudioServer::get()->play(cursor);
 }
 
 void
 MenuControl::play_confirm_sound()
 {
-  AudioTrack *confirm = (AudioTrack *)GameState::get()->get_globals()->get_resource("menu_confirm");
+  AudioTrack *confirm = (AudioTrack *)EngineState::get()->get_globals()->get_resource("menu_confirm");
   AudioServer::get()->play(confirm);
+}
+
+Screen::Screen()
+{
+  listener = new Listener();
+
+  listener->mouse_button_handle = std::bind(&Screen::mouse_button_update, this,
+    std::placeholders::_1, std::placeholders::_2);
+  listener->scroll_handle = std::bind(&Screen::scroll_update, this,
+    std::placeholders::_1);
+  listener->key_handle = std::bind(&Screen::key_update, this,
+    std::placeholders::_1, std::placeholders::_2);
+  listener->gamepad_button_handle = std::bind(&Screen::gamepad_button_update,
+    this, std::placeholders::_1, std::placeholders::_2);
+  listener->char_handle = std::bind(&Screen::char_update, this,
+    std::placeholders::_1);
+}
+
+Screen::~Screen()
+{
+  delete listener;
+}
+
+void
+Screen::mouse_button_update(MouseButton button, bool pressed)
+{
+
+}
+
+void
+Screen::scroll_update(Vec2 scroll)
+{
+
+}
+
+void
+Screen::key_update(Key key, bool pressed)
+{
+
+}
+
+void
+Screen::gamepad_button_update(GamepadButton button, bool presed)
+{
+
+}
+
+void
+Screen::char_update(unsigned int codepoint)
+{
+
+}
+
+void
+Screen::resize(Vec2 size)
+{
+
+}
+
+void
+Screen::install_listener()
+{
+  InputMonitor::get()->install_listener(listener);
+}
+
+void
+Screen::remove_listener()
+{
+  InputMonitor::get()->remove_listener(listener);
+}
+
+void
+Screen::to_appear()
+{
+
+}
+
+void
+Screen::to_disappear()
+{
+
 }
 
 MenuButton::MenuButton(std::string _text, Vec2 _origin, Vec2 _size,
@@ -55,7 +136,7 @@ MenuButton::draw()
   req.bounding_box_origin = origin;
   req.bounding_box_size = size;
   req.text = text;
-  req.font = GameState::get()->get_serif();
+  req.font = EngineState::get()->get_serif();
   //req.center = true;
   req.center_vertical = true;
 
@@ -67,7 +148,7 @@ MenuButton::draw()
   else if (highlighted)
   {
     req.size = 42;
-    float sine = sin(3.0f * GameState::get()->get_time());
+    float sine = sin(3.0f * EngineState::get()->get_time());
     float brightness = 0.7f + (0.3f * sine);
     req.color = Vec4(brightness, brightness, brightness, 1);
   }
@@ -211,7 +292,7 @@ MenuSwitch::draw()
   }
 
   TextRenderRequest req = {};
-  req.font = GameState::get()->get_serif();
+  req.font = EngineState::get()->get_serif();
   req.center = true;
   req.center_vertical = true;
   req.size = 24;
@@ -422,7 +503,7 @@ MenuSelector::draw()
   }
 
   TextRenderRequest req = {};
-  req.font = GameState::get()->get_serif();
+  req.font = EngineState::get()->get_serif();
   req.center = true;
   req.center_vertical = true;
   req.size = 24;
@@ -436,25 +517,138 @@ MenuSelector::draw()
   GraphicsServer::get()->draw_text_line(req);
 }
 
-Screen::Screen()
+TextLine::TextLine(Vec2 _origin, Vec2 _size, std::string _text) :
+  MenuControl(_origin, _size), text(_text), highlighted(false), pressed(false)
 {
 
 }
 
 void
-Screen::resize(Vec2 size)
+TextLine::update()
 {
+  if (!InputMonitor::get()->is_left_mouse_down())
+  {
+    bool h = InputMonitor::get()->get_mouse_position().inside_rect(
+      origin, size);
 
+    if (h)
+      highlighted = true;
+    else
+      highlighted = false;
+  }
 }
 
 void
-Screen::to_appear()
+TextLine::mouse_pressed(MouseButton button, bool button_pressed)
 {
+  if (highlighted != -1 && button_pressed)
+    pressed = highlighted;
 
+  if (InputMonitor::get()->get_mouse_position().inside_rect(
+    origin, size))
+  {
+    if (pressed && !button_pressed)
+    {
+      /* toggle active */
+    }
+  }
+
+  if (!button_pressed)
+    pressed = -1;
 }
 
 void
-Screen::to_disappear()
+TextLine::draw()
 {
+  Vec4 normal_bg = Vec4(0.8f, 0.8f, 0.8f, 0.4f);
+  Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
+  Vec4 selected_bg = Vec4(0.5f, 0.5f, 0.5f, 0.4f);
+  if (highlighted)
+    GraphicsServer::get()->draw_color_rect(origin, size,
+      highlighted_bg);
+  else
+    GraphicsServer::get()->draw_color_rect(origin, size,
+      normal_bg);
 
+  {
+    TextRenderRequest req = {};
+    req.font = EngineState::get()->get_serif();
+    req.center = false;
+    req.center_vertical = true;
+    req.size = 16;
+    req.color = Vec4(0, 0, 0, 1);
+    req.bounding_box_origin = origin;
+    req.bounding_box_size = size;
+    req.text = text;
+    GraphicsServer::get()->draw_text_line(req);
+  }
+
+  /* Draw the cursor */
+  {
+    float sine = sin(5.0f * EngineState::get()->get_time());
+    float x = sine * sine;
+    Vec4 cursor_color = Vec4(1, 1, 1, x);
+    GraphicsServer::get()->draw_color_rect(origin + Vec2(50, 0), Vec2(3, 16),
+      cursor_color);
+  }
+
+  /*
+  float box_separation = 8.0f;
+  float dir_button_width = 20.0f;
+  Vec4 normal_bg = Vec4(0.8f, 0.8f, 0.8f, 0.4f);
+  Vec4 selected_bg = Vec4(0.5f, 0.5f, 0.5f, 0.4f);
+  Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
+  Vec4 pressed_bg = Vec4(1.0f, 0.8f, 1.0f, 0.4f);
+
+  Vec2 left_box_origin = origin;
+  Vec2 left_box_size = Vec2(dir_button_width, size.y);
+
+  Vec2 right_box_origin = origin + Vec2(size.x - dir_button_width, 0);
+  Vec2 right_box_size = Vec2(dir_button_width, size.y);
+
+  if (pressed == 0)
+  {
+    GraphicsServer::get()->draw_color_rect(left_box_origin, left_box_size,
+      pressed_bg);
+  }
+  else if (highlighted == 0)
+  {
+    GraphicsServer::get()->draw_color_rect(left_box_origin, left_box_size,
+      highlighted_bg);
+  }
+  else
+  {
+    GraphicsServer::get()->draw_color_rect(left_box_origin, left_box_size,
+      normal_bg);
+  }
+
+  if (pressed == 1)
+  {
+    GraphicsServer::get()->draw_color_rect(right_box_origin, right_box_size,
+      pressed_bg);
+  }
+  else if (highlighted == 1)
+  {
+    GraphicsServer::get()->draw_color_rect(right_box_origin, right_box_size,
+      highlighted_bg);
+  }
+  else
+  {
+    GraphicsServer::get()->draw_color_rect(right_box_origin, right_box_size,
+      normal_bg);
+  }
+
+  TextRenderRequest req = {};
+  req.font = EngineState::get()->get_serif();
+  req.center = true;
+  req.center_vertical = true;
+  req.size = 24;
+  req.color = Vec4(1);
+  req.bounding_box_origin = origin + Vec2(dir_button_width + box_separation, 0);
+  req.bounding_box_size = Vec2(size.x - 2.0f * (dir_button_width + box_separation), size.y);
+  {
+    const EnumData &en = std::get<EnumData>(property->data);
+    req.text = en.choices[en.current].text;
+  }
+  GraphicsServer::get()->draw_text_line(req);*/
 }

@@ -121,12 +121,12 @@ public:
   get_bound_texture(char c);
 };
 
-class GameState
+class EngineState
 {
   std::chrono::time_point<std::chrono::steady_clock> ref;
   std::chrono::time_point<std::chrono::steady_clock> last_update;
 
-  static GameState *instance;
+  static EngineState *instance;
 
   bool should_close;
 
@@ -143,14 +143,14 @@ class GameState
   void
   fullscreen_changed(PropertyData *prop);
 public:
-  GameState();
+  EngineState();
 
-  ~GameState();
+  ~EngineState();
 
   static void
-  set_instance(GameState *_instance);
+  set_instance(EngineState *_instance);
 
-  static GameState *
+  static EngineState *
   get();
 
   void
