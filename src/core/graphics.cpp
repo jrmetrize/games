@@ -361,10 +361,12 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
   FontFace *face = text_request.font->get_font();
   Vec2 current_pos = text_request.bounding_box_origin;
 
+  float g_height;
+
   if (text_request.center_vertical)
   {
     const Glyph &glyph = face->get_glyph('B');
-    float g_height = (scale_factor * glyph.height);
+    g_height = (scale_factor * glyph.height);
 
     // We want the vertical center of the text to be the same as the vertical
     // center of the bounding box.
@@ -372,6 +374,8 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
       + ((1.0f / 2.0f) * text_request.bounding_box_size.y)
       - ((1.0f / 2.0f) * g_height);
   }
+
+  Vec2 cursor_offset;
 
   if (text_request.center)
   {
@@ -390,6 +394,9 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
     char c = text_request.text[i];
     const Glyph &glyph = face->get_glyph(c);
     const BoundTexture *tex = text_request.font->get_bound_texture(c);
+
+    if (i == text_request.cursor_pos)
+      cursor_offset = current_pos;
 
     // We are scaling (glyph.bitmap_height - (2 * texture_padding)) bitmap pixels
     // to be scale_factor * glyph.height visible pixels tall
@@ -412,6 +419,10 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
 
     current_pos += scale_factor * Vec2(glyph.horizontal_advance, 0);
   }
+  if (text_request.cursor_pos == text_request.text.length())
+    cursor_offset = current_pos;
+  backend->draw_color_rect(cursor_offset - Vec2(1, 0), Vec2(2, g_height),
+    text_request.cursor_color);
 }
 
 void
@@ -427,82 +438,69 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
   // In order to arrange the lines, break the string into words (separated
   // by whitespace) and calculate the width of each word. Then greedily
   // add words to a line until the length of the bounding box will be exceeded.
-  std::vector<std::string> words;
-  std::string current_token = "";
-  for (const char &c : text_request.text)
-  {
-    if (isspace(c) && current_token.length() > 0)
-    {
-      words.push_back(current_token);
-      current_token = "";
-
-      /* If we have a newline, just encode it as a word. */
-      if (c == '\n')
-        words.push_back("\n");
-    }
-    else
-    {
-      current_token.append(1, c);
-    }
-  }
-  if (current_token.length() > 0)
-    words.push_back(current_token);
-  std::vector<float> widths;
-  for (unsigned int i = 0; i < words.size(); ++i)
-  {
-    float width = 0;
-    for (unsigned int j = 0; j < words[i].length(); ++j)
-    {
-      char c = words[i][j];
-      const Glyph &glyph = face->get_glyph(c);
-      width += scale_factor * glyph.horizontal_advance;
-    }
-    widths.push_back(width);
-  }
-  float space_width =
-    scale_factor * face->get_glyph(' ').horizontal_advance;
   std::vector<std::string> lines;
   std::vector<float> line_widths;
-  std::string current_line = "";
-  float current_line_width = 0;
-  for (unsigned int i = 0; i < words.size(); ++i)
+
+  uint32_t cursor_line = 0;
+  uint32_t cursor_pos = 0;
   {
-    // Always add a word to a newline to prevent infinite loops
-    if (current_line.length() == 0)
+    std::string current_line = "";
+    float current_width = 0.0f;
+
+    uint32_t line_start = 0;
+    uint32_t offset = 0;
+    for (const char &c : text_request.text)
     {
-      current_line = words[i];
-      current_line_width = widths[i];
-    }
-    else
-    {
-      if (words[i] == "\n")
+      const Glyph &glyph = face->get_glyph(c);
+      float glyph_width = scale_factor * glyph.horizontal_advance;
+
+      if (text_request.cursor_pos == offset)
       {
-        /* If the current word is a newline '\n', automatically go to the
-           next line. */
-        lines.push_back(current_line);
-        line_widths.push_back(current_line_width);
-        current_line = "";
-        current_line_width = 0;
+        cursor_line = lines.size();
+        cursor_pos = offset - line_start;
       }
-      else if (current_line_width + space_width + widths[i] > text_request.bounding_box_size.x)
+
+      if (c == '\n')
+      {
+        /* Immediately move to the next line */
+        lines.push_back(current_line);
+        line_widths.push_back(current_width);
+
+        current_line = "";
+        current_width = 0.0f;
+
+        line_start = offset;
+      }
+      else if (current_width + glyph_width > text_request.bounding_box_size.x)
       {
         // We can't add another word to this line, so add it to the list and start the next
         lines.push_back(current_line);
-        line_widths.push_back(current_line_width);
-        current_line = words[i];
-        current_line_width = widths[i];
+        line_widths.push_back(current_width);
+
+        current_line = "";
+        current_line.append(1, c);
+        current_width = glyph_width;
+
+        line_start = offset;
       }
       else
       {
-        current_line.append(" " + words[i]);
-        current_line_width += space_width + widths[i];
+        current_line.append(1, c);
+        current_width += glyph_width;
       }
+      offset += 1;
     }
-  }
-  if (current_line.length() > 0)
-  {
-    lines.push_back(current_line);
-    line_widths.push_back(current_line_width);
+    if (current_line.length() > 0)
+    {
+      lines.push_back(current_line);
+      line_widths.push_back(current_width);
+    }
+
+    if (text_request.cursor_pos == text_request.text.length())
+    {
+      cursor_line = lines.size() - 1;
+      cursor_pos = text_request.text.length() - line_start;
+    }
   }
 
   // Calculations are finally done, so render the lines
@@ -511,6 +509,8 @@ GraphicsServer::draw_text(const TextRenderRequest &text_request)
     TextRenderRequest req = text_request;
     req.text = lines[i];
     req.center = false;
+    req.cursor = (i == cursor_line) && text_request.cursor;
+    req.cursor_pos = cursor_pos;
 
     Vec2 alignment = Vec2(0, text_request.bounding_box_size.y);
     if (text_request.center)

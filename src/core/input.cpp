@@ -324,7 +324,11 @@ InputMonitor::key_changed(Key key, bool press)
 void
 InputMonitor::char_in(unsigned int codepoint)
 {
-
+  for (unsigned int i = 0; i < listeners.size(); ++i)
+  {
+    if (listeners[i]->char_handle)
+      listeners[i]->char_handle.value()(codepoint);
+  }
 }
 
 bool

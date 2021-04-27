@@ -4,8 +4,44 @@
 #include "core/audio.h"
 #include <algorithm>
 
+MenuControl::MenuControl():
+  origin(), size()
+{
+
+}
+
 MenuControl::MenuControl(Vec2 _origin, Vec2 _size) :
   origin(_origin), size(_size)
+{
+
+}
+
+void
+MenuControl::mouse_button_update(MouseButton button, bool pressed)
+{
+
+}
+
+void
+MenuControl::scroll_update(Vec2 scroll)
+{
+
+}
+
+void
+MenuControl::key_update(Key key, bool pressed)
+{
+
+}
+
+void
+MenuControl::gamepad_button_update(GamepadButton button, bool presed)
+{
+
+}
+
+void
+MenuControl::char_update(unsigned int codepoint)
 {
 
 }
@@ -24,25 +60,105 @@ MenuControl::play_confirm_sound()
   AudioServer::get()->play(confirm);
 }
 
-Screen::Screen()
+Screen::Screen() :
+  active_control(nullptr)
 {
   listener = new Listener();
 
-  listener->mouse_button_handle = std::bind(&Screen::mouse_button_update, this,
+  listener->mouse_button_handle = std::bind(&Screen::_mouse_button_update, this,
     std::placeholders::_1, std::placeholders::_2);
-  listener->scroll_handle = std::bind(&Screen::scroll_update, this,
+  listener->scroll_handle = std::bind(&Screen::_scroll_update, this,
     std::placeholders::_1);
-  listener->key_handle = std::bind(&Screen::key_update, this,
+  listener->key_handle = std::bind(&Screen::_key_update, this,
     std::placeholders::_1, std::placeholders::_2);
-  listener->gamepad_button_handle = std::bind(&Screen::gamepad_button_update,
+  listener->gamepad_button_handle = std::bind(&Screen::_gamepad_button_update,
     this, std::placeholders::_1, std::placeholders::_2);
-  listener->char_handle = std::bind(&Screen::char_update, this,
+  listener->char_handle = std::bind(&Screen::_char_update, this,
     std::placeholders::_1);
 }
 
 Screen::~Screen()
 {
   delete listener;
+}
+
+void
+Screen::_mouse_button_update(MouseButton button, bool pressed)
+{
+  if (active_control != nullptr)
+    active_control->mouse_button_update(button, pressed);
+  this->mouse_button_update(button, pressed);
+}
+
+void
+Screen::_scroll_update(Vec2 scroll)
+{
+  if (active_control != nullptr)
+    active_control->scroll_update(scroll);
+  this->scroll_update(scroll);
+}
+
+void
+Screen::_key_update(Key key, bool pressed)
+{
+  if (active_control != nullptr)
+    active_control->key_update(key, pressed);
+  this->key_update(key, pressed);
+}
+
+void
+Screen::_gamepad_button_update(GamepadButton button, bool pressed)
+{
+  if (active_control != nullptr)
+    active_control->gamepad_button_update(button, pressed);
+  this->gamepad_button_update(button, pressed);
+}
+
+void
+Screen::_char_update(unsigned int codepoint)
+{
+  if (active_control != nullptr)
+    active_control->char_update(codepoint);
+  this->char_update(codepoint);
+}
+
+void
+Screen::add_control(MenuControl *control)
+{
+  controls.push_back(control);
+}
+
+void
+Screen::remove_control(MenuControl *control)
+{
+
+}
+
+MenuControl *
+Screen::get_active_control()
+{
+  return active_control;
+}
+
+void
+Screen::set_active_control(MenuControl *_active_control)
+{
+  active_control = _active_control;
+  /* TODO: notify this control and the old one, if it existed */
+}
+
+void
+Screen::update_controls(float time_elapsed)
+{
+  for (MenuControl *control : controls)
+    control->update(time_elapsed);
+}
+
+void
+Screen::draw_controls()
+{
+  for (MenuControl *control : controls)
+    control->draw();
 }
 
 void
@@ -64,7 +180,7 @@ Screen::key_update(Key key, bool pressed)
 }
 
 void
-Screen::gamepad_button_update(GamepadButton button, bool presed)
+Screen::gamepad_button_update(GamepadButton button, bool pressed)
 {
 
 }
@@ -73,6 +189,18 @@ void
 Screen::char_update(unsigned int codepoint)
 {
 
+}
+
+void
+Screen::update(float time_elapsed)
+{
+  update_controls(time_elapsed);
+}
+
+void
+Screen::draw()
+{
+  draw_controls();
 }
 
 void
@@ -114,7 +242,7 @@ MenuButton::MenuButton(std::string _text, Vec2 _origin, Vec2 _size,
 }
 
 void
-MenuButton::update()
+MenuButton::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
@@ -189,7 +317,7 @@ MenuSwitch::MenuSwitch(Vec2 _origin, Vec2 _size, std::function<void(bool)> _valu
 }
 
 void
-MenuSwitch::update()
+MenuSwitch::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
@@ -321,7 +449,7 @@ MenuSlider::MenuSlider(Vec2 _origin, Vec2 _size, std::function<void(float)> _val
 }
 
 void
-MenuSlider::update()
+MenuSlider::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
@@ -388,7 +516,7 @@ MenuSelector::MenuSelector(Vec2 _origin, Vec2 _size, PropertyData *_property) :
 }
 
 void
-MenuSelector::update()
+MenuSelector::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
@@ -518,13 +646,14 @@ MenuSelector::draw()
 }
 
 TextLine::TextLine(Vec2 _origin, Vec2 _size, std::string _text) :
-  MenuControl(_origin, _size), text(_text), highlighted(false), pressed(false)
+  MenuControl(_origin, _size), text(_text), highlighted(false), pressed(false),
+  cursor_pos(0)
 {
 
 }
 
 void
-TextLine::update()
+TextLine::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
@@ -536,6 +665,36 @@ TextLine::update()
     else
       highlighted = false;
   }
+}
+
+void
+TextLine::key_update(Key key, bool pressed)
+{
+  if (key == Key::KeyLeft && pressed == true)
+  {
+    if (cursor_pos > 0)
+      cursor_pos -= 1;
+  }
+  else if (key == Key::KeyRight && pressed == true)
+  {
+    if (cursor_pos < text.length())
+      cursor_pos += 1;
+  }
+  else if (key == Key::KeyBackspace && pressed == true)
+  {
+    if (cursor_pos > 0)
+    {
+      text.erase(cursor_pos - 1, 1);
+      cursor_pos -= 1;
+    }
+  }
+}
+
+void
+TextLine::char_update(unsigned int codepoint)
+{
+  text.insert(cursor_pos, 1, (char)codepoint);
+  cursor_pos += 1;
 }
 
 void
@@ -580,75 +739,14 @@ TextLine::draw()
     req.bounding_box_origin = origin;
     req.bounding_box_size = size;
     req.text = text;
+
+    req.cursor = true;
+    req.cursor_pos = cursor_pos;
+    {
+      float sine = sin(5.0f * EngineState::get()->get_time());
+      float x = sine * sine;
+      req.cursor_color = Vec4(1, 1, 1, x);
+    }
     GraphicsServer::get()->draw_text_line(req);
   }
-
-  /* Draw the cursor */
-  {
-    float sine = sin(5.0f * EngineState::get()->get_time());
-    float x = sine * sine;
-    Vec4 cursor_color = Vec4(1, 1, 1, x);
-    GraphicsServer::get()->draw_color_rect(origin + Vec2(50, 0), Vec2(3, 16),
-      cursor_color);
-  }
-
-  /*
-  float box_separation = 8.0f;
-  float dir_button_width = 20.0f;
-  Vec4 normal_bg = Vec4(0.8f, 0.8f, 0.8f, 0.4f);
-  Vec4 selected_bg = Vec4(0.5f, 0.5f, 0.5f, 0.4f);
-  Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
-  Vec4 pressed_bg = Vec4(1.0f, 0.8f, 1.0f, 0.4f);
-
-  Vec2 left_box_origin = origin;
-  Vec2 left_box_size = Vec2(dir_button_width, size.y);
-
-  Vec2 right_box_origin = origin + Vec2(size.x - dir_button_width, 0);
-  Vec2 right_box_size = Vec2(dir_button_width, size.y);
-
-  if (pressed == 0)
-  {
-    GraphicsServer::get()->draw_color_rect(left_box_origin, left_box_size,
-      pressed_bg);
-  }
-  else if (highlighted == 0)
-  {
-    GraphicsServer::get()->draw_color_rect(left_box_origin, left_box_size,
-      highlighted_bg);
-  }
-  else
-  {
-    GraphicsServer::get()->draw_color_rect(left_box_origin, left_box_size,
-      normal_bg);
-  }
-
-  if (pressed == 1)
-  {
-    GraphicsServer::get()->draw_color_rect(right_box_origin, right_box_size,
-      pressed_bg);
-  }
-  else if (highlighted == 1)
-  {
-    GraphicsServer::get()->draw_color_rect(right_box_origin, right_box_size,
-      highlighted_bg);
-  }
-  else
-  {
-    GraphicsServer::get()->draw_color_rect(right_box_origin, right_box_size,
-      normal_bg);
-  }
-
-  TextRenderRequest req = {};
-  req.font = EngineState::get()->get_serif();
-  req.center = true;
-  req.center_vertical = true;
-  req.size = 24;
-  req.color = Vec4(1);
-  req.bounding_box_origin = origin + Vec2(dir_button_width + box_separation, 0);
-  req.bounding_box_size = Vec2(size.x - 2.0f * (dir_button_width + box_separation), size.y);
-  {
-    const EnumData &en = std::get<EnumData>(property->data);
-    req.text = en.choices[en.current].text;
-  }
-  GraphicsServer::get()->draw_text_line(req);*/
 }

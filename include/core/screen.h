@@ -4,21 +4,37 @@
 #include "input.h"
 #include "state.h"
 
-struct MenuControl
+class MenuControl
 {
+protected:
   Vec2 origin;
   Vec2 size;
+public:
+  MenuControl();
 
   MenuControl(Vec2 _origin, Vec2 _size);
 
   virtual void
-  update() = 0;
+  update(float time_elapsed) = 0;
 
   virtual void
   draw() = 0;
 
+  /* User input callbacks */
   virtual void
-  mouse_pressed(MouseButton button, bool button_pressed) = 0;
+  mouse_button_update(MouseButton button, bool pressed);
+
+  virtual void
+  scroll_update(Vec2 scroll);
+
+  virtual void
+  key_update(Key key, bool pressed);
+
+  virtual void
+  gamepad_button_update(GamepadButton button, bool presed);
+
+  virtual void
+  char_update(unsigned int codepoint);
 
   void
   play_highlight_sound();
@@ -30,7 +46,45 @@ struct MenuControl
 class Screen
 {
   Listener *listener;
+
+  std::vector<MenuControl *> controls;
+  MenuControl *active_control;
+
+  /* Called first, then passed to subclass-defined behavior */
+  void
+  _mouse_button_update(MouseButton button, bool pressed);
+
+  void
+  _scroll_update(Vec2 scroll);
+
+  void
+  _key_update(Key key, bool pressed);
+
+  void
+  _gamepad_button_update(GamepadButton button, bool presed);
+
+  void
+  _char_update(unsigned int codepoint);
 protected:
+  /* Subclass helpers */
+  void
+  add_control(MenuControl *control);
+
+  void
+  remove_control(MenuControl *control);
+
+  MenuControl *
+  get_active_control();
+
+  void
+  set_active_control(MenuControl *_active_control);
+
+  void
+  update_controls(float time_elapsed);
+
+  void
+  draw_controls();
+
   /* User input callbacks */
   virtual void
   mouse_button_update(MouseButton button, bool pressed);
@@ -53,10 +107,10 @@ public:
   ~Screen();
 
   virtual void
-  update(float time_elapsed) = 0;
+  update(float time_elapsed);
 
   virtual void
-  draw() = 0;
+  draw();
 
   virtual void
   resize(Vec2 size);
@@ -74,7 +128,7 @@ public:
   to_disappear();
 };
 
-struct MenuButton : public MenuControl
+class MenuButton : public MenuControl
 {
   std::string text;
 
@@ -82,11 +136,11 @@ struct MenuButton : public MenuControl
 
   bool highlighted;
   bool pressed;
-
+public:
   MenuButton(std::string _text, Vec2 _origin, Vec2 _size, std::function<void()> _target);
 
   void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
@@ -95,7 +149,7 @@ struct MenuButton : public MenuControl
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct MenuSwitch : public MenuControl
+class MenuSwitch : public MenuControl
 {
   bool value;
 
@@ -103,11 +157,11 @@ struct MenuSwitch : public MenuControl
 
   int highlighted;
   int pressed;
-
+public:
   MenuSwitch(Vec2 _origin, Vec2 _size, std::function<void(bool)> _value_changed);
 
   void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
@@ -116,7 +170,7 @@ struct MenuSwitch : public MenuControl
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct MenuSlider : public MenuControl
+class MenuSlider : public MenuControl
 {
   float value;
 
@@ -124,11 +178,11 @@ struct MenuSlider : public MenuControl
 
   bool highlighted;
   bool pressed;
-
+public:
   MenuSlider(Vec2 _origin, Vec2 _size, std::function<void(float)> _value_changed);
 
   void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
@@ -137,17 +191,17 @@ struct MenuSlider : public MenuControl
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct MenuSelector : public MenuControl
+class MenuSelector : public MenuControl
 {
   PropertyData *property;
 
   int highlighted;
   int pressed;
-
+public:
   MenuSelector(Vec2 _origin, Vec2 _size, PropertyData *_property);
 
   void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
@@ -156,30 +210,37 @@ struct MenuSelector : public MenuControl
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct TextLine : public MenuControl
+class TextLine : public MenuControl
 {
   std::string text;
   uint32_t cursor_pos;
 
   bool highlighted;
   bool pressed;
-
+public:
   TextLine(Vec2 _origin, Vec2 _size, std::string _text);
 
   void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
 
   void
+  key_update(Key key, bool pressed);
+
+  void
+  char_update(unsigned int codepoint);
+
+  void
   mouse_pressed(MouseButton button, bool button_pressed);
 };
 
-struct ColorSelector : public MenuControl
+class ColorSelector : public MenuControl
 {
+public:
   void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
