@@ -185,8 +185,8 @@ ImgEditorScreen::ImgEditorScreen() :
 
   sprite = new RawSprite(palette_32, IVec2(32, 32));
 
-  input_test = new TextLine(Vec2(150, 100), Vec2(128, 24), "test");
-  add_control(input_test);
+  input_test = new ColorSelector();
+  add_child(input_test);
   set_active_control(input_test);
 }
 
@@ -247,7 +247,6 @@ ImgEditorScreen::update(float time_elapsed)
 void
 ImgEditorScreen::draw()
 {
-  draw_controls();
 #if 0
   Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
 

@@ -101,6 +101,8 @@ glfw_key_to_key(int glfw_key)
     case GLFW_KEY_DOWN: key = KeyDown; break;
     case GLFW_KEY_LEFT: key = KeyLeft; break;
     case GLFW_KEY_RIGHT: key = KeyRight; break;
+    case GLFW_KEY_LEFT_SHIFT: key = KeyLeftShift; break;
+    case GLFW_KEY_RIGHT_SHIFT: key = KeyRightShift; break;
   }
   return key;
 }
@@ -179,6 +181,8 @@ key_to_glfw_key(Key key)
     case KeyDown: key_code = GLFW_KEY_DOWN; break;
     case KeyLeft: key_code = GLFW_KEY_LEFT; break;
     case KeyRight: key_code = GLFW_KEY_RIGHT; break;
+    case KeyLeftShift: key_code = GLFW_KEY_LEFT_SHIFT; break;
+    case KeyRightShift: key_code = GLFW_KEY_RIGHT_SHIFT; break;
   }
   return key_code;
 }
@@ -202,7 +206,10 @@ char_callback(GLFWwindow *window, unsigned int codepoint)
 static void
 mouse_callback(GLFWwindow *window, double mouse_x, double mouse_y)
 {
+  int width, height;
+  glfwGetWindowSize(window, &width, &height);
 
+  InputMonitor::get()->cursor_pos_changed(Vec2(mouse_x, float(height) - mouse_y));
 }
 
 static void
@@ -298,6 +305,16 @@ InputMonitor::mouse_button_press(MouseButton button, bool press)
   {
     if (listeners[i]->mouse_button_handle)
       listeners[i]->mouse_button_handle.value()(button, press);
+  }
+}
+
+void
+InputMonitor::cursor_pos_changed(Vec2 position)
+{
+  for (Listener *listener : listeners)
+  {
+    if (listener->cursor_pos_handle)
+      listener->cursor_pos_handle.value()(position);
   }
 }
 

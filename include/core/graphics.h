@@ -254,6 +254,10 @@ struct TextRenderRequest
   bool cursor;
   uint32_t cursor_pos;
   Vec4 cursor_color;
+
+  /* For drawing text input boxes */
+  Vec2 scroll_offset;
+  bool mask_bounds;
 };
 
 class GraphicsServer

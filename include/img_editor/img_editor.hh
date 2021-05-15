@@ -107,6 +107,23 @@ public:
   set_size(IVec2 _size);
 };
 
+class SpriteView : public MenuControl
+{
+public:
+  SpriteView();
+
+  ~SpriteView();
+
+  void
+  update(float time_elapsed);
+
+  void
+  draw();
+
+  void
+  mouse_pressed(MouseButton button, bool button_pressed);
+};
+
 class ImgEditorScreen : public Screen
 {
   Texture *palette;
@@ -117,7 +134,7 @@ class ImgEditorScreen : public Screen
 
   IVec2 cursor_pos;
 
-  TextLine *input_test;
+  ColorSelector *input_test;
 protected:
   void
   key_update(Key key, bool pressed);

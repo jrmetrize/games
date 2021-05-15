@@ -5,19 +5,139 @@
 #include <algorithm>
 
 MenuControl::MenuControl():
-  origin(), size()
+  origin(), size(), hovered(false), focused(false)
 {
 
 }
 
 MenuControl::MenuControl(Vec2 _origin, Vec2 _size) :
-  origin(_origin), size(_size)
+  origin(_origin), size(_size), hovered(false), focused(false),
+  tab_next(nullptr), tab_prev(nullptr)
 {
 
 }
 
 void
+MenuControl::set_hovered(bool _hovered)
+{
+  hovered = _hovered;
+}
+
+bool
+MenuControl::is_hovered() const
+{
+  return hovered;
+}
+
+void
+MenuControl::set_focused(bool _focused)
+{
+  focused = _focused;
+}
+
+bool
+MenuControl::is_focused() const
+{
+  return focused;
+}
+
+MenuControl *
+MenuControl::get_tab_prev()
+{
+  return tab_prev;
+}
+
+MenuControl *
+MenuControl::get_tab_next()
+{
+  return tab_next;
+}
+
+void
+MenuControl::set_tab_prev(MenuControl *_prev)
+{
+  tab_prev = _prev;
+}
+
+void
+MenuControl::set_tab_next(MenuControl *_next)
+{
+  tab_next = _next;
+}
+
+void
+MenuControl::make_tab_list(std::vector<MenuControl *> controls)
+{
+  if (controls.size() > 1)
+  {
+    controls[0]->set_tab_next(controls[1]);
+    controls[controls.size() - 1]->set_tab_prev(controls[controls.size() - 2]);
+  }
+  for (size_t i = 1; i < controls.size() - 1; ++i)
+  {
+    controls[i]->set_tab_prev(controls[i - 1]);
+    controls[i]->set_tab_next(controls[i + 1]);
+  }
+
+}
+
+MenuControl *
+MenuControl::get_control_under(Vec2 position)
+{
+  /* First check the child nodes. If none of them hit, check this node. */
+  /* TODO: allow subclasses to define custom behavior for cursor detection,
+     not just cursor-in-rect. */
+  MenuControl *hovered = nullptr;
+
+  for (MenuControl *child : children)
+  {
+    hovered = child->get_control_under(position);
+    if (hovered != nullptr)
+      return hovered;
+  }
+
+  if (position.inside_rect(origin, size))
+    hovered = this;
+
+  return hovered;
+}
+
+void
+MenuControl::update_children(float time_elapsed)
+{
+  this->update(time_elapsed);
+  for (MenuControl *child : children)
+    child->update_children(time_elapsed);
+}
+
+void
+MenuControl::draw_children()
+{
+  this->draw();
+  for (MenuControl *child : children)
+    child->draw_children();
+}
+
+void
+MenuControl::add_child(MenuControl *child)
+{
+  children.push_back(child);
+}
+
+void
+MenuControl::remove_child(MenuControl *child)
+{
+  children.erase(std::remove(children.begin(), children.end(), child), children.end());
+}
+
+void
 MenuControl::mouse_button_update(MouseButton button, bool pressed)
+{
+
+}
+
+void
+MenuControl::cursor_update(Vec2 position)
 {
 
 }
@@ -61,12 +181,14 @@ MenuControl::play_confirm_sound()
 }
 
 Screen::Screen() :
-  active_control(nullptr)
+  hovered_control(nullptr), active_control(nullptr)
 {
   listener = new Listener();
 
   listener->mouse_button_handle = std::bind(&Screen::_mouse_button_update, this,
     std::placeholders::_1, std::placeholders::_2);
+  listener->cursor_pos_handle = std::bind(&Screen::_cursor_update, this,
+    std::placeholders::_1);
   listener->scroll_handle = std::bind(&Screen::_scroll_update, this,
     std::placeholders::_1);
   listener->key_handle = std::bind(&Screen::_key_update, this,
@@ -88,6 +210,31 @@ Screen::_mouse_button_update(MouseButton button, bool pressed)
   if (active_control != nullptr)
     active_control->mouse_button_update(button, pressed);
   this->mouse_button_update(button, pressed);
+
+  if (pressed == false)
+  {
+    if (active_control != nullptr)
+      active_control->set_focused(false);
+    active_control = hovered_control;
+    if (active_control != nullptr)
+      active_control->set_focused(true);
+  }
+}
+
+void
+Screen::_cursor_update(Vec2 position)
+{
+  /* Determine what control, if any, the cursor is hovering over. */
+  MenuControl *last_hovered = hovered_control;
+  hovered_control = get_control_under(position);
+  if (last_hovered != nullptr)
+    last_hovered->set_hovered(false);
+  if (hovered_control != nullptr)
+    hovered_control->set_hovered(true);
+
+  if (active_control != nullptr)
+    active_control->cursor_update(position);
+  this->cursor_update(position);
 }
 
 void
@@ -101,6 +248,33 @@ Screen::_scroll_update(Vec2 scroll)
 void
 Screen::_key_update(Key key, bool pressed)
 {
+  /* TODO: this should probably be handled by the control itself */
+  if (key == KeyTab && pressed == true && active_control != nullptr)
+  {
+    // Shift + Tab to go backwards, Tab to go forwards
+    /* TODO: these bindings should not be coded in place. */
+    if (InputMonitor::get()->is_key_down(KeyLeftShift) ||
+        InputMonitor::get()->is_key_down(KeyRightShift))
+    {
+      if (active_control->get_tab_prev() != nullptr)
+      {
+        active_control->set_focused(false);
+        active_control = active_control->get_tab_prev();
+        active_control->set_focused(true);
+      }
+    }
+    else
+    {
+      if (active_control->get_tab_next() != nullptr)
+      {
+        active_control->set_focused(false);
+        active_control = active_control->get_tab_next();
+        active_control->set_focused(true);
+      }
+    }
+  }
+
+
   if (active_control != nullptr)
     active_control->key_update(key, pressed);
   this->key_update(key, pressed);
@@ -122,18 +296,6 @@ Screen::_char_update(unsigned int codepoint)
   this->char_update(codepoint);
 }
 
-void
-Screen::add_control(MenuControl *control)
-{
-  controls.push_back(control);
-}
-
-void
-Screen::remove_control(MenuControl *control)
-{
-
-}
-
 MenuControl *
 Screen::get_active_control()
 {
@@ -145,62 +307,6 @@ Screen::set_active_control(MenuControl *_active_control)
 {
   active_control = _active_control;
   /* TODO: notify this control and the old one, if it existed */
-}
-
-void
-Screen::update_controls(float time_elapsed)
-{
-  for (MenuControl *control : controls)
-    control->update(time_elapsed);
-}
-
-void
-Screen::draw_controls()
-{
-  for (MenuControl *control : controls)
-    control->draw();
-}
-
-void
-Screen::mouse_button_update(MouseButton button, bool pressed)
-{
-
-}
-
-void
-Screen::scroll_update(Vec2 scroll)
-{
-
-}
-
-void
-Screen::key_update(Key key, bool pressed)
-{
-
-}
-
-void
-Screen::gamepad_button_update(GamepadButton button, bool pressed)
-{
-
-}
-
-void
-Screen::char_update(unsigned int codepoint)
-{
-
-}
-
-void
-Screen::update(float time_elapsed)
-{
-  update_controls(time_elapsed);
-}
-
-void
-Screen::draw()
-{
-  draw_controls();
 }
 
 void
@@ -722,7 +828,7 @@ TextLine::draw()
   Vec4 normal_bg = Vec4(0.8f, 0.8f, 0.8f, 0.4f);
   Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
   Vec4 selected_bg = Vec4(0.5f, 0.5f, 0.5f, 0.4f);
-  if (highlighted)
+  if (is_hovered())
     GraphicsServer::get()->draw_color_rect(origin, size,
       highlighted_bg);
   else
@@ -736,11 +842,12 @@ TextLine::draw()
     req.center_vertical = true;
     req.size = 16;
     req.color = Vec4(0, 0, 0, 1);
-    req.bounding_box_origin = origin;
-    req.bounding_box_size = size;
+    req.bounding_box_origin = origin + Vec2(8, 0);
+    req.bounding_box_size = size - Vec2(16, 0);
     req.text = text;
+    req.mask_bounds = true;
 
-    req.cursor = true;
+    req.cursor = is_focused();
     req.cursor_pos = cursor_pos;
     {
       float sine = sin(5.0f * EngineState::get()->get_time());
@@ -749,4 +856,67 @@ TextLine::draw()
     }
     GraphicsServer::get()->draw_text_line(req);
   }
+}
+
+std::string
+TextLine::get_text() const
+{
+  return text;
+}
+
+ColorSelector::ColorSelector() :
+  MenuControl(Vec2(32, 32), Vec2(320, 160))
+{
+  r_component = new TextLine(Vec2(48, 108), Vec2(288, 24), "1.0");
+  g_component = new TextLine(Vec2(48, 78), Vec2(288, 24), "1.0");
+  b_component = new TextLine(Vec2(48, 48), Vec2(288, 24), "1.0");
+
+  add_child(r_component);
+  add_child(g_component);
+  add_child(b_component);
+
+  MenuControl::make_tab_list({ r_component, g_component, b_component });
+}
+
+ColorSelector::~ColorSelector()
+{
+  delete r_component;
+  delete g_component;
+  delete b_component;
+}
+
+void
+ColorSelector::update(float time_elapsed)
+{
+
+}
+
+void
+ColorSelector::draw()
+{
+  // Background
+  GraphicsServer::get()->draw_color_rect(origin, size, Vec4(0.2, 0.2, 0.2, 1.0));
+
+  /* Display color */
+  Vec4 color = Vec4(0, 0, 0, 1);
+  try
+  {
+    Vec4 _color = Vec4(0, 0, 0, 1);
+    _color.x = std::stof(r_component->get_text(), nullptr);
+    _color.y = std::stof(g_component->get_text(), nullptr);
+    _color.z = std::stof(b_component->get_text(), nullptr);
+    color = _color;
+  }
+  catch (const std::exception &)
+  {
+    /* TODO: if the colors are not numbers, display an image? Or the text inputs
+       should only accept valid numbers. */
+  }
+  GraphicsServer::get()->draw_color_rect(Vec2(48, 138), Vec2(288, 36), color);
+}
+
+void
+ColorSelector::mouse_pressed(MouseButton button, bool button_pressed)
+{
+
 }

@@ -331,7 +331,7 @@ GraphicsServer::draw()
   backend->begin_render();
 
   if (current_screen != nullptr)
-    current_screen->draw();
+    current_screen->draw_children();
 
   glfwSwapBuffers(backend->get_window());
 }
@@ -359,7 +359,8 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
 
   //text_request.font->generate_textures();
   FontFace *face = text_request.font->get_font();
-  Vec2 current_pos = text_request.bounding_box_origin;
+  Vec2 current_pos = text_request.bounding_box_origin
+    + text_request.scroll_offset;
 
   float g_height;
 
@@ -387,6 +388,14 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
       width += scale_factor * glyph.horizontal_advance;
     }
     current_pos += Vec2((1.0f / 2.0f) * (text_request.bounding_box_size.x - width), 0);
+  }
+
+  /* Mask off the bounds provided */
+  if (text_request.mask_bounds)
+  {
+    backend->clear_mask();
+    backend->mask_rect(text_request.bounding_box_origin,
+      text_request.bounding_box_size);
   }
 
   for (unsigned int i = 0; i < text_request.text.length(); ++i)
@@ -421,8 +430,12 @@ GraphicsServer::draw_text_line(const TextRenderRequest &text_request)
   }
   if (text_request.cursor_pos == text_request.text.length())
     cursor_offset = current_pos;
-  backend->draw_color_rect(cursor_offset - Vec2(1, 0), Vec2(2, g_height),
-    text_request.cursor_color);
+  if (text_request.cursor)
+    backend->draw_color_rect(cursor_offset - Vec2(1, 0), Vec2(2, g_height),
+      text_request.cursor_color);
+
+  if (text_request.mask_bounds)
+    backend->clear_mask();
 }
 
 void
