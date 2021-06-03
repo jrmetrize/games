@@ -4,22 +4,68 @@
 #include "input.h"
 #include "state.h"
 
+enum MenuControlEventType
+{
+  MenuControlEventTypeMouseButton = 0,
+  MenuControlEventTypeCursor,
+  MenuControlEventTypeScroll,
+  MenuControlEventTypeKey,
+  MenuControlEventTypeGamepadButton,
+  MenuControlEventTypeChar
+};
+
+struct MenuControlEvent
+{
+  MenuControlEventType type;
+
+  bool pressed;
+
+  MouseButton mouse_button;
+  Vec2 cursor_position;
+  Vec2 scroll_distance;
+  Key key;
+  GamepadButton gamepad_button;
+  unsigned int codepoint;
+};
+
 class MenuControl
 {
   std::vector<MenuControl *> children;
+  MenuControl *parent;
 
   MenuControl *tab_prev;
   MenuControl *tab_next;
-protected:
+
   Vec2 origin;
   Vec2 size;
-
+protected:
   bool hovered;
   bool focused;
+
+  void
+  propagate_event(const MenuControlEvent *event);
+
+  virtual void
+  origin_changed();
+
+  virtual void
+  size_changed();
 public:
   MenuControl();
 
   MenuControl(Vec2 _origin, Vec2 _size);
+
+  Vec2
+  get_origin() const;
+
+  void
+  set_origin(Vec2 _origin);
+
+  Vec2
+  get_size() const;
+
+  void
+  set_size(Vec2 _size);
 
   void
   set_hovered(bool _hovered);
@@ -32,6 +78,9 @@ public:
 
   bool
   is_focused() const;
+
+  Vec2
+  get_global_offset() const;
 
   /* Tab list */
   MenuControl *
@@ -78,28 +127,7 @@ public:
 
   /* User input callbacks */
   virtual void
-  mouse_button_update(MouseButton button, bool pressed);
-
-  virtual void
-  cursor_update(Vec2 position);
-
-  virtual void
-  scroll_update(Vec2 scroll);
-
-  virtual void
-  key_update(Key key, bool pressed);
-
-  virtual void
-  gamepad_button_update(GamepadButton button, bool presed);
-
-  virtual void
-  char_update(unsigned int codepoint);
-
-  void
-  play_highlight_sound();
-
-  void
-  play_confirm_sound();
+  handle_event(const MenuControlEvent *event);
 };
 
 class Screen : public MenuControl
@@ -174,7 +202,19 @@ public:
   draw();
 
   void
-  mouse_pressed(MouseButton button, bool button_pressed);
+  handle_event(const MenuControlEvent *event);
+};
+
+class EmptyControl : public MenuControl
+{
+public:
+  EmptyControl(Vec2 _origin);
+
+  void
+  update(float time_elapsed);
+
+  void
+  draw();
 };
 
 class MenuSwitch : public MenuControl
@@ -195,7 +235,7 @@ public:
   draw();
 
   void
-  mouse_pressed(MouseButton button, bool button_pressed);
+  handle_event(const MenuControlEvent *event);
 };
 
 class MenuSlider : public MenuControl
@@ -216,7 +256,7 @@ public:
   draw();
 
   void
-  mouse_pressed(MouseButton button, bool button_pressed);
+  handle_event(const MenuControlEvent *event);
 };
 
 class MenuSelector : public MenuControl
@@ -235,7 +275,7 @@ public:
   draw();
 
   void
-  mouse_pressed(MouseButton button, bool button_pressed);
+  handle_event(const MenuControlEvent *event);
 };
 
 class TextLine : public MenuControl
@@ -255,13 +295,7 @@ public:
   draw();
 
   void
-  key_update(Key key, bool pressed);
-
-  void
-  char_update(unsigned int codepoint);
-
-  void
-  mouse_pressed(MouseButton button, bool button_pressed);
+  handle_event(const MenuControlEvent *event);
 
   std::string
   get_text() const;
@@ -272,6 +306,9 @@ class ColorSelector : public MenuControl
   TextLine *r_component;
   TextLine *g_component;
   TextLine *b_component;
+protected:
+  void
+  size_changed();
 public:
   ColorSelector();
 
@@ -282,9 +319,36 @@ public:
 
   void
   draw();
+};
+
+class FlexContainer : public MenuControl
+{
+  std::string title;
+  MenuControl *child;
+
+  bool drag_position;
+  Vec2 original_position;
+  Vec2 position_grab_point;
+
+  bool drag_size;
+  Vec2 original_size;
+  Vec2 size_grab_point;
 
   void
-  mouse_pressed(MouseButton button, bool button_pressed);
+  resize_child();
+public:
+  FlexContainer(std::string _title, MenuControl *_child);
+
+  ~FlexContainer();
+
+  void
+  update(float time_elapsed);
+
+  void
+  draw();
+
+  void
+  handle_event(const MenuControlEvent *event);
 };
 
 #endif

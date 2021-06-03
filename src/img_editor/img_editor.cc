@@ -159,6 +159,63 @@ RawSprite::set_size(IVec2 _size)
   size = _size;
 }
 
+SpriteView::SpriteView(Vec2 _origin, Vec2 _size, const BoundTexture *_sprite) :
+  MenuControl(_origin, _size), sprite(_sprite)
+{
+
+}
+
+SpriteView::~SpriteView()
+{
+
+}
+
+void
+SpriteView::update(float time_elapsed)
+{
+
+}
+
+void
+SpriteView::draw()
+{
+  // Background
+  GraphicsServer::get()->draw_color_rect(get_global_offset(),
+    get_size(), Vec4(0.2, 0.2, 0.2, 1.0));
+
+  Vec2 container_size = get_size();
+  Vec2 img_size = Vec2(sprite->get_texture()->get_width(),
+    sprite->get_texture()->get_height());
+
+  float container_ar = container_size.x / container_size.y;
+  float img_ar = img_size.x / img_size.y;
+
+  /* If the aspect ratio of the image is bigger, add horizontal bars. If the
+     aspect ratio of the container is bigger, add vertical bars. */
+  Vec2 img_display_origin;
+  Vec2 img_display_size;
+  if (img_ar > container_ar)
+  {
+    img_display_size = Vec2(container_size.x, container_size.x / img_ar);
+    img_display_origin = Vec2(0, (container_size.y - img_display_size.y) / 2);
+  }
+  else
+  {
+    img_display_size = Vec2(container_size.y * img_ar, container_size.x);
+    img_display_origin = Vec2((container_size.x - img_display_size.x) / 2, 0);
+  }
+
+  // The sprite
+  GraphicsServer::get()->draw_texture_rect(get_global_offset() + img_display_origin,
+    img_display_size, *sprite);
+}
+
+void
+SpriteView::mouse_pressed(MouseButton button, bool button_pressed)
+{
+
+}
+
 ImgEditorScreen::ImgEditorScreen() :
   cursor_pos(0, 0), sprite(nullptr)
 {
@@ -186,8 +243,18 @@ ImgEditorScreen::ImgEditorScreen() :
   sprite = new RawSprite(palette_32, IVec2(32, 32));
 
   input_test = new ColorSelector();
-  add_child(input_test);
+  //add_child(input_test);
+  //set_active_control(input_test);
+  color_container = new FlexContainer("Color", input_test);
+  add_child(color_container);
+
   set_active_control(input_test);
+
+  palette_view = new SpriteView(Vec2(500, 32), Vec2(512, 512), b_pal);
+  //img_view = new SpriteView(Vec2(700, 500), Vec2(100, 100), b_pal);
+
+  add_child(palette_view);
+  //add_child(img_view);
 }
 
 ImgEditorScreen::~ImgEditorScreen()
@@ -241,7 +308,7 @@ ImgEditorScreen::to_disappear()
 void
 ImgEditorScreen::update(float time_elapsed)
 {
-  input_test->update(time_elapsed);
+
 }
 
 void

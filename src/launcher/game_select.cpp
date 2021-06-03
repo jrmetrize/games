@@ -72,57 +72,43 @@ GameEntry::get_game_list()
 
 GameEntryCard::GameEntryCard(GameEntry &_entry,
   std::function<void(GameEntry &)> _target) :
-  entry(_entry), target(_target), highlighted(false), pressed(false), origin(),
-  offset(), size()
+  MenuControl(Vec2(), Vec2()), entry(_entry), target(_target),
+  highlighted(false), pressed(false)
 {
 
 }
 
 void
-GameEntryCard::set_origin(Vec2 _origin)
+GameEntryCard::handle_event(const MenuControlEvent *event)
 {
-  origin = _origin;
-}
-
-void
-GameEntryCard::set_offset(Vec2 _offset)
-{
-  offset = _offset;
-}
-
-void
-GameEntryCard::set_size(Vec2 _size)
-{
-  size = _size;
-}
-
-void
-GameEntryCard::mouse_pressed(MouseButton button, bool button_pressed)
-{
-  if (highlighted && button_pressed)
-    pressed = true;
-
+  if (event->type == MenuControlEventTypeMouseButton)
   {
-    bool contains_mouse = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin + offset, size);
-    if (pressed && !button_pressed && contains_mouse)
-    {
-      target(entry);
-    }
-  }
+    if (highlighted && event->pressed)
+      pressed = true;
 
-  if (!button_pressed)
-    pressed = false;
+    {
+      bool contains_mouse = InputMonitor::get()->get_mouse_position().inside_rect(
+        get_global_offset(), get_size());
+      if (pressed && !event->pressed && contains_mouse)
+      {
+        target(entry);
+        //play_confirm_sound();
+      }
+    }
+
+    if (!event->pressed)
+      pressed = false;
+  }
 }
 
 void
-GameEntryCard::update()
+GameEntryCard::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
     bool prev_highlighted = highlighted;
     highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin + offset, size);
+      get_global_offset(), get_size());
     if (prev_highlighted == false && highlighted)
     {
       //play_highlight_sound();
@@ -133,16 +119,17 @@ GameEntryCard::update()
 void
 GameEntryCard::draw()
 {
+  Vec2 offset = get_global_offset();
   if (pressed)
-    GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_SELECT);
+    GraphicsServer::get()->draw_color_rect(offset, get_size(), LAUNCHER_UI_SELECT);
   else if (highlighted)
-    GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_HIGHLIGHT);
+    GraphicsServer::get()->draw_color_rect(offset, get_size(), LAUNCHER_UI_HIGHLIGHT);
   else
-    GraphicsServer::get()->draw_color_rect(origin + offset, size, LAUNCHER_UI_GRAY);
+    GraphicsServer::get()->draw_color_rect(offset, get_size(), LAUNCHER_UI_GRAY);
 
   TextRenderRequest req = {};
-  req.bounding_box_origin = origin + offset;
-  req.bounding_box_size = Vec2(size.x, 20);
+  req.bounding_box_origin = offset;
+  req.bounding_box_size = Vec2(get_size().x, 20);
   req.text = entry.get_title();
   req.color = Vec4(0, 0, 0, 1);
   req.size = 12;
@@ -157,14 +144,20 @@ GameSelectScreen::GameSelectScreen(LauncherState *_launcher) :
   scroll_offset(0.0), content_height(0.0f)
 {
   for (GameEntry &entry : games)
-    cards.push_back(GameEntryCard(entry,
+  {
+    GameEntryCard *card = new GameEntryCard(entry,
       std::bind(&GameSelectScreen::entry_selected, this,
-      std::placeholders::_1)));
+      std::placeholders::_1));
+
+    cards.push_back(card);
+    add_child(card);
+  }
 }
 
 GameSelectScreen::~GameSelectScreen()
 {
-
+  for (GameEntryCard *card : cards)
+    delete card;
 }
 
 void
@@ -193,8 +186,8 @@ GameSelectScreen::resize(Vec2 window_size)
     Vec2 cell_pos = Vec2(
       LAUNCHER_UI_MARGIN + (float(col) * cell_width) + (float(col) * LAUNCHER_UI_SPACING),
       window_size.y - LAUNCHER_UI_MARGIN - (float(row + 1) * cell_height) - (float(row) * LAUNCHER_UI_SPACING));
-    cards[i].set_origin(cell_pos);
-    cards[i].set_size(Vec2(cell_width, cell_height));
+    cards[i]->set_origin(cell_pos);
+    cards[i]->set_size(Vec2(cell_width, cell_height));
   }
 
   /* Calculate the total number of rows. */
@@ -222,41 +215,36 @@ GameSelectScreen::to_disappear()
 }
 
 void
-GameSelectScreen::mouse_button_update(MouseButton button, bool pressed)
+GameSelectScreen::handle_event(const MenuControlEvent *event)
 {
-  for (GameEntryCard &card : cards)
-    card.mouse_pressed(button, pressed);
-}
+  if (event->type == MenuControlEventTypeScroll)
+  {
+    Vec2 scroll = event->scroll_distance;
+    Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
+    scroll_offset += -1.0f * 3.0f * scroll.y;
+    if (scroll_offset < 0.0f)
+      scroll_offset = 0.0f;
 
-void
-GameSelectScreen::scroll_update(Vec2 scroll)
-{
-  Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
-  scroll_offset += -1.0f * 3.0f * scroll.y;
-  if (scroll_offset < 0.0f)
-    scroll_offset = 0.0f;
+    if (content_height <= window_size.y)
+      scroll_offset = 0.0f;
+    else if (scroll_offset > content_height - window_size.y)
+      scroll_offset = content_height - window_size.y;
 
-  if (content_height <= window_size.y)
-    scroll_offset = 0.0f;
-  else if (scroll_offset > content_height - window_size.y)
-    scroll_offset = content_height - window_size.y;
-
-  for (GameEntryCard &card : cards)
-    card.set_offset(Vec2(0, scroll_offset));
+    //for (GameEntryCard &card : cards)
+    //  card.set_offset(Vec2(0, scroll_offset));
+  }
 }
 
 void
 GameSelectScreen::update(float time_elapsed)
 {
-  for (GameEntryCard &card : cards)
-    card.update();
+
 }
 
 void
 GameSelectScreen::draw()
 {
-  for (uint32_t i = 0; i < cards.size(); ++i)
-    cards[i].draw();
+
 }
 
 }

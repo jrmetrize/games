@@ -25,7 +25,7 @@ class TitleScreen : public Screen
   Scene3D *scene;
 protected:
   void
-  key_update(Key key, bool pressed);
+  handle_event(const MenuControlEvent *event);
 public:
   TitleScreen(LauncherState *_launcher);
 

@@ -63,7 +63,7 @@ public:
   ~BoundTexture() = 0;
 
   const Texture *
-  get_texture();
+  get_texture() const;
 
   Texture::Filtering
   get_filtering();

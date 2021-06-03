@@ -197,7 +197,7 @@ EngineState::update(float time_elapsed)
   last_update = std::chrono::steady_clock::now();
   GraphicsServer::get()->set_current_screen(current_screen);
   if (current_screen != nullptr)
-    current_screen->update(time_elapsed);
+    current_screen->update_children(time_elapsed);
 }
 
 float

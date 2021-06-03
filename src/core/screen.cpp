@@ -5,16 +5,62 @@
 #include <algorithm>
 
 MenuControl::MenuControl():
-  origin(), size(), hovered(false), focused(false)
+  origin(), size(), hovered(false), focused(false), parent(nullptr)
 {
 
 }
 
 MenuControl::MenuControl(Vec2 _origin, Vec2 _size) :
   origin(_origin), size(_size), hovered(false), focused(false),
-  tab_next(nullptr), tab_prev(nullptr)
+  tab_next(nullptr), tab_prev(nullptr), parent(nullptr)
 {
 
+}
+
+void
+MenuControl::origin_changed()
+{
+
+}
+
+void
+MenuControl::size_changed()
+{
+
+}
+
+void
+MenuControl::propagate_event(const MenuControlEvent *event)
+{
+  handle_event(event);
+  for (uint32_t i = 0; i < children.size(); ++i)
+    children[i]->propagate_event(event);
+}
+
+Vec2
+MenuControl::get_origin() const
+{
+  return origin;
+}
+
+void
+MenuControl::set_origin(Vec2 _origin)
+{
+  origin = _origin;
+  origin_changed();
+}
+
+Vec2
+MenuControl::get_size() const
+{
+  return size;
+}
+
+void
+MenuControl::set_size(Vec2 _size)
+{
+  size = _size;
+  size_changed();
 }
 
 void
@@ -39,6 +85,19 @@ bool
 MenuControl::is_focused() const
 {
   return focused;
+}
+
+Vec2
+MenuControl::get_global_offset() const
+{
+  Vec2 offset = Vec2();
+  const MenuControl *node = this;
+  while (node->parent != nullptr)
+  {
+    offset += node->origin;
+    node = node->parent;
+  }
+  return offset;
 }
 
 MenuControl *
@@ -96,7 +155,8 @@ MenuControl::get_control_under(Vec2 position)
       return hovered;
   }
 
-  if (position.inside_rect(origin, size))
+  Vec2 offset = get_global_offset();
+  if (position.inside_rect(offset, size))
     hovered = this;
 
   return hovered;
@@ -121,63 +181,21 @@ MenuControl::draw_children()
 void
 MenuControl::add_child(MenuControl *child)
 {
+  child->parent = this;
   children.push_back(child);
 }
 
 void
 MenuControl::remove_child(MenuControl *child)
 {
+  child->parent = nullptr;
   children.erase(std::remove(children.begin(), children.end(), child), children.end());
 }
 
 void
-MenuControl::mouse_button_update(MouseButton button, bool pressed)
+MenuControl::handle_event(const MenuControlEvent *event)
 {
 
-}
-
-void
-MenuControl::cursor_update(Vec2 position)
-{
-
-}
-
-void
-MenuControl::scroll_update(Vec2 scroll)
-{
-
-}
-
-void
-MenuControl::key_update(Key key, bool pressed)
-{
-
-}
-
-void
-MenuControl::gamepad_button_update(GamepadButton button, bool presed)
-{
-
-}
-
-void
-MenuControl::char_update(unsigned int codepoint)
-{
-
-}
-
-void
-MenuControl::play_highlight_sound()
-{
-  AudioTrack *cursor = (AudioTrack *)EngineState::get()->get_globals()->get_resource("menu_cursor");
-  AudioServer::get()->play(cursor);
-}
-
-void
-MenuControl::play_confirm_sound()
-{
-  AudioTrack *confirm = (AudioTrack *)EngineState::get()->get_globals()->get_resource("menu_confirm");
-  AudioServer::get()->play(confirm);
 }
 
 Screen::Screen() :
@@ -207,9 +225,12 @@ Screen::~Screen()
 void
 Screen::_mouse_button_update(MouseButton button, bool pressed)
 {
-  if (active_control != nullptr)
-    active_control->mouse_button_update(button, pressed);
-  this->mouse_button_update(button, pressed);
+  MenuControlEvent event = MenuControlEvent();
+  event.type = MenuControlEventTypeMouseButton;
+  event.pressed = pressed;
+  event.mouse_button = button;
+
+  propagate_event(&event);
 
   if (pressed == false)
   {
@@ -232,17 +253,21 @@ Screen::_cursor_update(Vec2 position)
   if (hovered_control != nullptr)
     hovered_control->set_hovered(true);
 
-  if (active_control != nullptr)
-    active_control->cursor_update(position);
-  this->cursor_update(position);
+  MenuControlEvent event = MenuControlEvent();
+  event.type = MenuControlEventTypeCursor;
+  event.cursor_position = position;
+
+  propagate_event(&event);
 }
 
 void
 Screen::_scroll_update(Vec2 scroll)
 {
-  if (active_control != nullptr)
-    active_control->scroll_update(scroll);
-  this->scroll_update(scroll);
+  MenuControlEvent event = MenuControlEvent();
+  event.type = MenuControlEventTypeScroll;
+  event.scroll_distance = scroll;
+
+  propagate_event(&event);
 }
 
 void
@@ -274,26 +299,33 @@ Screen::_key_update(Key key, bool pressed)
     }
   }
 
+  MenuControlEvent event = MenuControlEvent();
+  event.type = MenuControlEventTypeKey;
+  event.pressed = pressed;
+  event.key = key;
 
-  if (active_control != nullptr)
-    active_control->key_update(key, pressed);
-  this->key_update(key, pressed);
+  propagate_event(&event);
 }
 
 void
 Screen::_gamepad_button_update(GamepadButton button, bool pressed)
 {
-  if (active_control != nullptr)
-    active_control->gamepad_button_update(button, pressed);
-  this->gamepad_button_update(button, pressed);
+  MenuControlEvent event = MenuControlEvent();
+  event.type = MenuControlEventTypeGamepadButton;
+  event.pressed = pressed;
+  event.gamepad_button = button;
+
+  propagate_event(&event);
 }
 
 void
 Screen::_char_update(unsigned int codepoint)
 {
-  if (active_control != nullptr)
-    active_control->char_update(codepoint);
-  this->char_update(codepoint);
+  MenuControlEvent event = MenuControlEvent();
+  event.type = MenuControlEventTypeChar;
+  event.codepoint = codepoint;
+
+  propagate_event(&event);
 }
 
 MenuControl *
@@ -339,6 +371,24 @@ Screen::to_disappear()
 
 }
 
+EmptyControl::EmptyControl(Vec2 _origin) :
+  MenuControl(_origin, Vec2())
+{
+
+}
+
+void
+EmptyControl::update(float time_elapsed)
+{
+
+}
+
+void
+EmptyControl::draw()
+{
+
+}
+
 MenuButton::MenuButton(std::string _text, Vec2 _origin, Vec2 _size,
   std::function<void()> _target) :
   MenuControl(_origin, _size), text(_text), target(_target),
@@ -354,10 +404,10 @@ MenuButton::update(float time_elapsed)
   {
     bool prev_highlighted = highlighted;
     highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin, size);
+      get_origin(), get_size());
     if (prev_highlighted == false && highlighted)
     {
-      play_highlight_sound();
+      //play_highlight_sound();
     }
   }
 }
@@ -367,8 +417,8 @@ MenuButton::draw()
 {
   Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
   TextRenderRequest req = {};
-  req.bounding_box_origin = origin;
-  req.bounding_box_size = size;
+  req.bounding_box_origin = get_origin();
+  req.bounding_box_size = get_size();
   req.text = text;
   req.font = EngineState::get()->get_serif();
   //req.center = true;
@@ -396,23 +446,26 @@ MenuButton::draw()
 }
 
 void
-MenuButton::mouse_pressed(MouseButton button, bool button_pressed)
+MenuButton::handle_event(const MenuControlEvent *event)
 {
-  if (highlighted && button_pressed)
-    pressed = true;
-
+  if (event->type == MenuControlEventTypeMouseButton)
   {
-    bool contains_mouse = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin, size);
-    if (pressed && !button_pressed && contains_mouse)
-    {
-      target();
-      play_confirm_sound();
-    }
-  }
+    if (highlighted && event->pressed)
+      pressed = true;
 
-  if (!button_pressed)
-    pressed = false;
+    {
+      bool contains_mouse = InputMonitor::get()->get_mouse_position().inside_rect(
+        get_global_offset(), get_size());
+      if (pressed && !event->pressed && contains_mouse)
+      {
+        target();
+        //play_confirm_sound();
+      }
+    }
+
+    if (!event->pressed)
+      pressed = false;
+  }
 }
 
 MenuSwitch::MenuSwitch(Vec2 _origin, Vec2 _size, std::function<void(bool)> _value_changed) :
@@ -429,10 +482,10 @@ MenuSwitch::update(float time_elapsed)
   {
     float box_separation = 8.0f;
     bool left_highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin, Vec2(0.5f * (size.x - box_separation), size.y));
+      get_global_offset(), Vec2(0.5f * (get_size().x - box_separation), get_size().y));
     bool right_highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin + Vec2((0.5f * (size.x - box_separation)) + box_separation, 0),
-        Vec2(0.5f * (size.x - box_separation), size.y));
+      get_global_offset() + Vec2((0.5f * (get_size().x - box_separation)) + box_separation, 0),
+        Vec2(0.5f * (get_size().x - box_separation), get_size().y));
 
     if (left_highlighted)
       highlighted = 0;
@@ -444,38 +497,43 @@ MenuSwitch::update(float time_elapsed)
 }
 
 void
-MenuSwitch::mouse_pressed(MouseButton button, bool button_pressed)
+MenuSwitch::handle_event(const MenuControlEvent *event)
 {
-  if (highlighted != -1 && button_pressed)
-    pressed = highlighted;
-
+  if (event->type == MenuControlEventTypeMouseButton)
   {
-    bool contains_mouse = false;
-    float box_separation = 8.0f;
-    if (InputMonitor::get()->get_mouse_position().inside_rect(
-      origin, Vec2(0.5f * (size.x - box_separation), size.y)))
+    bool button_pressed = event->pressed;
+    if (highlighted != -1 && button_pressed)
+      pressed = highlighted;
+
     {
-      // See if no was pressed
-      if (pressed == 0 && !button_pressed)
+      bool contains_mouse = false;
+      float box_separation = 8.0f;
+      if (InputMonitor::get()->get_mouse_position().inside_rect(
+          get_global_offset(), Vec2(0.5f * (get_size().x - box_separation),
+          get_size().y)))
       {
-        value = false;
-        value_changed(value);
-      }
-    } else if (InputMonitor::get()->get_mouse_position().inside_rect(
-      origin + Vec2((0.5f * (size.x - box_separation)) + box_separation, 0),
-      Vec2(0.5f * (size.x - box_separation), size.y)))
-    {
-      // See if yes was pressed
-      if (pressed == 1 && !button_pressed)
+        // See if no was pressed
+        if (pressed == 0 && !button_pressed)
+        {
+          value = false;
+          value_changed(value);
+        }
+      } else if (InputMonitor::get()->get_mouse_position().inside_rect(
+        get_global_offset() + Vec2((0.5f * (get_size().x - box_separation)) + box_separation, 0),
+        Vec2(0.5f * (get_size().x - box_separation), get_size().y)))
       {
-        value = true;
-        value_changed(value);
+        // See if yes was pressed
+        if (pressed == 1 && !button_pressed)
+        {
+          value = true;
+          value_changed(value);
+        }
       }
     }
-  }
 
-  if (!button_pressed)
-    pressed = -1;
+    if (!button_pressed)
+      pressed = -1;
+  }
 }
 
 void
@@ -487,11 +545,12 @@ MenuSwitch::draw()
   Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
   Vec4 pressed_bg = Vec4(1.0f, 0.8f, 1.0f, 0.4f);
 
-  Vec2 left_box_origin = origin;
-  Vec2 left_box_size = Vec2(0.5f * (size.x - box_separation), size.y);
+  Vec2 left_box_origin = get_global_offset();
+  Vec2 left_box_size = Vec2(0.5f * (get_size().x - box_separation), get_size().y);
 
-  Vec2 right_box_origin = origin + Vec2((0.5f * (size.x - box_separation)) + box_separation, 0);
-  Vec2 right_box_size = Vec2(0.5f * (size.x - box_separation), size.y);
+  Vec2 right_box_origin = get_global_offset()
+    + Vec2((0.5f * (get_size().x - box_separation)) + box_separation, 0);
+  Vec2 right_box_size = Vec2(0.5f * (get_size().x - box_separation), get_size().y);
 
   if (pressed == 0 && value != false)
   {
@@ -560,8 +619,8 @@ MenuSlider::update(float time_elapsed)
   if (!InputMonitor::get()->is_left_mouse_down())
   {
     float grab_bar_width = 6.0f;
-    highlighted = InputMonitor::get()->get_mouse_position().inside_rect(origin
-      + Vec2((value * size.x) - (0.5f * grab_bar_width), 0), Vec2(grab_bar_width, size.y));
+    highlighted = InputMonitor::get()->get_mouse_position().inside_rect(get_global_offset()
+      + Vec2((value * get_size().x) - (0.5f * grab_bar_width), 0), Vec2(grab_bar_width, get_size().y));
   }
 
   // If the grab bar is selected, grab the x coordinate of the cursor and clamp
@@ -569,20 +628,25 @@ MenuSlider::update(float time_elapsed)
   if (pressed)
   {
     float cursor_x = InputMonitor::get()->get_mouse_position().x;
-    float normalized = (cursor_x - origin.x) / size.x;
+    float normalized = (cursor_x - get_global_offset().x) / get_size().x;
     float clamped = std::clamp(normalized, 0.0f, 1.0f);
     value = clamped;
   }
 }
 
 void
-MenuSlider::mouse_pressed(MouseButton button, bool button_pressed)
+MenuSlider::handle_event(const MenuControlEvent *event)
 {
-  if (highlighted && button_pressed)
-    pressed = true;
+  if (event->type == MenuControlEventTypeMouseButton)
+  {
+    bool button_pressed = event->pressed;
 
-  if (!button_pressed)
-    pressed = false;
+    if (highlighted && button_pressed)
+      pressed = true;
+
+    if (!button_pressed)
+      pressed = false;
+  }
 }
 
 void
@@ -595,22 +659,26 @@ MenuSlider::draw()
   float slider_bar_width = 4.0f;
   float grab_bar_width = 10.0f;
 
-  GraphicsServer::get()->draw_color_rect(origin + Vec2(0, 0.5f * (size.y - slider_bar_width)),
-    Vec2(size.x, slider_bar_width), normal_bg);
+  GraphicsServer::get()->draw_color_rect(get_global_offset()
+    + Vec2(0, 0.5f * (get_size().y - slider_bar_width)),
+    Vec2(get_size().x, slider_bar_width), normal_bg);
   if (pressed)
   {
-    GraphicsServer::get()->draw_color_rect(origin + Vec2((value * size.x) - (0.5f * grab_bar_width), 0),
-      Vec2(grab_bar_width, size.y), pressed_bg);
+    GraphicsServer::get()->draw_color_rect(get_global_offset()
+      + Vec2((value * get_size().x) - (0.5f * grab_bar_width), 0),
+      Vec2(grab_bar_width, get_size().y), pressed_bg);
   }
   else if (highlighted)
   {
-    GraphicsServer::get()->draw_color_rect(origin + Vec2((value * size.x) - (0.5f * grab_bar_width), 0),
-      Vec2(grab_bar_width, size.y), highlighted_bg);
+    GraphicsServer::get()->draw_color_rect(get_global_offset()
+      + Vec2((value * get_size().x) - (0.5f * grab_bar_width), 0),
+      Vec2(grab_bar_width, get_size().y), highlighted_bg);
   }
   else
   {
-    GraphicsServer::get()->draw_color_rect(origin + Vec2((value * size.x) - (0.5f * grab_bar_width), 0),
-      Vec2(grab_bar_width, size.y), grab_bg);
+    GraphicsServer::get()->draw_color_rect(get_global_offset()
+      + Vec2((value * get_size().x) - (0.5f * grab_bar_width), 0),
+      Vec2(grab_bar_width, get_size().y), grab_bg);
   }
 }
 
@@ -628,10 +696,11 @@ MenuSelector::update(float time_elapsed)
   {
     float box_separation = 8.0f;
     float dir_button_width = 20.0f;
-    Vec2 left_box_origin = origin;
-    Vec2 left_box_size = Vec2(dir_button_width, size.y);
-    Vec2 right_box_origin = origin + Vec2(size.x - dir_button_width, 0);
-    Vec2 right_box_size = Vec2(dir_button_width, size.y);
+    Vec2 left_box_origin = get_global_offset();
+    Vec2 left_box_size = Vec2(dir_button_width, get_size().y);
+    Vec2 right_box_origin = get_global_offset()
+      + Vec2(get_size().x - dir_button_width, 0);
+    Vec2 right_box_size = Vec2(dir_button_width, get_size().y);
 
     bool left_highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
       left_box_origin, left_box_size);
@@ -648,49 +717,56 @@ MenuSelector::update(float time_elapsed)
 }
 
 void
-MenuSelector::mouse_pressed(MouseButton button, bool button_pressed)
+MenuSelector::handle_event(const MenuControlEvent *event)
 {
-  if (highlighted != -1 && button_pressed)
-    pressed = highlighted;
-
+  if (event->type == MenuControlEventTypeMouseButton)
   {
-    bool contains_mouse = false;
-    float box_separation = 8.0f;
-    float dir_button_width = 20.0f;
-    Vec2 left_box_origin = origin;
-    Vec2 left_box_size = Vec2(dir_button_width, size.y);
-    Vec2 right_box_origin = origin + Vec2(size.x - dir_button_width, 0);
-    Vec2 right_box_size = Vec2(dir_button_width, size.y);
-    if (InputMonitor::get()->get_mouse_position().inside_rect(
-      left_box_origin, left_box_size))
+    bool button_pressed = event->pressed;
+    if (highlighted != -1 && button_pressed)
+      pressed = highlighted;
+
     {
-      if (pressed == 0 && !button_pressed)
+      bool contains_mouse = false;
+      float box_separation = 8.0f;
+      float dir_button_width = 20.0f;
+      Vec2 left_box_origin = get_global_offset();
+      Vec2 left_box_size = Vec2(dir_button_width, get_size().y);
+      Vec2 right_box_origin = get_global_offset()
+        + Vec2(get_size().x - dir_button_width, 0);
+      Vec2 right_box_size = Vec2(dir_button_width, get_size().y);
+      if (InputMonitor::get()->get_mouse_position().inside_rect(
+        left_box_origin, left_box_size))
       {
-        // Subtract 1 from the index
-        EnumData en = std::get<EnumData>(property->data);
-        en.current = (en.current - 1) % en.choices.size();
-        property->set_data(en);
-      }
-    } else if (InputMonitor::get()->get_mouse_position().inside_rect(
-      right_box_origin, right_box_size))
-    {
-      if (pressed == 1 && !button_pressed)
+        if (pressed == 0 && !button_pressed)
+        {
+          // Subtract 1 from the index
+          EnumData en = std::get<EnumData>(property->data);
+          en.current = (en.current - 1) % en.choices.size();
+          property->set_data(en);
+        }
+      } else if (InputMonitor::get()->get_mouse_position().inside_rect(
+        right_box_origin, right_box_size))
       {
-        // Add 1 to the index
-        EnumData en = std::get<EnumData>(property->data);
-        en.current = (en.current + 1) % en.choices.size();
-        property->set_data(en);
+        if (pressed == 1 && !button_pressed)
+        {
+          // Add 1 to the index
+          EnumData en = std::get<EnumData>(property->data);
+          en.current = (en.current + 1) % en.choices.size();
+          property->set_data(en);
+        }
       }
     }
-  }
 
-  if (!button_pressed)
-    pressed = -1;
+    if (!button_pressed)
+      pressed = -1;
+  }
 }
 
 void
 MenuSelector::draw()
 {
+  Vec2 offset = get_global_offset();
+
   float box_separation = 8.0f;
   float dir_button_width = 20.0f;
   Vec4 normal_bg = Vec4(0.8f, 0.8f, 0.8f, 0.4f);
@@ -698,11 +774,11 @@ MenuSelector::draw()
   Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
   Vec4 pressed_bg = Vec4(1.0f, 0.8f, 1.0f, 0.4f);
 
-  Vec2 left_box_origin = origin;
-  Vec2 left_box_size = Vec2(dir_button_width, size.y);
+  Vec2 left_box_origin = offset;
+  Vec2 left_box_size = Vec2(dir_button_width, get_size().y);
 
-  Vec2 right_box_origin = origin + Vec2(size.x - dir_button_width, 0);
-  Vec2 right_box_size = Vec2(dir_button_width, size.y);
+  Vec2 right_box_origin = offset + Vec2(get_size().x - dir_button_width, 0);
+  Vec2 right_box_size = Vec2(dir_button_width, get_size().y);
 
   if (pressed == 0)
   {
@@ -742,8 +818,9 @@ MenuSelector::draw()
   req.center_vertical = true;
   req.size = 24;
   req.color = Vec4(1);
-  req.bounding_box_origin = origin + Vec2(dir_button_width + box_separation, 0);
-  req.bounding_box_size = Vec2(size.x - 2.0f * (dir_button_width + box_separation), size.y);
+  req.bounding_box_origin = offset + Vec2(dir_button_width + box_separation, 0);
+  req.bounding_box_size =
+    Vec2(get_size().x - 2.0f * (dir_button_width + box_separation), get_size().y);
   {
     const EnumData &en = std::get<EnumData>(property->data);
     req.text = en.choices[en.current].text;
@@ -763,8 +840,9 @@ TextLine::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
+    Vec2 offset = get_global_offset();
     bool h = InputMonitor::get()->get_mouse_position().inside_rect(
-      origin, size);
+      offset, get_size());
 
     if (h)
       highlighted = true;
@@ -774,65 +852,75 @@ TextLine::update(float time_elapsed)
 }
 
 void
-TextLine::key_update(Key key, bool pressed)
+TextLine::handle_event(const MenuControlEvent *event)
 {
-  if (key == Key::KeyLeft && pressed == true)
+  if (event->type == MenuControlEventTypeKey)
   {
-    if (cursor_pos > 0)
-      cursor_pos -= 1;
-  }
-  else if (key == Key::KeyRight && pressed == true)
-  {
-    if (cursor_pos < text.length())
-      cursor_pos += 1;
-  }
-  else if (key == Key::KeyBackspace && pressed == true)
-  {
-    if (cursor_pos > 0)
+    Key key = event->key;
+    bool pressed = event->pressed;
+
+    if (key == Key::KeyLeft && pressed == true)
     {
-      text.erase(cursor_pos - 1, 1);
-      cursor_pos -= 1;
+      if (cursor_pos > 0)
+        cursor_pos -= 1;
+    }
+    else if (key == Key::KeyRight && pressed == true)
+    {
+      if (cursor_pos < text.length())
+        cursor_pos += 1;
+    }
+    else if (key == Key::KeyBackspace && pressed == true)
+    {
+      if (cursor_pos > 0)
+      {
+        text.erase(cursor_pos - 1, 1);
+        cursor_pos -= 1;
+      }
     }
   }
-}
-
-void
-TextLine::char_update(unsigned int codepoint)
-{
-  text.insert(cursor_pos, 1, (char)codepoint);
-  cursor_pos += 1;
-}
-
-void
-TextLine::mouse_pressed(MouseButton button, bool button_pressed)
-{
-  if (highlighted != -1 && button_pressed)
-    pressed = highlighted;
-
-  if (InputMonitor::get()->get_mouse_position().inside_rect(
-    origin, size))
+  else if (event->type == MenuControlEventTypeChar)
   {
-    if (pressed && !button_pressed)
-    {
-      /* toggle active */
-    }
+    unsigned int codepoint = event->codepoint;
+    text.insert(cursor_pos, 1, (char)codepoint);
+    cursor_pos += 1;
   }
+  else if (event->type == MenuControlEventTypeMouseButton)
+  {
+    Vec2 offset = get_global_offset();
 
-  if (!button_pressed)
-    pressed = -1;
+    MouseButton button = event->mouse_button;
+    bool button_pressed = event->pressed;
+
+    if (highlighted != -1 && button_pressed)
+      pressed = highlighted;
+
+    if (InputMonitor::get()->get_mouse_position().inside_rect(
+      offset, get_size()))
+    {
+      if (pressed && !button_pressed)
+      {
+        /* toggle active */
+      }
+    }
+
+    if (!button_pressed)
+      pressed = -1;
+  }
 }
 
 void
 TextLine::draw()
 {
+  Vec2 offset = get_global_offset();
+
   Vec4 normal_bg = Vec4(0.8f, 0.8f, 0.8f, 0.4f);
   Vec4 highlighted_bg = Vec4(1.0f, 0.8f, 0.8f, 0.4f);
   Vec4 selected_bg = Vec4(0.5f, 0.5f, 0.5f, 0.4f);
-  if (is_hovered())
-    GraphicsServer::get()->draw_color_rect(origin, size,
+  if (highlighted)
+    GraphicsServer::get()->draw_color_rect(offset, get_size(),
       highlighted_bg);
   else
-    GraphicsServer::get()->draw_color_rect(origin, size,
+    GraphicsServer::get()->draw_color_rect(offset, get_size(),
       normal_bg);
 
   {
@@ -842,8 +930,8 @@ TextLine::draw()
     req.center_vertical = true;
     req.size = 16;
     req.color = Vec4(0, 0, 0, 1);
-    req.bounding_box_origin = origin + Vec2(8, 0);
-    req.bounding_box_size = size - Vec2(16, 0);
+    req.bounding_box_origin = offset + Vec2(8, 0);
+    req.bounding_box_size = get_size() - Vec2(16, 0);
     req.text = text;
     req.mask_bounds = true;
 
@@ -867,9 +955,9 @@ TextLine::get_text() const
 ColorSelector::ColorSelector() :
   MenuControl(Vec2(32, 32), Vec2(320, 160))
 {
-  r_component = new TextLine(Vec2(48, 108), Vec2(288, 24), "1.0");
-  g_component = new TextLine(Vec2(48, 78), Vec2(288, 24), "1.0");
-  b_component = new TextLine(Vec2(48, 48), Vec2(288, 24), "1.0");
+  r_component = new TextLine(Vec2(16, 108), Vec2(288, 24), "1.0");
+  g_component = new TextLine(Vec2(16, 78), Vec2(288, 24), "1.0");
+  b_component = new TextLine(Vec2(16, 48), Vec2(288, 24), "1.0");
 
   add_child(r_component);
   add_child(g_component);
@@ -886,6 +974,14 @@ ColorSelector::~ColorSelector()
 }
 
 void
+ColorSelector::size_changed()
+{
+  r_component->set_size(Vec2(get_size().x - 32, 24));
+  g_component->set_size(Vec2(get_size().x - 32, 24));
+  b_component->set_size(Vec2(get_size().x - 32, 24));
+}
+
+void
 ColorSelector::update(float time_elapsed)
 {
 
@@ -894,8 +990,11 @@ ColorSelector::update(float time_elapsed)
 void
 ColorSelector::draw()
 {
+  Vec2 offset = get_global_offset();
+
   // Background
-  GraphicsServer::get()->draw_color_rect(origin, size, Vec4(0.2, 0.2, 0.2, 1.0));
+  GraphicsServer::get()->draw_color_rect(offset, get_size(),
+    Vec4(0.2, 0.2, 0.2, 1.0));
 
   /* Display color */
   Vec4 color = Vec4(0, 0, 0, 1);
@@ -912,11 +1011,110 @@ ColorSelector::draw()
     /* TODO: if the colors are not numbers, display an image? Or the text inputs
        should only accept valid numbers. */
   }
-  GraphicsServer::get()->draw_color_rect(Vec2(48, 138), Vec2(288, 36), color);
+  GraphicsServer::get()->draw_color_rect(offset + Vec2(16, 16),
+    Vec2(get_size().x - 32, 16), color);
+}
+
+FlexContainer::FlexContainer(std::string _title, MenuControl *_child) :
+  MenuControl(Vec2(128, 128), Vec2(256, 256)), title(_title), child(_child),
+  drag_position(false), drag_size(false)
+{
+  add_child(child);
+  resize_child();
+}
+
+FlexContainer::~FlexContainer()
+{
+
 }
 
 void
-ColorSelector::mouse_pressed(MouseButton button, bool button_pressed)
+FlexContainer::resize_child()
 {
+  child->set_origin(Vec2(0, 0));
+  child->set_size(get_size() - Vec2(0, 16));
+}
 
+void
+FlexContainer::update(float time_elapsed)
+{
+  Vec2 cursor_pos = InputMonitor::get()->get_mouse_position();
+  if (drag_position)
+  {
+    set_origin(original_position
+      + (cursor_pos - position_grab_point));
+  }
+
+  if (drag_size)
+  {
+    set_size(original_size
+      + (Vec2(cursor_pos.x, cursor_pos.y) - size_grab_point));
+    resize_child();
+  }
+}
+
+void
+FlexContainer::draw()
+{
+  Vec2 offset = get_global_offset();
+
+  /* Draw a 16px tall title bar at the top. */
+  Vec4 title_bar_color = Vec4(0.8f, 0.8f, 0.8f, 1.0f);
+  GraphicsServer::get()->draw_color_rect(offset + Vec2(0, get_size().y) - Vec2(0, 16),
+    Vec2(get_size().x, 16), title_bar_color);
+  {
+    TextRenderRequest req = {};
+    req.font = EngineState::get()->get_serif();
+    req.center = true;
+    req.center_vertical = true;
+    req.size = 12;
+    req.color = Vec4(0, 0, 0, 1);
+    req.bounding_box_origin = offset + Vec2(0, get_size().y) - Vec2(0, 16);
+    req.bounding_box_size = Vec2(get_size().x, 16);
+    req.text = title;
+    req.mask_bounds = true;
+    GraphicsServer::get()->draw_text_line(req);
+  }
+
+  /* Draw a 16px * 16px resize thing in the top right corner. */
+  Vec4 resize_color = Vec4(0.7f, 0.7f, 0.7f, 1.0f);
+  GraphicsServer::get()->draw_color_rect(offset + get_size() - Vec2(16, 16),
+    Vec2(16, 16), resize_color);
+}
+
+void
+FlexContainer::handle_event(const MenuControlEvent *event)
+{
+  if (event->type == MenuControlEventTypeMouseButton)
+  {
+    Vec2 offset = get_global_offset();
+    Vec2 cursor_pos = InputMonitor::get()->get_mouse_position();
+
+    if (!drag_size && event->pressed == true &&
+        cursor_pos.inside_rect(offset + get_size() - Vec2(16, 16),
+          Vec2(16, 16)))
+    {
+      drag_size = true;
+      original_size = get_size();
+      size_grab_point = cursor_pos;
+    }
+    else if (!drag_position && event->pressed == true &&
+             cursor_pos.inside_rect(offset + Vec2(0, get_size().y) - Vec2(0, 16),
+               Vec2(get_size().x, 16)))
+    {
+      drag_position = true;
+      original_position = get_origin();
+      position_grab_point = cursor_pos;
+    }
+
+    if (drag_position && event->pressed == false)
+    {
+      drag_position = false;
+    }
+
+    if (drag_size && event->pressed == false)
+    {
+      drag_size = false;
+    }
+  }
 }

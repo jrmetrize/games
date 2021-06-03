@@ -109,8 +109,9 @@ public:
 
 class SpriteView : public MenuControl
 {
+  const BoundTexture *sprite;
 public:
-  SpriteView();
+  SpriteView(Vec2 _origin, Vec2 _size, const BoundTexture *_sprite);
 
   ~SpriteView();
 
@@ -134,7 +135,11 @@ class ImgEditorScreen : public Screen
 
   IVec2 cursor_pos;
 
+  FlexContainer *color_container;
   ColorSelector *input_test;
+
+  SpriteView *palette_view;
+  SpriteView *img_view;
 protected:
   void
   key_update(Key key, bool pressed);

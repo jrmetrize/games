@@ -58,10 +58,12 @@ TitleScreen::~TitleScreen()
 }
 
 void
-TitleScreen::key_update(Key key, bool pressed)
+TitleScreen::handle_event(const MenuControlEvent *event)
 {
-  // TODO: should probably play a sound here
-  launcher->show_game_select_screen();
+  if (event->type == MenuControlEventTypeKey)
+  {
+    launcher->show_game_select_screen();
+  }
 }
 
 void

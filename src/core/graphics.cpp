@@ -52,7 +52,7 @@ BoundTexture::~BoundTexture()
 }
 
 const Texture *
-BoundTexture::get_texture()
+BoundTexture::get_texture() const
 {
   return texture;
 }

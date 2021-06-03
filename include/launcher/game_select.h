@@ -49,13 +49,9 @@ public:
   get_game_list();
 };
 
-class GameEntryCard
+class GameEntryCard : public MenuControl
 {
   GameEntry &entry;
-
-  Vec2 origin;
-  Vec2 offset;
-  Vec2 size;
 
   bool highlighted;
   bool pressed;
@@ -65,19 +61,10 @@ public:
   GameEntryCard(GameEntry &_entry, std::function<void(GameEntry &)> _target);
 
   void
-  set_origin(Vec2 _origin);
+  handle_event(const MenuControlEvent *event);
 
   void
-  set_offset(Vec2 _offset);
-
-  void
-  set_size(Vec2 _size);
-
-  void
-  mouse_pressed(MouseButton button, bool button_pressed);
-
-  void
-  update();
+  update(float time_elapsed);
 
   void
   draw();
@@ -89,7 +76,7 @@ class GameSelectScreen : public Screen
 
   std::vector<GameEntry> games;
 
-  std::vector<GameEntryCard> cards;
+  std::vector<GameEntryCard *> cards;
 
   float scroll_offset;
   float content_height;
@@ -98,10 +85,7 @@ class GameSelectScreen : public Screen
   entry_selected(GameEntry &entry);
 protected:
   void
-  mouse_button_update(MouseButton button, bool pressed);
-
-  void
-  scroll_update(Vec2 scroll);
+  handle_event(const MenuControlEvent *event);
 public:
   GameSelectScreen(LauncherState *_launcher);
 
