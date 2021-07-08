@@ -30,12 +30,29 @@ struct MenuControlEvent
 
 class MenuControl
 {
+public:
+  /* These apply a translation to all coordinates on an axis based on the size
+     of the parent and the size of this control. */
+  enum AxisOrigin
+  {
+    AxisOriginNegative,
+    AxisOriginCenter,
+    AxisOriginPositive
+  };
+
+  struct CoordinateOrigin
+  {
+    AxisOrigin x;
+    AxisOrigin y;
+  };
+private:
   std::vector<MenuControl *> children;
   MenuControl *parent;
 
   MenuControl *tab_prev;
   MenuControl *tab_next;
 
+  CoordinateOrigin coordinate_origin;
   Vec2 origin;
   Vec2 size;
 protected:
@@ -54,6 +71,12 @@ public:
   MenuControl();
 
   MenuControl(Vec2 _origin, Vec2 _size);
+
+  CoordinateOrigin
+  get_coordinate_origin() const;
+
+  void
+  set_coordinate_origin(CoordinateOrigin _coordinate_origin);
 
   Vec2
   get_origin() const;
@@ -81,6 +104,9 @@ public:
 
   Vec2
   get_global_offset() const;
+
+  Vec2
+  transform_coordinate_global(Vec2 coordinate) const;
 
   /* Tab list */
   MenuControl *
@@ -184,8 +210,32 @@ public:
   to_disappear();
 };
 
+struct MenuLabelStyle
+{
+  const BoundFont *font;
+  float font_size;
+
+  Vec4 color;
+
+  bool center_horizontal;
+  bool center_vertical;
+};
+
+class MenuLabel : public MenuControl
+{
+  std::string text;
+  MenuLabelStyle style;
+public:
+};
+
 class MenuButton : public MenuControl
 {
+public:
+  struct Style
+  {
+
+  };
+private:
   std::string text;
 
   std::function<void()> target;
@@ -194,6 +244,9 @@ class MenuButton : public MenuControl
   bool pressed;
 public:
   MenuButton(std::string _text, Vec2 _origin, Vec2 _size, std::function<void()> _target);
+
+  void
+  set_text(std::string _text);
 
   void
   update(float time_elapsed);
@@ -236,6 +289,47 @@ public:
 
   void
   handle_event(const MenuControlEvent *event);
+};
+
+class MenuDropdownSelector : public MenuControl
+{
+public:
+  struct Entry
+  {
+    std::string name;
+    void *userdata;
+  };
+private:
+  std::vector<Entry> entries;
+  Entry *current_selection;
+
+  bool opened;
+
+  int highlighted;
+  int pressed;
+
+  Vec2
+  get_cell_origin(int offset);
+
+  void
+  draw_cell(const Entry *entry, int offset);
+
+  void
+  cell_selected(int offset);
+public:
+  MenuDropdownSelector(const std::vector<Entry> &_entries);
+
+  void
+  update(float time_elapsed);
+
+  void
+  draw();
+
+  void
+  handle_event(const MenuControlEvent *event);
+
+  Entry *
+  get_current_selection();
 };
 
 class MenuSlider : public MenuControl
@@ -349,6 +443,18 @@ public:
 
   void
   handle_event(const MenuControlEvent *event);
+};
+
+enum LabelType
+{
+  LabelTypeHeading,
+  LabelTypeParagraph
+};
+
+struct MenuStyle
+{
+  BoundFont *primary_font;
+
 };
 
 #endif

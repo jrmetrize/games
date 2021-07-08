@@ -54,6 +54,26 @@ def build_cmake(dep_name):
 
     return 0
 
+def build_make(dep_name):
+    make_build_dir(dep_name)
+
+    cmd_result = subprocess.run(['make', '-C', get_source_dir(dep_name)],
+        capture_output=True, text=True)
+    if cmd_result.returncode != 0:
+        print("Make build failed.")
+        print(cmd_result.stderr)
+        return -1
+
+    cmd_result = subprocess.run(['make', '-C', get_source_dir(dep_name),
+        f'INSTALL_TOP={get_build_dir()}', 'install'],
+        capture_output=True, text=True)
+    if cmd_result.returncode != 0:
+        print("Install failed.")
+        print(cmd_result.stderr)
+        return -1
+
+    return 0
+
 def build_freetype():
     print("Building dependency 'freetype'")
     return build_cmake("freetype")
@@ -82,6 +102,10 @@ def build_assimp():
     print("Building dependency 'assimp'")
     return build_cmake("assimp")
 
+def build_lua():
+    print("Building dependency 'lua'")
+    return build_make("lua")
+
 build_cmds = [
     build_freetype,
     build_glfw,
@@ -89,7 +113,8 @@ build_cmds = [
     build_zlib,
     build_ogg,
     build_vorbis,
-    build_assimp
+    build_assimp,
+    build_lua
 ]
 for cmd in build_cmds:
     cmd_result = cmd()

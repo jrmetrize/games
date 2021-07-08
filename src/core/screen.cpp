@@ -11,6 +11,7 @@ MenuControl::MenuControl():
 }
 
 MenuControl::MenuControl(Vec2 _origin, Vec2 _size) :
+  coordinate_origin(AxisOriginNegative, AxisOriginNegative),
   origin(_origin), size(_size), hovered(false), focused(false),
   tab_next(nullptr), tab_prev(nullptr), parent(nullptr)
 {
@@ -35,6 +36,18 @@ MenuControl::propagate_event(const MenuControlEvent *event)
   handle_event(event);
   for (uint32_t i = 0; i < children.size(); ++i)
     children[i]->propagate_event(event);
+}
+
+MenuControl::CoordinateOrigin
+MenuControl::get_coordinate_origin() const
+{
+  return coordinate_origin;
+}
+
+void
+MenuControl::set_coordinate_origin(CoordinateOrigin _coordinate_origin)
+{
+  coordinate_origin = _coordinate_origin;
 }
 
 Vec2
@@ -90,14 +103,48 @@ MenuControl::is_focused() const
 Vec2
 MenuControl::get_global_offset() const
 {
-  Vec2 offset = Vec2();
-  const MenuControl *node = this;
-  while (node->parent != nullptr)
+  return transform_coordinate_global(Vec2(0, 0));
+}
+
+Vec2
+MenuControl::transform_coordinate_global(Vec2 coordinate) const
+{
+  /* Find the vector from the origin of the parent to this point. Then add it
+     to the vector from the global origin to the parent's origin. */
+  Vec2 parent_offset = origin;
+  if (parent != nullptr)
   {
-    offset += node->origin;
-    node = node->parent;
+    switch (coordinate_origin.x)
+    {
+      case AxisOriginNegative:
+        break;
+      case AxisOriginCenter:
+        parent_offset.x += (parent->size.x / 2.0f) - (size.x / 2.0f);
+        break;
+      case AxisOriginPositive:
+        parent_offset.x += parent->size.x - size.x;
+        break;
+    }
+    switch (coordinate_origin.y)
+    {
+      case AxisOriginNegative:
+        break;
+      case AxisOriginCenter:
+        parent_offset.y += (parent->size.y / 2.0f) - (size.y / 2.0f);
+        break;
+      case AxisOriginPositive:
+        parent_offset.y += parent->size.y - size.y;
+        break;
+    }
   }
-  return offset;
+  else
+  {
+    parent_offset = origin;
+  }
+  if (parent == nullptr)
+    return parent_offset;
+  else
+    return parent_offset + parent->get_global_offset();
 }
 
 MenuControl *
@@ -398,13 +445,19 @@ MenuButton::MenuButton(std::string _text, Vec2 _origin, Vec2 _size,
 }
 
 void
+MenuButton::set_text(std::string _text)
+{
+  text = _text;
+}
+
+void
 MenuButton::update(float time_elapsed)
 {
   if (!InputMonitor::get()->is_left_mouse_down())
   {
     bool prev_highlighted = highlighted;
     highlighted = InputMonitor::get()->get_mouse_position().inside_rect(
-      get_origin(), get_size());
+      get_global_offset(), get_size());
     if (prev_highlighted == false && highlighted)
     {
       //play_highlight_sound();
@@ -417,7 +470,7 @@ MenuButton::draw()
 {
   Vec2 window_size = GraphicsServer::get()->get_framebuffer_size();
   TextRenderRequest req = {};
-  req.bounding_box_origin = get_origin();
+  req.bounding_box_origin = get_global_offset();
   req.bounding_box_size = get_size();
   req.text = text;
   req.font = EngineState::get()->get_serif();
@@ -604,6 +657,120 @@ MenuSwitch::draw()
     req.text = "Yes";
     GraphicsServer::get()->draw_text_line(req);
   }
+}
+
+MenuDropdownSelector::MenuDropdownSelector(const std::vector<Entry> &_entries) :
+  entries(_entries), current_selection(nullptr), opened(false),
+  highlighted(1), pressed(1)
+{
+
+}
+
+Vec2
+MenuDropdownSelector::get_cell_origin(int offset)
+{
+  return get_global_offset() + (offset * Vec2(0, get_size().y));
+}
+
+void
+MenuDropdownSelector::draw_cell(const Entry *entry, int offset)
+{
+  const Vec4 normal_color = Vec4(1, 0, 0, 1);
+  const Vec4 highlighted_color = Vec4(0, 1, 0, 1);
+  const Vec4 pressed_color = Vec4(0, 0, 1, 1);
+
+  Vec4 cell_color = normal_color;
+  if (highlighted == offset)
+    cell_color = highlighted_color;
+  if (pressed == offset)
+    cell_color = pressed_color;
+
+  Vec2 cell_origin = get_cell_origin(offset);
+  Vec2 cell_size = get_size();
+  GraphicsServer::get()->draw_color_rect(cell_origin,
+    cell_size, cell_color);
+
+  TextRenderRequest req = {};
+  req.bounding_box_origin = cell_origin;
+  req.bounding_box_size = cell_size;
+  if (entry == nullptr)
+    req.text = "(No Selection)";
+  else
+    req.text = entry->name;
+  req.font = EngineState::get()->get_serif();
+  req.center_vertical = true;
+  req.size = 12;
+  req.color = Vec4(0, 0, 0, 1);
+  GraphicsServer::get()->draw_text_line(req);
+}
+
+void
+MenuDropdownSelector::cell_selected(int offset)
+{
+  if (offset < 0)
+    current_selection = &entries[-1 - offset];
+  opened = !opened;
+}
+
+void
+MenuDropdownSelector::update(float time_elapsed)
+{
+  if (!InputMonitor::get()->is_left_mouse_down())
+  {
+    highlighted = 1;
+    if (InputMonitor::get()->get_mouse_position().inside_rect(
+      get_cell_origin(0), get_size()))
+      highlighted = 0;
+    if (opened)
+    {
+      for (size_t i = 0; i < entries.size(); ++i)
+      {
+        if (InputMonitor::get()->get_mouse_position().inside_rect(
+          get_cell_origin(-1 - i), get_size()))
+          highlighted = -1 - i;
+      }
+    }
+  }
+}
+
+void
+MenuDropdownSelector::draw()
+{
+  draw_cell(current_selection, 0);
+  if (opened)
+  {
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+      draw_cell(&entries[i], -1 - i);
+    }
+  }
+}
+
+void
+MenuDropdownSelector::handle_event(const MenuControlEvent *event)
+{
+  if (event->type == MenuControlEventTypeMouseButton)
+  {
+    if (event->pressed)
+    {
+      if (highlighted != 1)
+        pressed = highlighted;
+      else
+        opened = false;
+    }
+    else if (!event->pressed)
+    {
+      if (pressed != 1)
+        cell_selected(pressed);
+      pressed = 1;
+    }
+  }
+}
+
+MenuDropdownSelector::Entry *
+MenuDropdownSelector::get_current_selection()
+{
+  return current_selection;
 }
 
 MenuSlider::MenuSlider(Vec2 _origin, Vec2 _size, std::function<void(float)> _value_changed) :

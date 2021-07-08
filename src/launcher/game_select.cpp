@@ -64,7 +64,7 @@ GameEntry::get_game_list()
     GameEntry("z2d", "2D Zeldalike (WIP Title)", "", ""),
     GameEntry("ps1h", "PS1 Horror (WIP Title)", "", ""),
     GameEntry("space_energy", "Space Energy (WIP Title)", "", ""),
-    GameEntry("img_editor", "Image Editor", "", "")
+    GameEntry("resource_editor", "Resource Editor", "", "")
   };
 
   return games;

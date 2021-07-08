@@ -10,7 +10,7 @@
 #include "launcher/launcher.h"
 #include "launcher/title.h"
 
-#include "img_editor/img_editor.hh"
+#include "resource_editor/resource_editor.hh"
 
 #include "z2d/z2d.hh"
 
@@ -58,9 +58,9 @@ public:
     /* For now, just launch the game instead of going to a detail page. */
     /* TODO: Instead of a dumb if statement, do this smarter... maybe
        have a 'launch' function in each entry. */
-    if (game == "img_editor")
+    if (game == "resource_editor")
     {
-      current_game = new ImgEditor::ImgEditorState();
+      current_game = new ResourceEditor::ResourceEditorState();
     }
     else if (game == "z2d")
     {

@@ -80,6 +80,18 @@ struct BoundMesh
   ~BoundMesh() = 0;
 };
 
+/* Material parameters inspired by
+   https://docs.godotengine.org/en/stable/classes/class_spatialmaterial.html#class-spatialmaterial */
+class BoundMaterial
+{
+  const BoundTexture *albedo;
+  const BoundTexture *metallic;
+  const BoundTexture *normal;
+  const BoundTexture *roughness;
+public:
+
+};
+
 class Camera
 {
   float fovy;

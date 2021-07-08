@@ -241,8 +241,11 @@ EngineState::switch_to_screen(Screen *target_screen)
     current_screen->remove_listener();
     current_screen->to_disappear();
   }
-  target_screen->to_appear();
-  target_screen->install_listener();
+  if (target_screen != nullptr)
+  {
+    target_screen->to_appear();
+    target_screen->install_listener();
+  }
 
   GraphicsServer::get()->set_current_screen(target_screen);
   current_screen = target_screen;

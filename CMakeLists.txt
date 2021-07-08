@@ -24,7 +24,8 @@ set(GAME_SOURCES
   src/launcher/main.cpp
   src/launcher/title.cpp
 
-  src/img_editor/img_editor.cc
+  src/resource_editor/resource_editor.cc
+  src/resource_editor/image_editor.cc
 
   src/z2d/z2d.cc
 )
