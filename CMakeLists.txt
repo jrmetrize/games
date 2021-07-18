@@ -77,8 +77,7 @@ target_compile_definitions(jrCollection
 )
 
 target_include_directories(jrCollection
-  PUBLIC include
-  PUBLIC include/imgui
+  PUBLIC src
 )
 
 add_executable(resource_importer
@@ -94,7 +93,7 @@ target_compile_definitions(resource_importer
 )
 
 target_include_directories(resource_importer
-  PUBLIC include
+  PUBLIC src
   PUBLIC deps/build/include/freetype2
 )
 
@@ -112,6 +111,7 @@ if(WIN32)
     samplerate
     ogg
     vorbis
+    lua
   )
 else()
   target_link_libraries(resource_importer
@@ -126,6 +126,7 @@ else()
     z
     samplerate
     assimp
+    lua
   )
 endif()
 
@@ -133,7 +134,7 @@ add_executable(config
   src/core/config.cpp
 )
 target_include_directories(config
-  PUBLIC include
+  PUBLIC src
   PUBLIC deps/header_only/include
 )
 if(UNIX AND NOT APPLE)
